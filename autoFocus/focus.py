@@ -12,7 +12,7 @@ from utils.cvUtils import to_uint8
 
 from __future__ import print_function
 
-from scipy import optimize
+from scipy.optimize import minimize
 
 cachedir = "cache"
 mem = Memory(cachedir=cachedir, verbose=0)
@@ -41,17 +41,19 @@ class Focus(object):
         self.positions  = positions
         self.camera_pv  = cameraPv
 
-        # Add various checks to this method
         self._check_arguments()
 
-		self.resize     = kwargs.get("resize", 1.0)
-        self.kernel     = kwargs.get("kernel", (17,17))
-        self.sigma      = kwargs.get("kernel", 0)
-        self.average    = kwargs.get("average", 1)
-        self.method      = 
-        self.method_scan = kwargs.get("method", "laplacian")
-        self.methods    = dict("sobel"     : self._sobel_var, 
-                               "laplacian" : self._laplacian_var)
+		self.resize          = kwargs.get("resize", 1.0)
+        self.kernel          = kwargs.get("kernel", (17,17))
+        self.sigma           = kwargs.get("kernel", 0)
+        self.average         = kwargs.get("average", 1)
+        self.method          = kwargs.get("method", "scan")
+        self.sharpness       = kwargs.get("sharpness", "laplacian")
+        
+        self._focus_methods         = dict("scan"      : self._scan_focus,
+                                           "hillclimb" : self._hillclimb_focus)
+        self._sharpness_methods      = dict("sobel"     : self._sobel_var, 
+                                            "laplacian" : self._laplacian_var)
         self.best_pos   = None
         self.best_focus = 0
 
@@ -120,23 +122,38 @@ class Focus(object):
         sobel_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=ksize).var()
         return sobel_x/2.0 + sobel_y/2.0
     
-    def get_focus(self, image, method="laplacian"):
+    def get_focus(self, image, sharpness="laplacian", const=1):
         image_prep = self.preprocess(image)
-        return self.methods[method.lower()](image)
+        return const * self._sharpness_methods[sharpness.lower()](image)
 
-	def get_ave_focus(self, method="laplacian"):
+	def get_ave_focus(self, sharpness="laplacian"):
 		focus = np.empty([self.average])
 		for i in range(self.average):
 			image = self.get_image()
-			focus[i] = self.get_focus(image, method=method)
+			focus[i] = self.get_focus(image, sharpness=sharpness)
 		return focus.mean()
 	
-	def focus(self, method="laplacian"):
-		if method != self.method:
-			self.method = method
+	def _scan_focus(self):
 		scan = IterScan(self, self._motors, self._motor_iters)
 	    scan.scan_mesh()
 	    return self.best_pos
+
+    def _move_and_focus(self, position):
+	    self._motors.mv(position)
+	    self._motors.wait()
+	    return self._get_ave_focus()
+
+    def _hillclimb_focus(self, method="BFGS"):
+	    self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
+	                             method=method)
+	    return self.best_pos
+	
+	def focus(self, method="scan", sharpness="laplacian"):
+		if method != self.method:
+			self.method = method
+		if sharpness != self.sharpness:
+			self.sharpness = sharpness
+	    return self._focus_methods[self.method.lower()]()
 
 	def pre_focus_hook(self, current_image, current_position):
 		pass
