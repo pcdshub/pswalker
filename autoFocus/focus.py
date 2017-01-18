@@ -24,26 +24,26 @@ mem = Memory(cachedir=cachedir, verbose=0)
 
 
 class Focus(object):
-	"""
-	Base focusing class that will determine the focus over a range of values and
-	then return the value that had the highest focus.
+    """
+    Base focusing class that will determine the focus over a range of values and
+    then return the value that had the highest focus.
 
-	Kwargs:
+    Kwargs:
         resize (float): Resize factor (1.0 keeps image same size).
-    	kernel (tuple): Tuple of length 2 for gaussian kernel size.
+        kernel (tuple): Tuple of length 2 for gaussian kernel size.
         sigma (int): Gaussian std in x and y. Set 0 to compute internally.
 
-	"""
-	
-	def __init__(self, motor_pv, positions, camera_pv, **kwargs):
+    """
+    
+    def __init__(self, motor_pv, positions, camera_pv, **kwargs):
 
         self.motor_pv   = motor_pv
         self.positions  = positions
         self.camera_pv  = cameraPv
 
         self._check_arguments()
-
-		self.resize          = kwargs.get("resize", 1.0)
+        
+        self.resize          = kwargs.get("resize", 1.0)
         self.kernel          = kwargs.get("kernel", (17,17))
         self.sigma           = kwargs.get("kernel", 0)
         self.average         = kwargs.get("average", 1)
@@ -61,15 +61,15 @@ class Focus(object):
         self._motor_iters = self._get_motor_iters()
 
     def _check_arguments(self):
-	    if isinstance(self.motor_pv, basestring):
-	        assert_equals(len(self.positions), 3)
-	    elif isiterable(self.motor_pv):
-		    assert_equals(len(self.positions), len(self.motor_pv))
-		    for pv, pos in zip(self.motor_pv, self.positions):
-		        assert isinstance(pv, basestring)
-		        assert isiterable(pos)
-		        assert_equals(len(pos), 3)
-		assert isinstance(self.camera_pv, basestring)
+        if isinstance(self.motor_pv, basestring):
+            assert_equals(len(self.positions), 3)
+        elif isiterable(self.motor_pv):
+            assert_equals(len(self.positions), len(self.motor_pv))
+            for pv, pos in zip(self.motor_pv, self.positions):
+                assert isinstance(pv, basestring)
+                assert isiterable(pos)
+                assert_equals(len(pos), 3)
+        assert isinstance(self.camera_pv, basestring)
 
     def _get_motor_objs(self):
         motors = []
@@ -126,101 +126,101 @@ class Focus(object):
         image_prep = self.preprocess(image)
         return const * self._sharpness_methods[sharpness.lower()](image)
 
-	def get_ave_focus(self, sharpness="laplacian"):
-		focus = np.empty([self.average])
-		for i in range(self.average):
-			image = self.get_image()
-			focus[i] = self.get_focus(image, sharpness=sharpness)
-		return focus.mean()
-	
-	def _scan_focus(self):
-		scan = IterScan(self, self._motors, self._motor_iters)
-	    scan.scan_mesh()
-	    return self.best_pos
+    def get_ave_focus(self, sharpness="laplacian"):
+        focus = np.empty([self.average])
+        for i in range(self.average):
+            image = self.get_image()
+            focus[i] = self.get_focus(image, sharpness=sharpness)
+        return focus.mean()
+    
+    def _scan_focus(self):
+        scan = IterScan(self, self._motors, self._motor_iters)
+        scan.scan_mesh()
+        return self.best_pos
 
     def _move_and_focus(self, position):
-	    self._motors.mv(position)
-	    self._motors.wait()
-	    return self._get_ave_focus()
+        self._motors.mv(position)
+        self._motors.wait()
+        return self._get_ave_focus()
 
     def _hillclimb_focus(self, method="BFGS"):
-	    self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
-	                             method=method)
-	    return self.best_pos
-	
-	def focus(self, method="scan", sharpness="laplacian"):
-		if method != self.method:
-			self.method = method
-		if sharpness != self.sharpness:
-			self.sharpness = sharpness
-	    return self._focus_methods[self.method.lower()]()
+        self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
+                                 method=method)
+        return self.best_pos
+    
+    def focus(self, method="scan", sharpness="laplacian"):
+        if method != self.method:
+            self.method = method
+        if sharpness != self.sharpness:
+            self.sharpness = sharpness
+        return self._focus_methods[self.method.lower()]()
 
-	def pre_focus_hook(self, current_image, current_position):
-		pass
-	
-	def post_focus_hook(self, current_image, current_position, current_focus):
-		pass
+    def pre_focus_hook(self, current_image, current_position):
+        pass
+    
+    def post_focus_hook(self, current_image, current_position, current_focus):
+        pass
 
-	# Methods required for this class to function as an IterScan hook
-	def pre_step(self, scan):
-		pass
+    # Methods required for this class to function as an IterScan hook
+    def pre_step(self, scan):
+        pass
 
-	def post_step(self, scan):
-	    current_pos = self.positions.next()
-	    self.pre_focus_hook(image, current_pos)
+    def post_step(self, scan):
+        current_pos = self.positions.next()
+        self.pre_focus_hook(image, current_pos)
 
-	    focus = get_ave_focus()
+        focus = get_ave_focus()
 
-	    if focus > self.best_focus:
-	        self.best_focus = focus
-			self.best_pos = current_pos
+        if focus > self.best_focus:
+            self.best_focus = focus
+            self.best_pos = current_pos
 
-		self.post_focus_hook(image, current_pos, focus)
+        self.post_focus_hook(image, current_pos, focus)
 
-	def pre_scan(self, scan):
-		pass
+    def pre_scan(self, scan):
+        pass
 
-	def post_scan(self, scan):
-		print("Scan completed. \nBest focus found at: {0}".format(
-			self.best_pos))
+    def post_scan(self, scan):
+        print("Scan completed. \nBest focus found at: {0}".format(
+            self.best_pos))
 
 
 class VirtualMotor(object):
-	"""Virtual motor class until the real one works."""
-	def __init__(self, motors):
-		self._motor_pvs = motors
-		self._motors   = self._get_motors(self._motor_pvs)
-		self.num_motors = len(self._motors)
-		self.name      = ""
-		for motor in self._motors:
-			self.name += motor.name + "+"
-		self.name = self.name[:-1]
-	def _get_motors(self, motor_pvs):
-		motor_names = [pv.get(motor_pv + ".DESC") for motor_pv in motor_pvs]
-		return [Motor(motor, name=motor_name) for motor, motor_name in zip(
-			motor_pvs, motor_names)]
-	def mv(self, vals):
-		if len(val) == len(self._motors):
-			for motor, val in zip(self._motors, vals):
-				motor.mv(val)
-		else:
-			raise ValueError("Motor and position mismatch: {0} motors with {1} \
+    """Virtual motor class until the real one works."""
+    def __init__(self, motors):
+        self._motor_pvs = motors
+        self._motors   = self._get_motors(self._motor_pvs)
+        self.num_motors = len(self._motors)
+        self.name      = ""
+        for motor in self._motors:
+            self.name += motor.name + "+"
+        self.name = self.name[:-1]
+    def _get_motors(self, motor_pvs):
+        motor_names = [pv.get(motor_pv + ".DESC") for motor_pv in motor_pvs]
+        return [Motor(motor, name=motor_name) for motor, motor_name in zip(
+            motor_pvs, motor_names)]
+    def mv(self, vals):
+        if len(val) == len(self._motors):
+            for motor, val in zip(self._motors, vals):
+                motor.mv(val)
+        else:
+            raise ValueError("Motor and position mismatch: {0} motors with {1} \
 inputted motions.".format(len(self._motors), len(vals)))
-	def wm(self):
-		return [motor.wm() for motor in self._motors]
-	def wait(self):
-		for motor in self._motors:
-			motor.wait()
+    def wm(self):
+        return [motor.wm() for motor in self._motors]
+    def wait(self):
+        for motor in self._motors:
+            motor.wait()
 
 def isiterable(obj):
-	"""
-	Function that determines if an object is an iterable, but not including 
-	strings.
-	"""
-	if isinstance(obj, basestring):
-		return False
-	else:
-		return isinstance(obj, Iterable)
+    """
+    Function that determines if an object is an iterable, but not including 
+    strings.
+    """
+    if isinstance(obj, basestring):
+        return False
+    else:
+        return isinstance(obj, Iterable)
 
         
     # def find_focus(self, iter_func, iter_args, method="laplacian"):
@@ -237,28 +237,28 @@ def isiterable(obj):
 
 # class focus_hooks(object):
 
-# 	def __init__(self, focuser, positions, method="laplacian"):
-# 		self.focuser    = focuser
-# 		self.positions  = positions
-# 		self.method     = method
-	
-# 	def pre_step(self, scan):
-# 		pass
-# 	def post_step(self, scan):
-# 	    current_pos = positions.next()
-# 	    image = self.focuser.get_image()
-	    
-# 	    self.focuser.pre_focus_hook()
+#     def __init__(self, focuser, positions, method="laplacian"):
+#         self.focuser    = focuser
+#         self.positions  = positions
+#         self.method     = method
+    
+#     def pre_step(self, scan):
+#         pass
+#     def post_step(self, scan):
+#         current_pos = positions.next()
+#         image = self.focuser.get_image()
+        
+#         self.focuser.pre_focus_hook()
 
-# 	    focus = self.focuser.get_focus(image, self.method)
-	        
-# 	    if focus > self.best_focus:
-# 	        self.focuser.best_focus = focus
-# 			self.focuser.best_pos = current_pos
+#         focus = self.focuser.get_focus(image, self.method)
+            
+#         if focus > self.best_focus:
+#             self.focuser.best_focus = focus
+#             self.focuser.best_pos = current_pos
 
-# 		self.focuser.post_focus_hook()
-# 	def pre_scan(self, scan):
-# 		pass
-# 	def post_scan(self, scan):
-# 		print("Scan completed. \nBest focus found at: {0}".format(
-# 			self.focuser.best_pos))
+#         self.focuser.post_focus_hook()
+#     def pre_scan(self, scan):
+#         pass
+#     def post_scan(self, scan):
+#         print("Scan completed. \nBest focus found at: {0}".format(
+#             self.focuser.best_pos))
