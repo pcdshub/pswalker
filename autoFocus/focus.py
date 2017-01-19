@@ -123,7 +123,7 @@ class Focus(object):
     
     def get_focus(self, image, sharpness="laplacian", const=1):
         image_prep = self.preprocess(image)
-        return const * self._sharpness_methods[sharpness.lower()](image)
+        return const * self._sharpness_methods[sharpness](image)
 
     def get_ave_focus(self, sharpness="laplacian", const=1):
         focus = np.empty([self.average])
@@ -153,7 +153,7 @@ class Focus(object):
             self.method = method
         if sharpness != self.sharpness:
             self.sharpness = sharpness
-        return self._focus_methods[self.method.lower()]()
+        return self._focus_methods[self.method]()
 
     def pre_focus_hook(self, current_image, current_position):
         pass
