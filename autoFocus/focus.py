@@ -27,42 +27,47 @@ class Focus(object):
 
     """
     
-    def __init__(self, motor_pv, positions, camera_pv, **kwargs):
+    def __init__(self, motor_pv, camera_pv, **kwargs):
 
         self.motor_pv   = motor_pv
-        self.positions  = positions
         self.camera_pv  = cameraPv
-
-        self._check_arguments()
-        
-        self.resize          = kwargs.get("resize", 1.0)
-        self.kernel          = kwargs.get("kernel", (17,17))
-        self.sigma           = kwargs.get("kernel", 0)
-        self.average         = kwargs.get("average", 1)
-        self.method          = kwargs.get("method", "scan")
-        self.sharpness       = kwargs.get("sharpness", "laplacian")
-        
-        self._focus_methods         = dict("scan"      : self._scan_focus,
-                                           "hillclimb" : self._hillclimb_focus)
-        self._sharpness_methods      = dict("sobel"     : self._sobel_var, 
-                                            "laplacian" : self._laplacian_var)
+        self.positions  = kwargs.get("positions", None)
+        self.resize     = kwargs.get("resize", 1.0)
+        self.kernel     = kwargs.get("kernel", (17,17))
+        self.sigma      = kwargs.get("kernel", 0)
+        self.average    = kwargs.get("average", 3)
+        self.method     = kwargs.get("method", "scan")
+        self.sharpness  = kwargs.get("sharpness", "laplacian")
         self.best_pos   = None
         self.best_focus = 0
-
+        
+        self._focus_methods     = dict("scan"      : self._scan_focus,
+                                       "hillclimb" : self._hillclimb_focus)
+        self._sharpness_methods = dict("sobel"     : self._sobel_var, 
+                                       "laplacian" : self._laplacian_var)
+        self._check_arguments()
         self._motors      = self._get_motor_objs()
         self._motor_iters = self._get_motor_iters()
 
     def _check_arguments(self):
-        if isinstance(self.motor_pv, basestring):
+        if isiterable(self.positions) and isinstance(self.motor_pv, basestring):
             assert_equals(len(self.positions), 3)
-        elif isiterable(self.motor_pv):
+        elif isiterable(self.positions) and isiterable(self.motor_pv):
             assert_equals(len(self.positions), len(self.motor_pv))
             for pv, pos in zip(self.motor_pv, self.positions):
                 assert isinstance(pv, basestring)
                 assert isiterable(pos)
                 assert_equals(len(pos), 3)
         assert isinstance(self.camera_pv, basestring)
-
+        assert self.resize > 0
+        assert isinstance(self.kernel, tuple)
+        assert_equals(len(self.kernel), 2)
+        assert self.sigma >= 0
+        assert isinstance(self.average, int)
+        assert self.average > 0
+        assert self.method in self._focus_methods.keys()
+        assert self.sharpness in self._sharpness_methods.keys()
+        
     def _get_motor_objs(self):
         motors = []
         if isinstance(self.motor_pv, basestring):
@@ -74,6 +79,8 @@ class Focus(object):
         return tuple(motors)
         
     def _get_motor_iters(self):
+        if not self.positions:
+            return None
         pos_list = []
         # This is most likely incorrect. Check this first if things go wrong
         if isiterable(self.positions[0]):
@@ -118,14 +125,15 @@ class Focus(object):
         image_prep = self.preprocess(image)
         return const * self._sharpness_methods[sharpness.lower()](image)
 
-    def get_ave_focus(self, sharpness="laplacian"):
+    def get_ave_focus(self, sharpness="laplacian", const=1):
         focus = np.empty([self.average])
         for i in range(self.average):
             image = self.get_image()
-            focus[i] = self.get_focus(image, sharpness=sharpness)
+            focus[i] = self.get_focus(image, sharpness=sharpness, const=const)
         return focus.mean()
     
     def _scan_focus(self):
+        assert self._motor_iters, "Motor iterators not initialized"
         scan = IterScan(self, self._motors, self._motor_iters)
         scan.scan_mesh()
         return self.best_pos
@@ -133,7 +141,7 @@ class Focus(object):
     def _move_and_focus(self, position):
         self._motors.mv(position)
         self._motors.wait()
-        return self._get_ave_focus()
+        return self._get_ave_focus(const=-1)
 
     def _hillclimb_focus(self, method="BFGS"):
         self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
@@ -175,6 +183,8 @@ class Focus(object):
     def post_scan(self, scan):
         print("Scan completed. \nBest focus found at: {0}".format(
             self.best_pos))
+
+    # TODO: Add all getters and setters
 
 ################################################################################
 #                        Placeholder Vitual Motor Class                        #
