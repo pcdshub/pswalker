@@ -1,3 +1,9 @@
+"""
+Script containing the focus class for the purpose of automatically focusing any
+camera that has a machine-tunable focuser. This script assumes that this comes
+in the form of a motor that can be contacted via channel access in EPICS.
+"""
+
 import cv2
 import numpy as np
 from joblib import Memory
@@ -40,7 +46,6 @@ class Focus(object):
         self.sharpness  = kwargs.get("sharpness", "laplacian")
         self.best_pos   = None
         self.best_focus = 0
-        
         self._focus_methods     = dict("scan"      : self._scan_focus,
                                        "hillclimb" : self._hillclimb_focus)
         self._sharpness_methods = dict("sobel"     : self._sobel_var, 
@@ -92,7 +97,8 @@ class Focus(object):
         return iter(pos_list)
 
     def preprocess(self, image):
-        """Preprocess the image by resizing and running a gaussian blur. 
+        """Preprocess the image by resizing and running a gaussian blur. A
+        histogram equalization is run on the image as well.
 
         Args:
             image (np.ndarray): The image to be preprocessed.
@@ -105,8 +111,8 @@ class Focus(object):
         image = to_uint8(image)
         image_small = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
         image_gblur = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
-        # Look into histogram equalization
-        return image_gblur
+        image_hequ  = cv2.equalizeHist(image_gblur)   #Examine effects
+        return image_hequ
 
     def get_image(self, cameraPv=None):
         if cameraPv:
