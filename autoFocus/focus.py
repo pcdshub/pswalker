@@ -1,27 +1,19 @@
 import cv2
 import numpy as np
 from joblib import Memory
-from tqdm import tqdm
-from ast import literal_eval
-from multiprocessing import Process
 from psp import Pv as pv
-
 from blbase import motor, iterscan
-
 from utils.cvUtils import to_uint8
-
 from __future__ import print_function
-
 from scipy.optimize import minimize
+from collections import Iterable
 
 cachedir = "cache"
 mem = Memory(cachedir=cachedir, verbose=0)
 
-
 ################################################################################
 #                                  Focus Class                                 #
 ################################################################################
-
 
 class Focus(object):
     """
@@ -184,21 +176,26 @@ class Focus(object):
         print("Scan completed. \nBest focus found at: {0}".format(
             self.best_pos))
 
+################################################################################
+#                        Placeholder Vitual Motor Class                        #
+################################################################################
 
 class VirtualMotor(object):
     """Virtual motor class until the real one works."""
     def __init__(self, motors):
         self._motor_pvs = motors
-        self._motors   = self._get_motors(self._motor_pvs)
+        self._motors    = self._get_motors(self._motor_pvs)
         self.num_motors = len(self._motors)
-        self.name      = ""
+        self.name       = ""
         for motor in self._motors:
             self.name += motor.name + "+"
         self.name = self.name[:-1]
+
     def _get_motors(self, motor_pvs):
         motor_names = [pv.get(motor_pv + ".DESC") for motor_pv in motor_pvs]
         return [Motor(motor, name=motor_name) for motor, motor_name in zip(
             motor_pvs, motor_names)]
+
     def mv(self, vals):
         if len(val) == len(self._motors):
             for motor, val in zip(self._motors, vals):
@@ -206,8 +203,10 @@ class VirtualMotor(object):
         else:
             raise ValueError("Motor and position mismatch: {0} motors with {1} \
 inputted motions.".format(len(self._motors), len(vals)))
+
     def wm(self):
         return [motor.wm() for motor in self._motors]
+
     def wait(self):
         for motor in self._motors:
             motor.wait()
@@ -222,43 +221,5 @@ def isiterable(obj):
     else:
         return isinstance(obj, Iterable)
 
-        
-    # def find_focus(self, iter_func, iter_args, method="laplacian"):
-    #     best_arg = None
-    #     best_focus = 0
-    #     for iter_arg in iter_args:
-    #         image = iter_func(iter_arg)
-    #         focus = self.get_focus(image, method=method)
-    #         if focus > best_focus:
-    #             best_focus = focus
-    #             best_arg = iter_arg
-    #     iter_func(best_arg)
-    
-
-# class focus_hooks(object):
-
-#     def __init__(self, focuser, positions, method="laplacian"):
-#         self.focuser    = focuser
-#         self.positions  = positions
-#         self.method     = method
-    
-#     def pre_step(self, scan):
-#         pass
-#     def post_step(self, scan):
-#         current_pos = positions.next()
-#         image = self.focuser.get_image()
-        
-#         self.focuser.pre_focus_hook()
-
-#         focus = self.focuser.get_focus(image, self.method)
-            
-#         if focus > self.best_focus:
-#             self.focuser.best_focus = focus
-#             self.focuser.best_pos = current_pos
-
-#         self.focuser.post_focus_hook()
-#     def pre_scan(self, scan):
-#         pass
-#     def post_scan(self, scan):
-#         print("Scan completed. \nBest focus found at: {0}".format(
-#             self.focuser.best_pos))
+if __name__ == "__main__":
+	pass
