@@ -3,16 +3,15 @@ Script containing the focus class for the purpose of automatically focusing any
 camera that has a machine-tunable focuser. This script assumes that this comes
 in the form of a motor that can be contacted via channel access in EPICS.
 """
-
-import cv2
-import numpy as np
-from joblib import Memory
-from psp import Pv as pv
-from blbase import motor, iterscan
-from utils.cvUtils import to_uint8
 from __future__ import print_function
+from joblib import Memory
+from blbase import motor, iterscan
+from psp import Pv as pv
+from utils.cvUtils import to_uint8
 from scipy.optimize import minimize
 from collections import Iterable
+import cv2
+import numpy as np
 
 cachedir = "cache"
 mem = Memory(cachedir=cachedir, verbose=0)
@@ -36,31 +35,40 @@ class Focus(object):
     def __init__(self, motor_pv, camera_pv, **kwargs):
 
         self.motor_pv   = motor_pv
-        self.camera_pv  = cameraPv
+        self.camera_pv  = camera_pv
         self.positions  = kwargs.get("positions", None)
         self.resize     = kwargs.get("resize", 1.0)
         self.kernel     = kwargs.get("kernel", (17,17))
-        self.sigma      = kwargs.get("kernel", 0)
+        self.sigma      = kwargs.get("sigma", 0)
         self.average    = kwargs.get("average", 3)
         self.method     = kwargs.get("method", "scan")
         self.sharpness  = kwargs.get("sharpness", "laplacian")
         self.best_pos   = None
         self.best_focus = 0
-        self._focus_methods     = dict("scan"      : self._scan_focus,
-                                       "hillclimb" : self._hillclimb_focus)
-        self._sharpness_methods = dict("sobel"     : self._sobel_var, 
-                                       "laplacian" : self._laplacian_var)
+        self._focus_methods     = {"scan"      : self._scan_focus,
+                                   "hillclimb" : self._hillclimb_focus}
+        self._sharpness_methods = {"sobel"     : self._sobel_var, 
+                                   "laplacian" : self._laplacian_var}
         self._check_arguments()
         self._motors      = self._get_motor_objs()
         self._motor_iters = self._get_motor_iters()
 
     def _check_arguments(self):
-        if isiterable(self.positions) and isinstance(self.motor_pv, basestring):
+        # TODO: Write exceptions file and rewrite this correctly
+        assert isiterable(self.positions)
+        assert isiterable(self.motor_pv) or isinstance(
+            self.motor_pv, (basestring, Motor, VirtualMotor))
+        if isinstance(self.motor_pv, (basestring, Motor)):
             assert_equals(len(self.positions), 3)
-        elif isiterable(self.positions) and isiterable(self.motor_pv):
+        elif isiterable(self.motor_pv):
             assert_equals(len(self.positions), len(self.motor_pv))
             for pv, pos in zip(self.motor_pv, self.positions):
                 assert isinstance(pv, basestring)
+                assert isiterable(pos)
+                assert_equals(len(pos), 3)
+        elif isinstance(self.motor_pv, VirtualMotor): 
+            assert_equals(len(self.positions), self.motor_pv.num_motors)
+            for pos in self.positions:
                 assert isiterable(pos)
                 assert_equals(len(pos), 3)
         assert isinstance(self.camera_pv, basestring)
@@ -75,13 +83,12 @@ class Focus(object):
         
     def _get_motor_objs(self):
         motors = []
-        if isinstance(self.motor_pv, basestring):
-            motors.append(Motor(self.motor_pv, name = pv.get(
-                self.motor_pv+".DESC")))
+        if isinstance(self.motor_pv, (Motor, VirtualMotor)):
+            return self.motor_pv
+        elif isinstance(self.motor_pv, basestring):
+            return Motor(self.motor_pv, name=pv.get(self.motor_pv+".DESC"))
         elif isiterable(self.motor_pv):
-            for pv in self.motor_pv:
-                motors.append(VirtualMotor(pv))
-        return tuple(motors)
+            return VirtualMotor(self.motor_pv)
         
     def _get_motor_iters(self):
         if not self.positions:
@@ -89,7 +96,7 @@ class Focus(object):
         pos_list = []
         # This is most likely incorrect. Check this first if things go wrong
         if isiterable(self.positions[0]):
-            for pos in self.positions
+            for pos in self.positions:
                 pos_list.append(range(*pos))
             pos_list = zip(*pos_list)
         else:
@@ -213,9 +220,9 @@ class VirtualMotor(object):
             motor_pvs, motor_names)]
 
     def mv(self, vals):
-        if len(val) == len(self._motors):
+        if len(val) == self.num_motors:
             for motor, val in zip(self._motors, vals):
-                motor.mv(val)
+                motor.mv(va)l
         else:
             raise ValueError("Motor and position mismatch: {0} motors with {1} \
 inputted motions.".format(len(self._motors), len(vals)))
