@@ -43,6 +43,7 @@ class Focus(object):
         self.average    = kwargs.get("average", 3)
         self.method     = kwargs.get("method", "scan")
         self.sharpness  = kwargs.get("sharpness", "laplacian")
+        self.imager     = kwargs.get("imager", "default")
         self.best_pos   = None
         self.best_focus = 0
         self._focus_methods     = {"scan"      : self._scan_focus,
@@ -121,11 +122,14 @@ class Focus(object):
         image_hequ  = cv2.equalizeHist(image_gblur)   #Examine effects
         return image_hequ
 
-    def get_image(self, cameraPv=None):
-        if cameraPv:
-            self.cameraPv = cameraPv
-        return pv.get(cameraPv)
-
+    def get_image(self, camera_pv=None):
+        if imager.lower() == "default":            
+            if camera_pv:
+                self.camera_pv = camera_pv
+            return pv.get(camera_pv)
+        else:
+            return self.imager()
+        
     def _laplacian_var(self, image):
         return cv2.Laplacian(image, cv2.CV_64F).var()
 
@@ -179,16 +183,13 @@ class Focus(object):
         pass
 
     def post_step(self, scan):
-        current_pos = self.positions.next()
+        self._current_pos = self.positions.next()
         self.pre_focus_hook(image, current_pos)
-
         focus = get_ave_focus()
-
         if focus > self.best_focus:
             self.best_focus = focus
-            self.best_pos = current_pos
-
-        self.post_focus_hook(image, current_pos, focus)
+            self.best_pos = self._current_pos
+        self.post_focus_hook(image, self._current_pos, focus)
 
     def pre_scan(self, scan):
         pass
@@ -233,6 +234,13 @@ inputted motions.".format(len(self._motors), len(vals)))
     def wait(self):
         for motor in self._motors:
             motor.wait()
+
+class VirtualCamera(object):
+    """Virtual camera class until one is found/implemented."""
+    def __init__(self, camera_pv):
+        self.pv = camera_pv
+    def get(self):
+        return pv.get(self.pv)
 
 def isiterable(obj):
     """
