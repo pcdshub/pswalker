@@ -43,7 +43,6 @@ class Focus(object):
         self.average    = kwargs.get("average", 3)
         self.method     = kwargs.get("method", "scan")
         self.sharpness  = kwargs.get("sharpness", "laplacian")
-        self.imager     = kwargs.get("imager", "default")
         self.best_pos   = None
         self.best_focus = 0
         self._focus_methods     = {"scan"      : self._scan_focus,
@@ -53,6 +52,7 @@ class Focus(object):
         self._check_arguments()
         self._motors      = self._get_motor_objs()
         self._motor_iters = self._get_motor_iters()
+        self._camera      = self._get_camera_obj()
 
     def _check_arguments(self):
         # TODO: Write exceptions file and rewrite this correctly
@@ -104,6 +104,14 @@ class Focus(object):
             pos_list = range(*self.positions)
         return iter(pos_list)
 
+    def _get_camera_obj(self):
+        if isinstance(self.camera_pv, VirtualCamera):
+            return self.camera_pv
+        elif isinstance(self.camera_pv, basestring):
+            return VirtualCamera(self.camera_pv)
+        else:
+            raise TypeError
+
     def preprocess(self, image):
         """Preprocess the image by resizing and running a gaussian blur. A
         histogram equalization is run on the image as well.
@@ -117,10 +125,10 @@ class Focus(object):
         implement the necessary preprocessing pipeline.
         """
         image = to_uint8(image)
-        image_small = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
-        image_gblur = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
-        image_hequ  = cv2.equalizeHist(image_gblur)   #Examine effects
-        return image_hequ
+        image_small   = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
+        image_g_blur  = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
+        image_hist_eq = cv2.equalizeHist(image_gblur)   #Examine effects
+        return image_hist_eq
 
     def get_image(self, camera_pv=None):
         if imager.lower() == "default":            
@@ -172,24 +180,16 @@ class Focus(object):
             self.sharpness = sharpness
         return self._focus_methods[self.method]()
 
-    def pre_focus_hook(self, current_image, current_position):
-        pass
-    
-    def post_focus_hook(self, current_image, current_position, current_focus):
-        pass
-
     # Methods required for this class to function as an IterScan hook
     def pre_step(self, scan):
         pass
 
     def post_step(self, scan):
-        self._current_pos = self.positions.next()
-        self.pre_focus_hook(image, current_pos)
+        current_pos = self._motors.wm()
         focus = get_ave_focus()
         if focus > self.best_focus:
             self.best_focus = focus
-            self.best_pos = self._current_pos
-        self.post_focus_hook(image, self._current_pos, focus)
+            self.best_pos = current_pos
 
     def pre_scan(self, scan):
         pass

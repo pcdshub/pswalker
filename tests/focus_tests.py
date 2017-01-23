@@ -15,7 +15,7 @@ class TestDetector(object):
 
 
 
-class VirtualMotor(object):
+class VirtualMotorTest(af.VirtualMotor):
     """Virtual motor class until the real one works."""
     def __init__(self, image, const=0):
         self.image = image
@@ -30,6 +30,6 @@ class VirtualMotor(object):
     def wait(self):
 	    pass
 
-class VirtualCamera(object):
+class VirtualCameraTest(af.VirtualCamera):
     """Virtual camera class until one is found/implemented."""
     
