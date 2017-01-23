@@ -21,14 +21,15 @@ class VirtualMotor(object):
         self.image = image
         self.cur_position = 0
         self.const = const
-
-    def mv(self, blur):
-	    self.cur_position = blur
-	    kernel = np.ceil(abs(blur)) + const
-	    return cv2.GaussianBlur(image_small, (kernel, kernel), 0)
-        
+    def mv(self, pos):
+	    self.cur_position = pos
+        # kernel = np.ceil(abs(blur)) + const
+	    # return cv2.GaussianBlur(image_small, (kernel, kernel), 0)
     def wm(self):
         return self.cur_position
-
     def wait(self):
 	    pass
+
+class VirtualCamera(object):
+    """Virtual camera class until one is found/implemented."""
+    
