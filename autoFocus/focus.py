@@ -223,7 +223,7 @@ class VirtualMotor(object):
     def mv(self, vals):
         if len(val) == self.num_motors:
             for motor, val in zip(self._motors, vals):
-                motor.mv(va)
+                motor.mv(val)
         else:
             raise ValueError("Motor and position mismatch: {0} motors with {1} \
 inputted motions.".format(len(self._motors), len(vals)))
