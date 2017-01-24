@@ -5,16 +5,19 @@ in the form of a motor that can be contacted via channel access in EPICS.
 """
 from __future__ import print_function
 from joblib import Memory
-from blbase import motor, iterscan
+from blbase.motor import Motor
+from blbase.iterscan import IterScan
 from psp import Pv as pv
 from utils.cvUtils import to_uint8
 from scipy.optimize import minimize
 from collections import Iterable
 import cv2
+import itertools
 import numpy as np
+from blbase import virtualmotor as vmotor
 
-cachedir = "cache"
-mem = Memory(cachedir=cachedir, verbose=0)
+# cachedir = "cache"
+# mem = Memory(cachedir=cachedir, verbose=0)
 
 ################################################################################
 #                                  Focus Class                                 #
@@ -60,22 +63,26 @@ class Focus(object):
         assert isiterable(self.motor_pv) or isinstance(
             self.motor_pv, (basestring, Motor, VirtualMotor))
         if isinstance(self.motor_pv, (basestring, Motor)):
-            assert_equals(len(self.positions), 3)
+            assert len(self.positions) == 3
         elif isiterable(self.motor_pv):
-            assert_equals(len(self.positions), len(self.motor_pv))
+            assert len(self.positions) == len(self.motor_pv)
             for pv, pos in zip(self.motor_pv, self.positions):
                 assert isinstance(pv, basestring)
                 assert isiterable(pos)
-                assert_equals(len(pos), 3)
+                assert len(pos) == 3
         elif isinstance(self.motor_pv, VirtualMotor): 
-            assert_equals(len(self.positions), self.motor_pv.num_motors)
-            for pos in self.positions:
-                assert isiterable(pos)
-                assert_equals(len(pos), 3)
-        assert isinstance(self.camera_pv, basestring)
+            if isiterable(self.positions[0]):
+                assert len(self.positions) == self.motor_pv.num_motors
+                for pos in self.positions:
+                    assert isiterable(pos)
+                    assert len(pos) == 3
+            else:
+                assert len(self.positions) == 3
+                assert self.motor_pv.num_motors == 1
+        assert isinstance(self.camera_pv, (VirtualCamera, basestring))
         assert self.resize > 0
         assert isinstance(self.kernel, tuple)
-        assert_equals(len(self.kernel), 2)
+        assert len(self.kernel) == 2
         assert self.sigma >= 0
         assert isinstance(self.average, int)
         assert self.average > 0
@@ -130,13 +137,13 @@ class Focus(object):
         image_hist_eq = cv2.equalizeHist(image_gblur)   #Examine effects
         return image_hist_eq
 
-    def get_image(self, camera_pv=None):
-        if imager.lower() == "default":            
-            if camera_pv:
-                self.camera_pv = camera_pv
-            return pv.get(camera_pv)
-        else:
-            return self.imager()
+    # def get_image(self, camera_pv=None):
+    #     if imager.lower() == "default":            
+    #         if camera_pv:
+    #             self.camera_pv = camera_pv
+    #         return pv.get(camera_pv)
+    #     else:
+    #         return self.imager()
         
     def _laplacian_var(self, image):
         return cv2.Laplacian(image, cv2.CV_64F).var()
@@ -153,14 +160,14 @@ class Focus(object):
     def get_ave_focus(self, sharpness="laplacian", const=1):
         focus = np.empty([self.average])
         for i in range(self.average):
-            image = self.get_image()
+            image = self._camera.get()
             focus[i] = self.get_focus(image, sharpness=sharpness, const=const)
         return focus.mean()
     
     def _scan_focus(self):
         assert self._motor_iters, "Motor iterators not initialized"
         scan = IterScan(self, self._motors, self._motor_iters)
-        scan.scan_mesh()
+        scan.scan()
         return self.best_pos
 
     def _move_and_focus(self, position):
@@ -186,10 +193,11 @@ class Focus(object):
 
     def post_step(self, scan):
         current_pos = self._motors.wm()
-        focus = get_ave_focus()
+        focus = self.get_ave_focus()
         if focus > self.best_focus:
             self.best_focus = focus
             self.best_pos = current_pos
+        print(self.best_pos)
 
     def pre_scan(self, scan):
         pass
@@ -198,13 +206,28 @@ class Focus(object):
         print("Scan completed. \nBest focus found at: {0}".format(
             self.best_pos))
 
+    # Test Methods
+    def view_iterators(self):
+        if isinstance(self._motor_iters, (tuple, list)):
+            iterators = copy.deepcopy(self._motor_iters)
+        else:
+            iterators = list(itertools.tee(self._motor_iters))
+        for i, iterator in enumerate(iterators):
+            print("Iterator {0}".format(i+1))
+            try:
+                while True:
+                    print(iterator.next())
+            except StopIteration:
+                pass
+    
+
     # TODO: Add all getters and setters
 
 ################################################################################
 #                        Placeholder Vitual Motor Class                        #
 ################################################################################
 
-class VirtualMotor(object):
+class VirtualMotor(vmotor.VirtualMotor):
     """Virtual motor class until the real one works."""
     def __init__(self, motors):
         self._motor_pvs = motors
