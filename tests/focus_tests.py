@@ -19,12 +19,8 @@ class VirtualMotorTest(af.VirtualMotor):
     """Virtual motor class until the real one works."""
     def __init__(self, image, const=0):
         self.image = image
-        self.cur_position = 0
-        self.const = const
     def mv(self, pos):
 	    self.cur_position = pos
-        # kernel = np.ceil(abs(blur)) + const
-	    # return cv2.GaussianBlur(image_small, (kernel, kernel), 0)
     def wm(self):
         return self.cur_position
     def wait(self):
@@ -32,4 +28,10 @@ class VirtualMotorTest(af.VirtualMotor):
 
 class VirtualCameraTest(af.VirtualCamera):
     """Virtual camera class until one is found/implemented."""
-    
+    def __init__(self, motor, const=0):
+        self.motor
+        self.const = const
+    def get(self):
+        kernel = np.ceil(abs(self.motor.wm())) + const
+        return cv2.GaussianBlur(image_small, (kernel, kernel), 0)
+	
