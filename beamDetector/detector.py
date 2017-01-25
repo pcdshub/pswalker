@@ -1,29 +1,20 @@
 # Needs some last minute bug testing to make sure everything was ported 
 # into the class correctly.
 
-import time
 import cv2
-import os 
-import random
-import psana
 import numpy as np
 import matplotlib.pyplot as plt
-from  matplotlib.patches import Rectangle
-from joblib import Memory
-from tqdm import tqdm
-from ast import literal_eval
+# from joblib import Memory
+from matplotlib.patches import Rectangle
 from multiprocessing import Process
-
 from utils.cvUtils import to_uint8
 
-cachedir = "cache"
-mem = Memory(cachedir=cachedir, verbose=0)
-
+# cachedir = "cache"
+# mem = Memory(cachedir=cachedir, verbose=0)
 
 ################################################################################
 #                                Detector Class                                #
 ################################################################################
-
 
 class Detector(object):
     """
@@ -239,7 +230,6 @@ class Detector(object):
                       transform=ax.transAxes)
         plt.grid()
         plt.show()
-
 
     def plot(self, image, centroid=[], bounding_box=[], msg="", wait=False):
         """Plots the inputted image optionally with the centroid, bounding box
