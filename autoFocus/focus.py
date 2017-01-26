@@ -4,17 +4,17 @@ camera that has a machine-tunable focuser. This script assumes that this comes
 in the form of a motor that can be contacted via channel access in EPICS.
 """
 from __future__ import print_function
-from joblib import Memory
+# from joblib import Memory
 from blbase.motor import Motor
 from blbase.iterscan import IterScan
+from blbase import virtualmotor as vmotor
 from psp import Pv as pv
-from utils.cvUtils import to_uint8
 from scipy.optimize import minimize
 from collections import Iterable
+from utils.cvUtils import to_uint8
 import cv2
 import itertools
 import numpy as np
-from blbase import virtualmotor as vmotor
 
 # cachedir = "cache"
 # mem = Memory(cachedir=cachedir, verbose=0)
