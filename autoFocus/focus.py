@@ -6,7 +6,7 @@ in the form of a motor that can be contacted via channel access in EPICS.
 from __future__ import print_function
 # from joblib import Memory
 from blbase.motor import Motor
-from blbase.iterscan import IterScan
+from blbase.iterscan import IterScan, Hooks
 from blbase import virtualmotor as vmotor
 from psp import Pv as pv
 from scipy.optimize import minimize
@@ -23,7 +23,7 @@ import numpy as np
 #                                  Focus Class                                 #
 ################################################################################
 
-class Focus(object):
+class Focus(Hooks):
     """
     Base focusing class that will determine the focus over a range of values and
     then return the value that had the highest focus.
@@ -56,6 +56,7 @@ class Focus(object):
         self._motors      = self._get_motor_objs()
         self._motor_iters = self._get_motor_iters()
         self._camera      = self._get_camera_obj()
+        self._count = 0
 
     def _check_arguments(self):
         # TODO: Write exceptions file and rewrite this correctly
@@ -134,7 +135,7 @@ class Focus(object):
         image = to_uint8(image)
         image_small   = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
         image_g_blur  = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
-        image_hist_eq = cv2.equalizeHist(image_gblur)   #Examine effects
+        image_hist_eq = cv2.equalizeHist(image_g_blur)   #Examine effects
         return image_hist_eq
 
     # def get_image(self, camera_pv=None):
@@ -197,7 +198,8 @@ class Focus(object):
         if focus > self.best_focus:
             self.best_focus = focus
             self.best_pos = current_pos
-        print(self.best_pos)
+        self._count += 1
+        # print(self.best_pos)
 
     def pre_scan(self, scan):
         pass
@@ -205,6 +207,8 @@ class Focus(object):
     def post_scan(self, scan):
         print("Scan completed. \nBest focus found at: {0}".format(
             self.best_pos))
+        print(self._count)
+        self._count = 0
 
     # Test Methods
     def view_iterators(self):
