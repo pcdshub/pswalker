@@ -60,7 +60,8 @@ class Focus(Hooks):
 
     def _check_arguments(self):
         # TODO: Write exceptions file and rewrite this correctly
-        assert isiterable(self.positions)
+        if self.method == "scan":
+            assert isiterable(self.positions)
         assert isiterable(self.motor_pv) or isinstance(
             self.motor_pv, (basestring, Motor, VirtualMotor))
         if isinstance(self.motor_pv, (basestring, Motor)):
@@ -72,14 +73,16 @@ class Focus(Hooks):
                 assert isiterable(pos)
                 assert len(pos) == 3
         elif isinstance(self.motor_pv, VirtualMotor): 
-            if isiterable(self.positions[0]):
-                assert len(self.positions) == self.motor_pv.num_motors
-                for pos in self.positions:
-                    assert isiterable(pos)
-                    assert len(pos) == 3
-            else:
-                assert len(self.positions) == 3
-                assert self.motor_pv.num_motors == 1
+            if self.method == "scan":
+                if isiterable(self.positions[0]):
+                    assert len(self.positions) == self.motor_pv.num_motors
+                    for pos in self.positions:
+                        assert isiterable(pos)
+                        assert len(pos) == 3
+                else:
+                    assert len(self.positions) == 3
+                    assert self.motor_pv.num_motors == 1
+
         assert isinstance(self.camera_pv, (VirtualCamera, basestring))
         assert self.resize > 0
         assert isinstance(self.kernel, tuple)
@@ -174,17 +177,17 @@ class Focus(Hooks):
     def _move_and_focus(self, position):
         self._motors.mv(position)
         self._motors.wait()
-        return self._get_ave_focus(const=-1)
+        return self.get_ave_focus(const=-1)
 
     def _hillclimb_focus(self, method="BFGS"):
         self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
                                  method=method)
         return self.best_pos
     
-    def focus(self, method="scan", sharpness="laplacian"):
-        if method != self.method:
+    def focus(self, method=None, sharpness=None):
+        if method != self.method and method != None:
             self.method = method
-        if sharpness != self.sharpness:
+        if sharpness != self.sharpness and sharpness != None:
             self.sharpness = sharpness
         return self._focus_methods[self.method]()
 
@@ -280,4 +283,4 @@ def isiterable(obj):
         return isinstance(obj, Iterable)
 
 if __name__ == "__main__":
-	pass
+    pass
