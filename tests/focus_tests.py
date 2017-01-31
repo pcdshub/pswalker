@@ -29,6 +29,8 @@ class TestDetector(object):
         focus = af.Focus(motor_pv=mot, camera_pv=cam, positions=None, 
                          method="hillclimb")
         res = focus.focus()
+        # As it stands the result simply doesnt equal 0. This doesnt mean it isnt
+        # working so first find out what res ends up as then go from there.
         assert res == 0
 
 
@@ -60,4 +62,4 @@ class VirtualCameraTest(af.VirtualCamera):
             kernel = self._get_kernel()
             return cv2.GaussianBlur(self.motor.image, (kernel, kernel), 0)
         elif self.mode == "hillclimb":
-            return cv2.GaussianBlur(self.motor.image, (5,5), self.motor.wm())
+            return cv2.GaussianBlur(self.motor.image, (7,7), self.motor.wm())

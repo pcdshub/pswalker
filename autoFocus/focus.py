@@ -9,7 +9,7 @@ from blbase.motor import Motor
 from blbase.iterscan import IterScan, Hooks
 from blbase import virtualmotor as vmotor
 from psp import Pv as pv
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar, fmin
 from collections import Iterable
 from utils.cvUtils import to_uint8
 import cv2
@@ -46,6 +46,7 @@ class Focus(Hooks):
         self.average    = kwargs.get("average", 3)
         self.method     = kwargs.get("method", "scan")
         self.sharpness  = kwargs.get("sharpness", "laplacian")
+        self.hc_method  = kwargs.get("hc_method", "Nelder-Mead")
         self.best_pos   = None
         self.best_focus = 0
         self._focus_methods     = {"scan"      : self._scan_focus,
@@ -56,7 +57,7 @@ class Focus(Hooks):
         self._motors      = self._get_motor_objs()
         self._motor_iters = self._get_motor_iters()
         self._camera      = self._get_camera_obj()
-        self._count = 0
+        self._focuses = []
 
     def _check_arguments(self):
         # TODO: Write exceptions file and rewrite this correctly
@@ -150,7 +151,7 @@ class Focus(Hooks):
     #         return self.imager()
         
     def _laplacian_var(self, image):
-        return cv2.Laplacian(image, cv2.CV_64F).var()
+        return cv2.Laplacian(image, cv2.CV_64F).var()**2
 
     def _sobel_var(self, image, ksize=5):
         sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=ksize).var()
@@ -179,16 +180,18 @@ class Focus(Hooks):
         self._motors.wait()
         return self.get_ave_focus(const=-1)
 
-    def _hillclimb_focus(self, method="BFGS"):
+    def _hillclimb_focus(self):
         self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
-                                 method=method)
+                                 options={'disp': True ,'eps' : 1e-1})
+        # self.best_pos = minimize_scalar(self._move_and_focus, 
+        #                             method=self.hc_method, options={'disp':True})
         return self.best_pos
     
-    def focus(self, method=None, sharpness=None):
-        if method != self.method and method != None:
-            self.method = method
-        if sharpness != self.sharpness and sharpness != None:
-            self.sharpness = sharpness
+    def focus(self, **kwargs):
+        self.method    = kwargs.get("method", self.method)
+        self.sharpness = kwargs.get("sharpness", self.sharpness)
+        self.hc_method = kwargs.get("hc_method", self.hc_method)
+        self._check_arguments()
         return self._focus_methods[self.method]()
 
     # Methods required for this class to function as an IterScan hook
@@ -198,10 +201,10 @@ class Focus(Hooks):
     def post_step(self, scan):
         current_pos = self._motors.wm()
         focus = self.get_ave_focus()
+        self._focuses.append(focus)
         if focus > self.best_focus:
             self.best_focus = focus
             self.best_pos = current_pos
-        self._count += 1
         # print(self.best_pos)
 
     def pre_scan(self, scan):
@@ -210,8 +213,6 @@ class Focus(Hooks):
     def post_scan(self, scan):
         print("Scan completed. \nBest focus found at: {0}".format(
             self.best_pos))
-        print(self._count)
-        self._count = 0
 
     # Test Methods
     def view_iterators(self):
