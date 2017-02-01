@@ -16,7 +16,7 @@ image = cv2.imread("tests/test_yag_images_01/image01.jpg", cv2.IMREAD_GRAYSCALE)
 
 const = 0
 mot = VirtualMotorTest(image)
-mot.mv(1)
+mot.mv(.01)
 cam = VirtualCameraTest(mot, const=const, mode="hillclimb")
 focus = af.Focus(motor_pv=mot, camera_pv=cam, positions=None, 
                  method="hillclimb")

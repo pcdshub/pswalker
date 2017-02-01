@@ -16,6 +16,7 @@ import cv2
 import itertools
 import numpy as np
 
+
 # cachedir = "cache"
 # mem = Memory(cachedir=cachedir, verbose=0)
 
@@ -47,8 +48,8 @@ class Focus(Hooks):
         self.method     = kwargs.get("method", "scan")
         self.sharpness  = kwargs.get("sharpness", "laplacian")
         self.hc_method  = kwargs.get("hc_method", "Nelder-Mead")
-        self.best_pos   = None
-        self.best_focus = 0
+        self.best_pos   = []
+        self.best_focus = []
         self._focus_methods     = {"scan"      : self._scan_focus,
                                    "hillclimb" : self._hillclimb_focus}
         self._sharpness_methods = {"sobel"     : self._sobel_var, 
@@ -141,14 +142,6 @@ class Focus(Hooks):
         image_g_blur  = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
         image_hist_eq = cv2.equalizeHist(image_g_blur)   #Examine effects
         return image_hist_eq
-
-    # def get_image(self, camera_pv=None):
-    #     if imager.lower() == "default":            
-    #         if camera_pv:
-    #             self.camera_pv = camera_pv
-    #         return pv.get(camera_pv)
-    #     else:
-    #         return self.imager()
         
     def _laplacian_var(self, image):
         return cv2.Laplacian(image, cv2.CV_64F).var()**2
@@ -175,6 +168,9 @@ class Focus(Hooks):
         scan.scan()
         return self.best_pos
 
+    def _binary_focus(self):
+        pass
+
     def _move_and_focus(self, position):
         self._motors.mv(position)
         self._motors.wait()
@@ -182,7 +178,7 @@ class Focus(Hooks):
 
     def _hillclimb_focus(self):
         self.best_pos = minimize(self._move_and_focus, self._motors.wm(), 
-                                 options={'disp': True ,'eps' : 1e-1})
+                                 options={'disp': True})
         # self.best_pos = minimize_scalar(self._move_and_focus, 
         #                             method=self.hc_method, options={'disp':True})
         return self.best_pos

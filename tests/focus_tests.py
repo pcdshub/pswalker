@@ -62,4 +62,4 @@ class VirtualCameraTest(af.VirtualCamera):
             kernel = self._get_kernel()
             return cv2.GaussianBlur(self.motor.image, (kernel, kernel), 0)
         elif self.mode == "hillclimb":
-            return cv2.GaussianBlur(self.motor.image, (7,7), self.motor.wm())
+            return cv2.GaussianBlur(self.motor.image, (3,3), self.motor.wm())
