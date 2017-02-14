@@ -5,6 +5,9 @@ cache/*
 __pycache__/
 *.pyc
 *.py~
+*.py#
+#*.py
+.#*.py
 *$py.class
 
 # C extensions
