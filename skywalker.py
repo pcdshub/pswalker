@@ -11,7 +11,7 @@ import numpy as np
 from psp import Pv
 from joblib import Memory
 from beamDetector import Detector
-from walker import iterwalk
+from walker.iterwalk import IterWalker
 
 ################################################################################
 #                                Imager Class                                  #
@@ -60,21 +60,15 @@ class Mirror(object):
 
 	@x.setter
 	def x(self, val):
-		try:
-			self.pv_obj_x.put(float(val))
-		except ValueError:
-			print("Invalid input type. Must be castable to float.")
+        put_val(self.pv_obj_x, val)
 			
 	@property
-    def p(self):
+    def xp(self):
         return self.pv_obj_xp.get()
 
 	@xp.setter
-	def p(self, val):
-		try:
-			self.pv_obj_xp.put(float(val))
-		except ValueError:
-			print("Invalid input type. Must be castable to float.")
+	def xp(self, val):
+		put_val(self.pv_obj_xp, val)
 				
 
 ################################################################################
@@ -100,7 +94,7 @@ class Source(object):
 
 	@x.setter
 	def x(self, val):
-		self.put_val(self.pv_obj_x, val)
+		put_val(self.pv_obj_x, val)
 			
 	@property
     def x_p(self):
@@ -108,7 +102,7 @@ class Source(object):
 
 	@xp.setter
 	def x_p(self, val):
-		self.put_val(self.pv_obj_xp, val)
+		put_val(self.pv_obj_xp, val)
 
 	@property
 	def y(self):
@@ -116,7 +110,7 @@ class Source(object):
 
 	@y.setter
 	def y(self, val):
-		self.put_val(self.pv_obj_y, val)
+		put_val(self.pv_obj_y, val)
 			
 	@property
     def y_p(self):
@@ -124,7 +118,7 @@ class Source(object):
 
 	@yp.setter
 	def y_p(self, val):
-		self.put_val(self.pv_obj_yp, val)
+		put_val(self.pv_obj_yp, val)
 
 ################################################################################
 #                               Aperture Class                                 #
@@ -138,8 +132,21 @@ class Aperture(object):
 ################################################################################
 
 class Walker(object):
-    def __init__(self, pv_mx, pv_my, lhoms=1, agent="iterwalk"):
-        pass
+    def __init__(self, pv_mx, pv_my, **kwargs):
+        self.pv_mx = pv_mx
+        self.pv_my = pv_my
+        self.lhoms = kwargs.get("lhoms", 1)
+        self.agent = kwargs.get("agent", IterWalker)
+        
+################################################################################
+#                              Helper Functions                                #
+################################################################################
 
+def put_val(pv, val):
+    try:
+        pv.put(float(val))
+    except ValueError:
+        print("Invalid input type. Must be castable to float.")	
+    
 if __name__ == "__main__":
     pass
