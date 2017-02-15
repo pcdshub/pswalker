@@ -35,10 +35,19 @@ class Imager(object):
 	    self.image = Pv.get()
 	    return self.image
 
-	def centroid(self):
+	def get_centroid(self):
 		"""Return the centroid of the image."""
 		self.centroid, self.bounding_box = self.detector.find(Pv.get())
 		return self.centroid
+
+	@property
+	def z(self):
+		return self.z
+
+	@z.setter
+	def z(self, val):
+        put_val(self.z, val)
+
 
 
 ################################################################################
@@ -50,10 +59,11 @@ class Mirror(object):
 	Mirror class to encapsulate the two HOMS (or any) mirrors.
 	"""
 
-	def __init__(self, pv_x, pv_xp):
+	def __init__(self, pv_x, pv_xp, z):
 		self.pv_obj_x     = Pv(pv_x)
 		self.pv_obj_xp = Pv(pv_xp)
-	
+		self.z = z
+
 	@property
 	def x(self):
 		return self.pv_obj_x.get()
@@ -69,6 +79,15 @@ class Mirror(object):
 	@xp.setter
 	def xp(self, val):
 		put_val(self.pv_obj_xp, val)
+
+	@property
+	def z(self):
+		return self.z
+
+	@z.setter
+	def z(self, val):
+        put_val(self.z, val)
+
 				
 
 ################################################################################
@@ -76,11 +95,12 @@ class Mirror(object):
 ################################################################################
 
 class Source(object):
-	def __init__(self, pv_x, pv_xp, pv_y, pv_yp):
+	def __init__(self, pv_x, pv_xp, pv_y, pv_yp, z):
 		self.pv_obj_x  = Pv(pv_x)
 		self.pv_obj_xp = Pv(pv_xp)
 		self.pv_obj_y  = Pv(pv_y)
 		self.pv_obj_yp = Pv(pv_yp)
+		self.z = z
 
 	def put_val(self, pv, val):
 		try:
@@ -120,12 +140,28 @@ class Source(object):
 	def y_p(self, val):
 		put_val(self.pv_obj_yp, val)
 
+	@property
+	def z(self):
+		return self.z
+
+	@z.setter
+	def z(self, val):
+        put_val(self.z, val)
+
+
 ################################################################################
 #                               Aperture Class                                 #
 ################################################################################
 
 class Aperture(object):
-    pass
+	"""
+	Aperture class that can be used to clip the beam.
+	"""
+    
+    def __init__(self, pv_x_gap, pv_y_gap, z):
+        self.pv_obj_x_gap = Pv(pv_x_gap)
+        self.pv_obj_y_gap = Pv(pv_y_gap)
+        self.z = z
 
 ################################################################################
 #                                Walker Class                                  #
@@ -136,7 +172,9 @@ class Walker(object):
         self.pv_mx = pv_mx
         self.pv_my = pv_my
         self.lhoms = kwargs.get("lhoms", 1)
-        self.agent = kwargs.get("agent", IterWalker)
+        self.agent = kwargs.get("agent", IterWalker())
+
+
         
 ################################################################################
 #                              Helper Functions                                #
