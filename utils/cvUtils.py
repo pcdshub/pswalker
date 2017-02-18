@@ -3,12 +3,13 @@
 import cv2
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 ################################################################################
 #                                Image Operations                              #
 ################################################################################
 
-def to_uint8(image):
+def to_uint8(image, mode="clip"):
 	"""*Correctly* converts an image to uint8 type.
 	
 	Args:
@@ -20,12 +21,35 @@ def to_uint8(image):
 	values over 256. The correct way is to either clip (implemented here) or
 	normalize.
 	"""
-	np.clip(image, 0, 255, out=image)
+	# import ipdb; ipdb.set_trace()
+
+	if not isinstance(image, np.ndarray):
+		image = np.array(image)
+	if mode == "clip":
+		np.clip(image, 0, 255, out=image)
+	elif mode == "norm":
+		image *= 255/image.max()
+	else:
+		raise ValueError
 	return image.astype(np.uint8)
 
 def rolling_average (values, window):
     weights = np.repeat(1.0, window)/window
     return np.convolve(values, weights, 'valid')
+
+def plot_image(image,  msg = ""):
+	"""
+	Plots an image with an optional message.
+	"""
+	fig = plt.figure()
+	ax = fig.add_subplot(1, 1, 1)
+	ax.imshow(image)
+	if msg:
+		plt.text(0.95, 0.05, msg, ha='right', va='center', color='w',
+		        transform=ax.transAxes)
+	plt.grid()
+	plt.show()
+
 
 
 ################################################################################

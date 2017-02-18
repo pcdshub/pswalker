@@ -32,12 +32,13 @@ class Detector(object):
     """
 
     def __init__(self, **kwargs):
-        self.resize    = kwargs.get("resize", 1.0)
-        self.kernel    = kwargs.get("kernel", (17,17))
-        self.sigma     = kwargs.get("kernel", 0)
-        self.max_m0    = kwargs.get("max_m0", 10e5)
-        self.min_m0    = kwargs.get("min_m0", 10e1)
-        self.threshold = kwargs.get("threshold", 3.0)
+        self.resize      = kwargs.get("resize", 1.0)
+        self.kernel      = kwargs.get("kernel", (11,11))
+        self.sigma       = kwargs.get("kernel", 0)
+        self.max_m0      = kwargs.get("max_m0", 10e5)
+        self.min_m0      = kwargs.get("min_m0", 10e1)
+        self.threshold   = kwargs.get("threshold", 2.0)
+        self.norm_mode = kwargs.get("mode", "clip")
         
     def preprocess(self, image):
         """Preprocess the image by resizing and running a gaussian blur. 
@@ -50,7 +51,7 @@ class Detector(object):
         Depending on the specific use case this method should be overwritten to
         use the desired preprocessing pipeline.
         """
-        image = to_uint8(image)
+        image = to_uint8(image, self.norm_mode)
         image_small = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
         image_gblur = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
         return image_gblur
@@ -70,7 +71,7 @@ class Detector(object):
         _, image_thresh = cv2.threshold(
             image, image.mean() + self.threshold*image.std(), image.max(),
             cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(image_thresh, 1, 2)
+        _, contours, _ = cv2.findContours(image_thresh, 1, 2)
         return contours[0]
 
     def get_moments(self, image=None, contour=None):
@@ -141,11 +142,11 @@ class Detector(object):
         """    
         try:
             return M['m00'] < self.max_m0 and M['m00'] > self.min_m0
-        except TypeError:
-            try:
+        except (TypeError, IndexError):
+            if contour:
                 M = self.get_moments(contour=contour)
-            except TypeError:
-                image_prep = self.preprocess(image, resize=resize, kernel=kernel)
+            else:
+                image_prep = self.preprocess(image)
                 contour = self.get_contour(image_prep)
                 M = self.get_moments(contour=contour)
             return M['m00'] < self.max_m0 and M['m00'] > self.min_m0
@@ -169,8 +170,8 @@ class Detector(object):
         M = self.get_moments(contour=contour)
         centroid, bounding_box = None, None
         if self.beam_is_present(M):
-            centroid     = [pos//resize for pos in self.get_centroid(M)]
-            bounding_box = [val//resize for val in self.get_bounding_box(
+            centroid     = [pos//self.resize for pos in self.get_centroid(M)]
+            bounding_box = [val//self.resize for val in self.get_bounding_box(
                 image_prep, contour)]
         return centroid, bounding_box
 
@@ -188,12 +189,11 @@ class Detector(object):
                 
         This method assumes that beam is known to be present.
         """
-        image_prep = self.preprocess(image, resize=self.resize, 
-                                     kernel=self.kernel)
+        image_prep = self.preprocess(image)
         contour = self.get_contour(image_prep)
         M = self.get_moments(contour=contour)
-        centroid     = [pos//resize for pos in self.get_centroid(M)]
-        bounding_box = [val//resize for val in self.get_bounding_box(
+        centroid     = [pos//self.resize for pos in self.get_centroid(M)]
+        bounding_box = [val//self.resize for val in self.get_bounding_box(
             image_prep, contour)]
         return centroid, bounding_box
 

@@ -8,7 +8,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from psp import Pv
+from psp.Pv import Pv
 from joblib import Memory
 from beamDetector.detector import Detector
 from walker.iterwalk import IterWalker
