@@ -148,6 +148,12 @@ def scan_for_beam(seq, imager, do_plot=False):
             plot_image(imager.get())
             break
 
+def solve_alpha_1(x0, xp0, d2, d3, xm1h, xp2h):
+    return (-d3*xp0 - x0 + 2*xm1h - xp2h)/(2*(d2 - d3))
+
+def solve_alpha_2(x0, xp0, d2, d4, d5, a1, xm1h, xm2h, xp3h):
+    return (a1*d2 - a1*d5 + d5*xp0/2 + x0/2 - xm1h + xm2h + xp3h/2)/(d4 - d5)
+
 ################################################################################
 #                              Simulator Functions                             #
 ################################################################################
@@ -248,7 +254,7 @@ if __name__ == "__main__":
 
     # M1H Vals
     m1h_x = 0
-    m1h_alpha = np.deg2rad(0.002111)
+    m1h_alpha = 0.002111
     m1h_z = 90.76
 
     # P2H Vals
@@ -257,7 +263,7 @@ if __name__ == "__main__":
 
     # M2H Vals
     m2h_x = 0.0306
-    m2h_alpha = np.deg2rad(-0.002197)
+    m2h_alpha = -0.002197
     m2h_z = 98.046
 
     # P3H Vals
