@@ -96,3 +96,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+
+# Any of the tilda files
+*~
