@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
     # M1H Vals
     m1h_x = 0
-    m1h_alpha = 0.000
+    m1h_alpha = np.deg2rad(0.002111)
     m1h_z = 90.76
 
     # P2H Vals
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     # M2H Vals
     m2h_x = 0.0306
-    m2h_alpha = 0.0014
+    m2h_alpha = np.deg2rad(-0.002197)
     m2h_z = 98.046
 
     # P3H Vals
@@ -296,25 +296,25 @@ if __name__ == "__main__":
     walker = IterWalker(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2)
 
     # # Alignment procedure
-    # # Initial Positions
-    # simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
-    #           m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
-    #           p3h_z, dg3_x, dg3_z, mx, my, ph_e)
-    # plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
-    # # import IPython; IPython.embed()
+
+    # Initial Positions
+    simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+              m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+              p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+    plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+    # import IPython; IPython.embed()
 
 
-    # Move beam through sequence
-    # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
-    # Beam moves close to no amount for this range. -90 gives x still in the 400
-    # range. One quick thing to try is flipping the coordinates to negative and
-    # seeing the effects. Otherwise issue is that the beam is still not not
-    # showing itself on p3h or dg3, but it is present on p2h.
-    alpha_1_seq = [3.333e-7 * i for i in range(-90, 90, 3)] 
-    n_seq = len(alpha_1_seq)
-    alpha_2_seq = [0] * n_seq
-    seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
-    scan_for_beam(seq, p3h, do_plot=True)
+    # # Move beam through sequence
+    # # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
+    # # Beam moves close to no amount for this range. -90 gives x still in the 400
+    # # range. Otherwise issue is that the beam is still not not
+    # # showing itself on p3h or dg3, but it is present on p2h.
+    # alpha_1_seq = [3.333e-7 * i for i in range(-90, 90, 3)] 
+    # n_seq = len(alpha_1_seq)
+    # alpha_2_seq = [0] * n_seq
+    # seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
+    # scan_for_beam(seq, p3h, do_plot=True)
 
 
     # for s in seq:
