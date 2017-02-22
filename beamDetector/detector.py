@@ -38,7 +38,7 @@ class Detector(object):
         self.max_m0      = kwargs.get("max_m0", 10e5)
         self.min_m0      = kwargs.get("min_m0", 10e1)
         self.threshold   = kwargs.get("threshold", 2.0)
-        self.norm_mode = kwargs.get("mode", "clip")
+        self.prep_mode   = kwargs.get("prep_mode", "clip")
         
     def preprocess(self, image):
         """Preprocess the image by resizing and running a gaussian blur. 
@@ -51,8 +51,9 @@ class Detector(object):
         Depending on the specific use case this method should be overwritten to
         use the desired preprocessing pipeline.
         """
-        image = to_uint8(image, self.norm_mode)
-        image_small = cv2.resize(image, (0,0), fx=self.resize, fy=self.resize)
+        
+        image_uint = to_uint8(image, self.prep_mode)
+        image_small = cv2.resize(image_uint, (0,0), fx=self.resize, fy=self.resize)
         image_gblur = cv2.GaussianBlur(image_small, self.kernel, self.sigma)
         return image_gblur
 

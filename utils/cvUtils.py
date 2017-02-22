@@ -24,14 +24,16 @@ def to_uint8(image, mode="clip"):
 	# import ipdb; ipdb.set_trace()
 
 	if not isinstance(image, np.ndarray):
-		image = np.array(image)
+		image_array = np.array(image)
+	else:
+		image_array = np.array(image)
 	if mode == "clip":
-		np.clip(image, 0, 255, out=image)
+	    np.clip(image_array, 0, 255, out=image_array)
 	elif mode == "norm":
-		image *= 255/image.max()
+	    image_array *= 255/image_array.max()
 	else:
 		raise ValueError
-	return image.astype(np.uint8)
+	return image_array.astype(np.uint8)
 
 def rolling_average (values, window):
     weights = np.repeat(1.0, window)/window
