@@ -5,9 +5,6 @@ cache/*
 __pycache__/
 *.pyc
 *.py~
-*.py#
-#*.py
-.#*.py
 *$py.class
 
 # C extensions
@@ -100,3 +97,8 @@ ENV/
 
 # Any of the tilda files
 *~
+
+# Random other symbols
+*#
+.#*
+#*
