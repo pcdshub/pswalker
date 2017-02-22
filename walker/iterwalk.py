@@ -23,6 +23,7 @@ class IterWalker(object):
 
         # Internal
         self._r = self.distance(self.source.pos, self.mirror_1.pos)   #Not sure if this is correct
+        self._r = self.source.x
         self._theta = self.source.xp
         self._l1 = self.distance(self.mirror_1.pos, self.mirror_2.pos)
         self._l2 = self.distance(self.mirror_2.pos, self.imager_1.pos)
@@ -45,13 +46,13 @@ class IterWalker(object):
 
     def _d1_calc(self):
         """Just in case this needs to be used."""
-        return (self._r + self._l1 * (self._theta + self._alpha1) + self._l2 * 
-                (self._theta + self._alpha1 + self._alpha2))
+        return (self._r + self._l1 * (self._theta + self.mirror_1.alpha) + self._l2 * 
+                (self._theta + self.mirror_1.alpha + self.mirror_2.alpha))
 
     def _d2_calc(self):
         """Just in case this needs to be used."""
-        return (self._r + self._l1 * (self._theta + self._alpha1) + (
-            self._l2 + self._l3)*(self._theta + self._alpha1 + self._alpha2))
+        return (self._r + self._l1 * (self._theta + self.mirror_1.alpha) + (
+            self._l2 + self._l3)*(self._theta + self.mirror_1.alpha + self.mirror_2.alpha))
 
     def _alpha_1_calc(self):
         return ((-self._r - self._theta * (self._l1 + self._l2) - 
@@ -106,6 +107,8 @@ class IterWalker(object):
         # import ipdb; ipdb.set_trace()
 
         next_alpha = next(self._step())
+
+        print(self._d1_calc(), self._d2_calc())
 
         if do_step:
             self._move_mirror(next_alpha)

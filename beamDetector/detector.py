@@ -34,10 +34,10 @@ class Detector(object):
     def __init__(self, **kwargs):
         self.resize      = kwargs.get("resize", 1.0)
         self.kernel      = kwargs.get("kernel", (11,11))
-        self.sigma       = kwargs.get("kernel", 0)
+        self.sigma       = kwargs.get("sigma", 0)
         self.max_m0      = kwargs.get("max_m0", 10e5)
         self.min_m0      = kwargs.get("min_m0", 10e1)
-        self.threshold   = kwargs.get("threshold", 2.0)
+        self.threshold   = kwargs.get("threshold", 3.0)
         self.prep_mode   = kwargs.get("prep_mode", "clip")
         
     def preprocess(self, image):
@@ -71,9 +71,18 @@ class Detector(object):
         """
         _, image_thresh = cv2.threshold(
             image, image.mean() + self.threshold*image.std(), image.max(),
-            cv2.THRESH_BINARY)
+            cv2.THRESH_TOZERO)
         _, contours, _ = cv2.findContours(image_thresh, 1, 2)
-        return contours[0]
+        idx = 0
+        if len(contours) > 1:
+            print(len(contours))
+            max_area = 0
+            for i, cnt in enumerate(contours):
+                _, _, w, h = self.get_bounding_box(contour=cnt)
+                if w*h > max_area:
+                    idx = i
+                    max_area = w*h
+        return contours[idx]
 
     def get_moments(self, image=None, contour=None):
         """Returns the moments of an image.
