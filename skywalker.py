@@ -34,10 +34,10 @@ class Imager(object):
     beamline.
     """
 
-    def __init__(self, x, z, detector=Detector(prep_mode="clip")):
+    def __init__(self, x, z, **kwargs):
         self.x = x
         self.z = z
-        self.detector = detector
+        self.detector = kwargs.get("det", Detector(prep_mode="clip"))
         self.image    = None
         self.centroid = None
         self.bounding_box = None
@@ -45,6 +45,8 @@ class Imager(object):
         self._scale = None
         self.sum = None
         self.beam = False
+        # self.image_sz = kwargs.get("img_sz", 0.0005)
+        self.mppix = kwargs.get("mppix", None)
 
     def get(self):
         """Get an image from the imager."""
@@ -170,14 +172,18 @@ def sim_wrapper(mx, my, energy, fee_slit_x, fee_slit_y, lhoms, x0, x0p, y0p,
 def simulator(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z, 
               m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, 
               p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e):
-    image1, image2, image3 = sim_wrapper(
-        mx, my, ph_e, 100, 100, 1.0, und_x, und_xp, und_yp, m1h_x, m1h_z, 
-        m1h_alpha, m2h_x, m2h_z, p2h_x, p2h_z, m2h_alpha, p3h_x, p3h_z, dg3_x, 
-        dg3_z)
+    # image1, image2, image3 = sim_wrapper(
+    #     mx, my, ph_e, 100, 100, 1.0, und_x, und_xp, und_yp, m1h_x, m1h_z, 
+    #     m1h_alpha, m2h_x, m2h_z, p2h_x, p2h_z, m2h_alpha, p3h_x, p3h_z, dg3_x, 
+    #     dg3_z)
+    image1, image2, image3 = run_sim(mx, my, ph_e, 10, 10, und_x, und_xp, m1h_x, 
+                                     m1h_alpha, m2h_x, m2h_alpha, 5, und_yp)
     
     imager1.image = np.array(image1).T
-    imager2.image = np.array(image2).T[:,::-1]
-    imager3.image = np.array(image3).T[:,::-1]
+    imager2.image = np.array(image2).T
+    imager3.image = np.array(image3).T
+    # imager2.image = np.array(image2).T[:,::-1]
+    # imager3.image = np.array(image3).T[:,::-1]
 
     imager1.sum = imager1.image.sum()
     imager2.sum = imager1.image.sum()
@@ -237,7 +243,7 @@ def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2):
                      color='w', transform=cx.transAxes)        
     plt.axvline(x=p2, linestyle='--')
     plt.grid()
-    plt.draw()
+    # plt.draw()
     plt.show()
     
 
@@ -259,28 +265,28 @@ if __name__ == "__main__":
     # M1H Vals
     m1h_x = 0
     m1h_alpha = 0
-    m1h_z = 90.76
+    m1h_z = 90.510
 
     # P2H Vals
     p2h_x = 0.0
-    p2h_z = 94.36
+    p2h_z = 100.828
 
     # M2H Vals
-    m2h_x = 0.0306
+    m2h_x = 0
     m2h_alpha =  0
-    m2h_z = 98.046
+    m2h_z = 101.843
 
     # P3H Vals
     p3h_x =  0.0
-    p3h_z = 105.13
+    p3h_z = 103.660
 
     # DG3 Vals
-    dg3_x = 0.0306
+    dg3_x = 0
     dg3_z = 375.000
 
     # Simulation values
-    mx = 1001
-    my = 1001
+    mx = 1201
+    my = 301
     ph_e = 7000
 
     # Goal Pixels
@@ -290,7 +296,6 @@ if __name__ == "__main__":
 
     # Reset to Zero
     p2h_x = 0.
-
     m1h_alpha = 0
     m2h_alpha = 0.00
 
@@ -313,13 +318,13 @@ if __name__ == "__main__":
     # M1H
     m1h = Mirror(m1h_x, m1h_alpha, m1h_z)
     # P2H
-    p2h = Imager(p2h_x, p2h_z, detector=det_p23h)
+    p2h = Imager(p2h_x, p2h_z, det=det_p23h)
     # M2H
     m2h = Mirror(m2h_x, m2h_alpha, m2h_z)
     # P3H
-    p3h = Imager(p3h_x, p3h_z, detector=det_p23h)
+    p3h = Imager(p3h_x, p3h_z, det=det_p23h)
     # DG3
-    dg3 = Imager(dg3_x, dg3_z, detector=det_dg3)
+    dg3 = Imager(dg3_x, dg3_z, det=det_dg3)
 
     # Walker Object
     walker = IterWalker(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2)
@@ -328,28 +333,28 @@ if __name__ == "__main__":
 
     # # Alignment procedure
 
-    # Initial Positions
-    simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
-              m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
-              p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+    # # Initial Positions
+    # simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+    #           m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+    #           p3h_z, dg3_x, dg3_z, mx, my, ph_e)
     # plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
-    import IPython; IPython.embed()
+    # # import IPython; IPython.embed()
 
 
-    # # Move beam through sequence
-    # # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
-    # # Beam moves close to no amount for this range. -90 gives x still in the 400
-    # # range. Otherwise issue is that the beam is still not not
-    # # showing itself on p3h or dg3, but it is present on p2h.
-    # n_seq = 4
-    # alpha_1 = 5e-7
-    # alpha_2 = 0
-    # alpha_1_seq = [alpha_1 * i for i in range(n_seq)] 
-    # alpha_2_seq = [alpha_2 * i for i in range(n_seq)] 
-    # seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
-    # # scan_for_beam(seq, p3h, do_plot=True)
-    # move_seq(seq, True)    
-    # # from IPython import embed; embed()
+    # Move beam through sequence
+    # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
+    # Beam moves close to no amount for this range. -90 gives x still in the 400
+    # range. Otherwise issue is that the beam is still not not
+    # showing itself on p3h or dg3, but it is present on p2h.
+    n_seq = 2
+    alpha_1 = 0
+    alpha_2 = 1e-6
+    alpha_1_seq = [alpha_1 * i for i in range(n_seq)] 
+    alpha_2_seq = [alpha_2 * i for i in range(n_seq)] 
+    seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
+    # scan_for_beam(seq, p3h, do_plot=True)
+    move_seq(seq, do_plot=True)    
+    # from IPython import embed; embed()
 
     # for s in seq:
     #     m1h_alpha = s[0]
