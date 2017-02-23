@@ -20,10 +20,10 @@ class IterWalker(object):
         self.p2 = kwargs.get("p2", None)   #Desired point at imager 1
         self.tol = kwargs.get("tol", 0.05)   #Tolerance at d1, d2. Tune
         self.max_n = kwargs.get("max_n", 50)   #Max n iterations. Tune
+        self.pix2m = kwargs.get("pix2m", 1.818e-7)
 
         # Internal
         self._r = self.distance(self.source.pos, self.mirror_1.pos)   #Not sure if this is correct
-        self._r = self.source.x
         self._theta = self.source.xp
         self._l1 = self.distance(self.mirror_1.pos, self.mirror_2.pos)
         self._l2 = self.distance(self.mirror_2.pos, self.imager_1.pos)
@@ -63,9 +63,9 @@ class IterWalker(object):
                  self.mirror_2.alpha * (self._l1 + self._l2 + self._l3)) / 
                 (self._l2 + self._l3))
 
-    def _get_d(self, imager, pos_x_inp):
-        pos_x_cur = imager.get_centroid()[0]   #Double check that this is the correct pos
-        return self.distance(pos_x_inp, pos_x_cur)
+    def _get_d(self, imager, pos_pix_inp):
+        pos_pix_cur = imager.get_centroid()[0]   #Double check that this is the correct pos
+        return self.distance(pos_x_inp, pos_x_cur) * self.pix2m
 
     def _move_mirror(self, alpha):
 	    if self._turn == "alpha1":

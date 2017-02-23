@@ -84,7 +84,7 @@ class Detector(object):
                     max_area = w*h
         return contours[idx]
 
-    def get_moments(self, image=None, contour=None):
+    def get_moments(self, image=None, contour=""):
         """Returns the moments of an image.
 
         Kwargs:
@@ -100,7 +100,7 @@ class Detector(object):
         try:
             return cv2.moments(contour)
         except TypeError:
-            contour = self.get_contour(image, self.threshold)
+            contour = self.get_contour(image)
             return cv2.moments(contour)
 
     def get_centroid(self, M):
@@ -116,7 +116,7 @@ class Detector(object):
         """    
         return int(M['m10']/M['m00']), int(M['m01']/M['m00'])
 
-    def get_bounding_box(self, image=None, contour=None):
+    def get_bounding_box(self, image=None, contour=""):
         """Finds the up-right bounding box that contains the inputted contour.
 
         Kwargs:
@@ -131,10 +131,10 @@ class Detector(object):
         try:
             return cv2.boundingRect(contour)
         except TypeError:
-            contour = self.get_contour(image, self.threshold)
+            contour = self.get_contour(image)
             return cv2.boundingRect(contour)
 
-    def beam_is_present(self, M=None, image=None, contour=None):
+    def beam_is_present(self, M=None, image=None, contour=""):
         """Checks if there is a beam in the image by checking the value of the 
         zeroth moment.
 

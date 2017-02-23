@@ -279,8 +279,8 @@ if __name__ == "__main__":
     dg3_z = 375.000
 
     # Simulation values
-    mx = 601
-    my = 601
+    mx = 1001
+    my = 1001
     ph_e = 7000
 
     # Goal Pixels
@@ -291,8 +291,8 @@ if __name__ == "__main__":
     # Reset to Zero
     p2h_x = 0.
 
-    m1h_alpha = 2e-6
-    m2h_alpha = -0.00
+    m1h_alpha = 0
+    m2h_alpha = 0.00
 
 
     # Additional
@@ -329,27 +329,27 @@ if __name__ == "__main__":
     # # Alignment procedure
 
     # Initial Positions
-    # simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
-    #           m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
-    #           p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+    simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+              m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+              p3h_z, dg3_x, dg3_z, mx, my, ph_e)
     # plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
-    # # import IPython; IPython.embed()
+    import IPython; IPython.embed()
 
 
-    # Move beam through sequence
-    # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
-    # Beam moves close to no amount for this range. -90 gives x still in the 400
-    # range. Otherwise issue is that the beam is still not not
-    # showing itself on p3h or dg3, but it is present on p2h.
-    n_seq = 4
-    alpha_1 = 5e-7
-    alpha_2 = 0
-    alpha_1_seq = [alpha_1 * i for i in range(n_seq)] 
-    alpha_2_seq = [alpha_2 * i for i in range(n_seq)] 
-    seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
-    # scan_for_beam(seq, p3h, do_plot=True)
-    move_seq(seq, True)    
-    # from IPython import embed; embed()
+    # # Move beam through sequence
+    # # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
+    # # Beam moves close to no amount for this range. -90 gives x still in the 400
+    # # range. Otherwise issue is that the beam is still not not
+    # # showing itself on p3h or dg3, but it is present on p2h.
+    # n_seq = 4
+    # alpha_1 = 5e-7
+    # alpha_2 = 0
+    # alpha_1_seq = [alpha_1 * i for i in range(n_seq)] 
+    # alpha_2_seq = [alpha_2 * i for i in range(n_seq)] 
+    # seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
+    # # scan_for_beam(seq, p3h, do_plot=True)
+    # move_seq(seq, True)    
+    # # from IPython import embed; embed()
 
     # for s in seq:
     #     m1h_alpha = s[0]
