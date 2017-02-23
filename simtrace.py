@@ -18,9 +18,8 @@ print("starting matlab engine...")
 eng = matlab.engine.start_matlab()
 print("matlab ready")
 
-def run_sim(mx, my, energy, fee_slit_x, fee_slit_y, lhoms, x0, x0p, y0p, m1h_x, 
-            m1h_z, m1h_a, p2h_x, p2h_z, m2h_x, m2h_z, m2h_a, p3h_x, p3h_z, 
-            dg3_x, dg3_z):
+def run_sim(mx, my, energy, fee_slit_x, fee_slit_y,
+            x0, x0p, x1, x1p, x2, x2p, lhoms, y0p):
     """
     Run Jacek's simulation code with beamline parameters to get simulated
     images at p2h, p3h, and dg3
@@ -34,8 +33,6 @@ def run_sim(mx, my, energy, fee_slit_x, fee_slit_y, lhoms, x0, x0p, y0p, m1h_x,
         Samples along the y-axis.
     energy : number
         X-ray energy in eV.
-    lhoms: number
-        Length of the HOMS mirror in meters.
     fee_slit_x : number
         Physical gap at the fee slits in the x direction in meters.
     fee_slit_y : number
@@ -44,33 +41,18 @@ def run_sim(mx, my, energy, fee_slit_x, fee_slit_y, lhoms, x0, x0p, y0p, m1h_x,
         Offset of undulator from nominal position in meters.
     x0p: number
         Offset of undulator pointing from nominal positon in rad.
+    x1: number
+        Offset of m1h from nominal position in meters.
+    x1p: number
+        Offset of m1h's pitch from nominal position in meters.
+    x2: number
+        Offset of m2h from nominal position in meters.
+    x2p: number
+        Offset of m2h's pitch from nominal position in meters.
+    lhoms: number
+        Length of the HOMS mirror in meters.
     y0p: number
         Offset of unulator pointing in y from nominal position in rad.
-    m1h_x: number
-        Offset of m1h from nominal x position in meters.
-    m1h_z: number
-        Offset of m1h from nominal z position in meters.
-    m1h_a: number
-        Offset of m1h's pitch from nominal alpha position in meters.
-    p2h_x: number
-        Offset of p2h from nominal x position in meters.
-    p2h_z: number
-        Offset of p2h from nominal z position in meters.
-    m2h_x: number
-        Offset of m2h from nominal x position in meters.
-    m2h_z: number
-        Offset of m2h from nominal z position in meters.
-    m2h_a: number
-        Offset of m2h's pitch from nominal alpha position in meters.
-    p3h_x: number
-        Offset of p3h from nominal x position in meters.
-    p3h_z: number
-        Offset of p3h from nominal z position in meters.
-    dg3_x: number
-        Offset of dg3 from nominal x position in meters.
-    dg3_z: number
-        Offset of dg3 from nominal z position in meters.
-
 
     Returns
     p2h, p3h, dg3 : matlab.mlarray.double
@@ -79,30 +61,20 @@ def run_sim(mx, my, energy, fee_slit_x, fee_slit_y, lhoms, x0, x0p, y0p, m1h_x,
         I do not know the orientation of these images, but they are all
         oriented the same way.
     """
-    mx         = float(mx)
-    my         = float(my)
-    energy     = float(energy)
+    mx = float(mx)
+    my = float(my)
+    energy = float(energy)
     fee_slit_x = float(fee_slit_x)
     fee_sliy_y = float(fee_slit_y)
-    lhoms      = float(lhoms)
-    x0         = float(x0)
-    x0p        = float(x0p)
-    y0p        = float(y0p)
-    m1h_x      = float(m1h_x)
-    m1h_z      = float(m1h_z)
-    m1h_a      = float(m1h_a)
-    p2h_x      = float(p2h_x)
-    p2h_z      = float(p2h_z)
-    m2h_x      = float(m2h_x)
-    m2h_z      = float(m2h_z)
-    m2h_a      = float(m2h_a)
-    p3h_x      = float(p3h_x)
-    p3h_z      = float(p3h_z)
-    dg3_x      = float(dg3_x)
-    dg3_z      = float(dg3_z)
-    (p2h, p3h, dg3) = eng.SimTrace(mx, my, energy, fee_slit_x, fee_slit_y, lhoms,
-                                   x0, x0p, y0p, m1h_x, m1h_z, m1h_a, p2h_x, 
-                                   p2h_z, m2h_x, m2h_z, m2h_a, p3h_x, p3h_z,
-                                   dg3_x, dg3_z,
+    x0 = float(x0)
+    x0p = float(x0p)
+    x1 = float(x1)
+    x1p = float(x1p)
+    x2 = float(x2)
+    x2p = float(x2p)
+    lhoms = float(lhoms)
+    y0p = float(y0p)
+    (p2h, p3h, dg3) = eng.SimTrace(mx, my, energy, fee_slit_x, fee_slit_y,
+                                   x0, x0p, x1, x1p, x2, x2p, lhoms, y0p,
                                    nargout=3)
     return p2h, p3h, dg3
