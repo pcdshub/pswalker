@@ -18,12 +18,12 @@ class IterWalker(object):
         # Optional Args
         self.p1 = kwargs.get("p1", None)   #Desired point at imager 1
         self.p2 = kwargs.get("p2", None)   #Desired point at imager 1
-        self.tol = kwargs.get("tol", 0.05)   #Tolerance at d1, d2. Tune
-        self.max_n = kwargs.get("max_n", 50)   #Max n iterations. Tune
-        self.pix2m = kwargs.get("pix2m", 1.818e-7)
+        self.tol = kwargs.get("tol", 1e-7)   #Tolerance at d1, d2. Tune
+        self.max_n = kwargs.get("max_n", 200)   #Max n iterations. Tune
 
         # Internal
-        self._r = self.distance(self.source.pos, self.mirror_1.pos)   #Not sure if this is correct
+        # self._r = self.distance(self.source.pos, self.mirror_1.pos)   #Not sure if this is correct
+        self._r = self.source.x 
         self._theta = self.source.xp
         self._l1 = self.distance(self.mirror_1.pos, self.mirror_2.pos)
         self._l2 = self.distance(self.mirror_2.pos, self.imager_1.pos)
@@ -56,16 +56,27 @@ class IterWalker(object):
 
     def _alpha_1_calc(self):
         return ((-self._r - self._theta * (self._l1 + self._l2) - 
-                 self.mirror_1.alpha * self._l2) / (self._l1 + self._l2))
+                 self.mirror_2.alpha * self._l2) / (self._l1 + self._l2))
 
     def _alpha_2_calc(self):
-        return ((-self._r - self._theta * (self._l1 + self._l2 + self._l3) - 
-                 self.mirror_2.alpha * (self._l1 + self._l2 + self._l3)) / 
+        return -((-self._r - self._theta * (self._l1 + self._l2 + self._l3) - 
+                 self.mirror_1.alpha * (self._l1 + self._l2 + self._l3)) / 
                 (self._l2 + self._l3))
+
+    def _alpha_1_calc_2(self):
+        return ((self.mirror_2.alpha*self.imager_1.z - self.mirror_1.x + 
+                self.mirror_2.x - (self.p1*self.imager_1.mppix)/2)/(
+                    -self.mirror_1.z + self.mirror_2.z + self.imager_1.z))
+
+    def _alpha_2_calc_2(self):
+        return ((-self.mirror_1.alpha*self.mirror_1.z + self.mirror_1.alpha*
+                 self.mirror_2.z + self.mirror_1.alpha*self.imager_2.z + 
+                 self.mirror_1.x - self.mirror_2.x + (
+                     self.p2*self.imager_2.mppix)/2)/self.imager_2.z)
 
     def _get_d(self, imager, pos_pix_inp):
         pos_pix_cur = imager.get_centroid()[0]   #Double check that this is the correct pos
-        return self.distance(pos_x_inp, pos_x_cur) * self.pix2m
+        return (pos_pix_cur -pos_pix_inp) * imager.mppix
 
     def _move_mirror(self, alpha):
 	    if self._turn == "alpha1":
@@ -77,8 +88,8 @@ class IterWalker(object):
 
     def _step(self):
         if self._n >= self.max_n:
-            raise StopIteration           #Iterated more than max iters
-        while not (abs(self._d1_x) < self.tol and abs(self._d2_x) < self.tol):
+            raise StopIteration("Reached max number of iterations")
+        while abs(self._d1_x) > self.tol or abs(self._d2_x) > self.tol:
             self._old_turn = self._turn
             if self._turn == "alpha1":
                 self._n += 1
@@ -92,7 +103,7 @@ class IterWalker(object):
                 yield self._alpha_2_calc()
             else:
                 raise Exception           #How would this ever happen
-        raise StopIteration               #We are within the tolerance
+        raise StopIteration("D1 and D2 within tolerance")
 
     def step(self, p1=None, p2=None, do_step=False):
 
@@ -100,15 +111,15 @@ class IterWalker(object):
 
         if p1 is not None: self.p1 = p1
         if p2 is not None: self.p2 = p2
-        if self._d1_x is None or self._d2_x is None: 
-            self._d1_x = self._get_d(self.imager_1, self.p1)
-            self._d2_x = self._get_d(self.imager_2, self.p2)
+        # if self._d1_x is None or self._d2_x is None: 
+        self._d1_x = self._get_d(self.imager_1, self.p1)
+        self._d2_x = self._get_d(self.imager_2, self.p2)
 
         # import ipdb; ipdb.set_trace()
 
         next_alpha = next(self._step())
 
-        print(self._d1_calc(), self._d2_calc())
+        # print(self._d1_calc(), self._d2_calc())
 
         if do_step:
             self._move_mirror(next_alpha)
