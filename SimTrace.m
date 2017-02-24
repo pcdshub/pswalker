@@ -199,7 +199,7 @@ EMS2Ap=EMS2.*log_MH2.*exp(1i*vref2(2)*Xj);
 MH2_P3H=(zPH3-zi2)*convr;
 %================================================%
 
- [EMP3H] = f_2D_free_prop_spectr_jac_shift(dx,dy,MH2_P3H,EMS2Ap);
+ [EMP3H] = f_2D_free_prop_spectr_jac_shift(dx,dy,MH2_P3H,EMS2); % made change here, ems2ap>ems2
  
 IP3H0=flipud(abs(EMP3H).^2);
 nX1shift=round(delxis2*convr/dx);
@@ -213,7 +213,7 @@ MH2_DG3=(zDG3-zi2)*convr;
 % zD1=zX1+S_GA+GA_MS1+MS1_MS2+MS1_M1;
 % Rd=zR^2/(zD1) +zD1;     %radius of curvature of incoming beam
 % Rdm=Rd/convr;
- [EMDG3] = f_2D_free_prop_spectr_jac_shift(dx,dy,MH2_DG3,EMS2Ap);
+ [EMDG3] = f_2D_free_prop_spectr_jac_shift(dx,dy,MH2_DG3,EMS2); % made change here, ems2ap>ems2
 %  Rdp=Rd;
 
  IDG30=flipud(abs(EMDG3).^2);
