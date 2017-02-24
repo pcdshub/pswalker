@@ -18,6 +18,9 @@ from walker.iterwalk import IterWalker
 from simtrace import run_sim
 from utils.cvUtils import to_uint8, plot_image
 from multiprocessing import Process
+from time import sleep
+from optparse import OptionParser
+
 # from joblib import Memory
 
 # cachedir = "cache"
@@ -46,7 +49,7 @@ class Imager(object):
         self.sum = None
         self.beam = False
         # self.image_sz = kwargs.get("img_sz", 0.0005)
-        self.mppix = kwargs.get("mppix", None)
+        self.mppix = kwargs.get("mppix", 1.66667e-05)
 
     def get(self):
         """Get an image from the imager."""
@@ -89,6 +92,14 @@ class Mirror(object):
         self.alpha = alpha
         self.z = z
         self.pos = np.array([self.z, self.x])
+
+    # @property
+    # def alpha(self):
+    #     return self._alpha
+
+    # @alpha.setter
+    # def alpha(self, val):
+    #     self._alpha = val - self.nom
 
 ################################################################################
 #                                 Source Class                                 #
@@ -176,8 +187,15 @@ def simulator(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z,
     #     mx, my, ph_e, 100, 100, 1.0, und_x, und_xp, und_yp, m1h_x, m1h_z, 
     #     m1h_alpha, m2h_x, m2h_z, p2h_x, p2h_z, m2h_alpha, p3h_x, p3h_z, dg3_x, 
     #     dg3_z)
-    image1, image2, image3 = run_sim(mx, my, ph_e, 10, 10, und_x, und_xp, m1h_x, 
-                                     m1h_alpha, m2h_x, m2h_alpha, 5, und_yp)
+    a1 = m1h_alpha - nom
+    a2 = m2h_alpha - nom
+    m2hx_norm = m2h_x - m2h_nom
+    # from IPython import embed; embed()
+    image1, image2, image3 = run_sim(mx, my, ph_e, 10, 10, und_x, und_xp, 
+                                     m1h_x, 
+                                     a1, 
+                                     m2hx_norm, 
+                                     a2, 45, und_yp)
     
     imager1.image = np.array(image1).T
     imager2.image = np.array(image2).T
@@ -252,8 +270,15 @@ def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2):
 ################################################################################
 
 if __name__ == "__main__":
+    parser = OptionParser()
+    parser.add_option('-p', action='store_true', dest='do_plot', default=False)
+    parser.add_option('-w', action='store_true', dest='walk', default=False)
+    parser.add_option('-s', action='store_true', dest='seq', default=False)
+    parser.add_option('-o', action='store_true', dest='one', default=False)
+    options, args = parser.parse_args()
     
     nom = 0.0014
+    m2h_nom = 0.03173
     # Initial Conditions
     # Undulator Vals
     und_x = 0
@@ -264,24 +289,25 @@ if __name__ == "__main__":
 
     # M1H Vals
     m1h_x = 0
-    m1h_alpha = 0
+    m1h_alpha = 0.0014 + 2e-6
     m1h_z = 90.510
 
     # P2H Vals
-    p2h_x = 0.0
+    p2h_x = 0.02889
     p2h_z = 100.828
 
     # M2H Vals
-    m2h_x = 0
-    m2h_alpha =  0
+    # m2h_x = 0.
+    m2h_x = 0.03173
+    m2h_alpha =  0.0014 - 3e-6
     m2h_z = 101.843
 
     # P3H Vals
-    p3h_x =  0.0
+    p3h_x =  0.03173
     p3h_z = 103.660
 
     # DG3 Vals
-    dg3_x = 0
+    dg3_x = 0.03173
     dg3_z = 375.000
 
     # Simulation values
@@ -290,27 +316,27 @@ if __name__ == "__main__":
     ph_e = 7000
 
     # Goal Pixels
-    p1 = 0.0306
-    p2 = 0.0306
+    p1 = 600
+    p2 = 600
     alpha = 0
 
     # Reset to Zero
-    p2h_x = 0.
-    m1h_alpha = 0
-    m2h_alpha = 0.00
+    # p2h_x = 0.
+    # m1h_alpha = 0
+    # m2h_alpha = 0.00
 
 
     # Additional
     # m1h_alpha = solve_alpha_1(und_x, und_xp, m1h_z, p2h_z, m1h_x, p2h_x) + nom - np.pi/2
     # m2h_alpha = solve_alpha_2(und_x, und_xp, m1h_z, m2h_z, p3h_z, m1h_alpha,  m1h_x,  m2h_x, p3h_x) + nom - np.pi/2
 # x0, xp0, d2, d4, d5, a1, xm1h, xm2h, xp3h
-    do_plot=True
 
     
     # Detector Obj
-    det_p23h = Detector(kernel=(9,9), threshold=9.0)
-    det_dg3 = Detector(kernel=(11,11), threshold=6.0)
+    det_p23h = Detector(kernel=(17,17), threshold=6.0)
+    det_dg3 = Detector(kernel=(31,31), threshold=3.0)
 
+    # import ipdb; ipdb.set_trace()
 
     # Beamline Objects
     # Undulator
@@ -331,14 +357,17 @@ if __name__ == "__main__":
 
     # from IPython import embed; embed()
 
+    do_plot=False
     # # Alignment procedure
 
-    # # Initial Positions
-    # simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
-    #           m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
-    #           p3h_z, dg3_x, dg3_z, mx, my, ph_e)
-    # plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
-    # # import IPython; IPython.embed()
+    # Single Position
+    if options.one:
+        simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+                  m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+                  p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+        if options.do_plot:
+            plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+    # import IPython; IPython.embed()
 
 
     # Move beam through sequence
@@ -346,15 +375,16 @@ if __name__ == "__main__":
     # Beam moves close to no amount for this range. -90 gives x still in the 400
     # range. Otherwise issue is that the beam is still not not
     # showing itself on p3h or dg3, but it is present on p2h.
-    n_seq = 2
-    alpha_1 = 0
-    alpha_2 = 1e-6
-    alpha_1_seq = [alpha_1 * i for i in range(n_seq)] 
-    alpha_2_seq = [alpha_2 * i for i in range(n_seq)] 
-    seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
-    # scan_for_beam(seq, p3h, do_plot=True)
-    move_seq(seq, do_plot=True)    
-    # from IPython import embed; embed()
+    if options.seq:
+        n_seq = 6
+        alpha_1 = 0e-6
+        alpha_2 = 1e-6
+        alpha_1_seq = [nom + alpha_1 * i for i in range(n_seq)] 
+        alpha_2_seq = [nom + alpha_2 * i for i in range(n_seq)] 
+        seq = zip(alpha_1_seq[:n_seq], alpha_2_seq[:n_seq])
+        # scan_for_beam(seq, p3h, do_plot=True)
+        move_seq(seq, do_plot=True)
+        # from IPython import embed; embed()
 
     # for s in seq:
     #     m1h_alpha = s[0]
@@ -366,27 +396,48 @@ if __name__ == "__main__":
     #               p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
     #     plot(p2h, p3h, dg3, p1, p2, m1h, m2h,)
 
-    # # Walk beam to Center 
-    # try:
-    #     while True:
-    #         alpha, turn = walker.step()
-    #         print("\nNew alpha {0} for {1}".format(alpha, turn))
-    #         print("M1H: {0} M2H: {1}".format(m1h.alpha, m2h.alpha))
-    #         print("D1: {0} D2: {1}".format(walker._d1_x, walker._d2_x))            
-    #         if turn == "alpha1":
-    #             m1h_alpha = alpha
-    #             m1h.alpha = alpha
-    #         elif turn == "alpha2":
-    #             m2h_alpha = alpha
-    #             m2h.alpha = alpha
-    #         simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
-    #                   m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
-    #                   m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
-    #         if do_plot:
-    #             plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
-    # except StopIteration:
-    #     print("Reached End")
-
+    # Walk beam to Center 
+    # import ipdb; ipdb.set_trace()
+    if options.walk:
+        try:
+            while True:
+                try:
+                    # import IPython; IPython.embed;
+                    print("M1H: {0}, M2H: {1}".format(m1h.alpha, m2h.alpha))
+                    print("P3H: {0}, DG3: {1}".format(p3h.centroid[0], dg3.centroid[0])) 
+                    print("D1: {0} D2: {1}\n".format(walker._d1_x, walker._d2_x))            
+                    alpha, turn = walker.step()
+                    if turn == "alpha1":
+                        m1h_alpha = alpha
+                        m1h.alpha = alpha
+                    elif turn == "alpha2":
+                        m2h_alpha = alpha
+                        m2h.alpha = alpha
+                    simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
+                              m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                              m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+                    print("New alpha {0} for {1}".format(alpha, turn))
+                    if options.do_plot:
+                        plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+                except (AttributeError, TypeError):
+                    simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
+                              m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                              m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+                    if walker._d1_x is None or walker._d2_x is None: 
+                        walker._d1_x = walker._get_d(walker.imager_1, walker.p1)
+                        walker._d2_x = walker._get_d(walker.imager_2, walker.p2)
+                    print("M1H: {0}, M2H: {1}".format(m1h.alpha, m2h.alpha))
+                    print("P3H: {0}, DG3: {1}".format(p3h.centroid[0], dg3.centroid[0])) 
+                    print("D1: {0} D2: {1}\n".format(walker._d1_x, walker._d2_x))            
+                    if options.do_plot:
+                        plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+                except KeyboardInterrupt:
+                    import IPython; IPython.embed()
+                    sleep(2)
+        except StopIteration:
+            print("Reached End")
+            import IPython; IPython.embed()
+        
     # for i in range(2):
 
 
