@@ -298,16 +298,16 @@ if __name__ == "__main__":
 
     # M2H Vals
     # m2h_x = 0.
-    m2h_x = 0.03173
+    m2h_x = 0.03682000000000002
     m2h_alpha =  0.0014 - 3e-6
     m2h_z = 101.843
 
     # P3H Vals
-    p3h_x =  0.03173
+    p3h_x =  m2h_x
     p3h_z = 103.660
 
     # DG3 Vals
-    dg3_x = 0.03173
+    dg3_x = m2h_x
     dg3_z = 375.000
 
     # Simulation values

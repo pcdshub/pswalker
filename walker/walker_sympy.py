@@ -46,36 +46,47 @@ m1hx = simplify(x0 + m1hz * xp0)
 # Define the new angle of reflection
 m1hxp = 2*a1 - xp0
 
+
+print("\nM1H X: {0}".format(m1hx))
+print("M1H Z: {0}".format(m1hz))
+print("M1H XP: {0}".format(m1hxp))
+
 ################################################################################
 #                                     P2H                                      #
 ################################################################################
 
-p1hz = d3
+p2hz = d3
 # X position follows the line eq but using x position at m1h and new angle
-p1hx_eq = m1hx + m1hxp * (d3-d2)
+p2hx_eq = m1hx + m1hxp * (d3-d2)
 # Simplify
-p1hx = simplify(p1hx_eq)
+p2hx = simplify(p2hx_eq)
 # Angle of the beam isnt changing
-p1hxp = m1hxp
+p2hxp = m1hxp
 
 # For walker, we need to be able to get an alpha for a desired x position
 # Declare generic x
 x = symbols("x")
-# Solve p1h x for alpha
-p1h_alpha = simplify(solve(p1hx - x, a1))
+# # Solve p1h x for alpha
+# p2h_alpha = simplify(solve(p2hx - x, a1))
+
+print("\nP2H X: {0}".format(p2hx))
+print("P2H Z: {0}".format(p2hz))
+print("P2H XP: {0}".format(p2hxp))
 
 ################################################################################
 #                                     M2H                                      #
 ################################################################################
 
+import ipdb; ipdb.set_trace()
+
 # Declare generic x and z
 x, z = symbols("x z")
-# Using point slope eq for a line to get line of M1H (point is d2, m1hdx)
+# Using point slope eq for a line to get line of M1H (point is d4, m2hdx)
 m2h_ln = a2 * (z - d4) + m2hdx - x
 # Solve for x
 m2h_ln_x = solve(m2h_ln, x)[0]
 # Get the line eq for the beam using beam parameters from m1h in point slope
-beam_ln =  m1hxp*(z - m1hz) - x + m1hx
+beam_ln =  m1hxp*(z - m1hz) + m1hx - x
 # Solve for x
 beam_ln_x = solve(beam_ln, x)[0]
 # Setting them equal to each other and subtracting, then solving for z
@@ -86,6 +97,17 @@ m2h_sub = beam_ln.subs(z, m2hz)
 m2hx = solve(m2h_sub, x)[0]
 # Reflection angle
 m2hxp = 2*a2 - m1hxp
+
+x, z = symbols("x z")
+m2hx_x_subs = m2hx.subs(m2hdx, x) - x
+print(m2hx_x_subs)
+m2hx_x = solve(m2hx_x_subs, x)
+print(m2hx_x)
+
+
+print("\nM2H X: {0}".format(m2hx))
+print("M2H Z: {0}".format(m2hz))
+print("M2H XP: {0}".format(m2hxp))
 
 ################################################################################
 #                                     P3H                                      #
@@ -103,9 +125,15 @@ p3hxp = m2hxp
 # Declare generic x
 x = symbols("x")
 # Solve p1h x for alpha
-p3h_alpha = solve(p3hx - x, a1)[0]
+p3h_alpha = solve(p3hx - x, a1)
 
-print(p3h_alpha)
+# print(p3h_alpha)
+
+
+print("\nP3H X: {0}".format(p3hx))
+print("P3H Z: {0}".format(p3hz))
+print("P3H XP: {0}".format(p3hxp))
+print("Alpha1: {0}".format(p3h_alpha))
 
 ################################################################################
 #                                     DG3                                      #
@@ -123,6 +151,12 @@ dg3xp = m2hxp
 # Declare generic x
 x = symbols("x")
 # Solve p1h x for alpha
-dg3_alpha = solve(dg3x - x, a2)[0]
+dg3_alpha = solve(dg3x - x, a2)
 
-print(dg3_alpha)
+# print(dg3_alpha)
+
+print("\nDG3 X: {0}".format(dg3x))
+print("DG3 Z: {0}".format(dg3z))
+print("DG3 XP: {0}".format(dg3xp))
+print("Alpha2: {0}".format(dg3_alpha))
+

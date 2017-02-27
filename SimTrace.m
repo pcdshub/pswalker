@@ -38,6 +38,7 @@ nsx=0; nsz=1; xs=0; zs=zPH2;
 
 [ xi,zi,vrefl,xis,zis ] = JacRaytrace( nrx,nrz,xr,zr,nmx,nmz,xm,zm,nsx,nsz,xs,zs);
 
+
 alpha2=pi/2-alpha;
 
 phiX2=alpha2+X2P;
@@ -55,7 +56,9 @@ ns3x=0; ns3z=1; xs3=0; zs3=zDG3;
 
 [ xi2,zi2,vref2,xis2,zis2 ] = JacRaytrace( vrefl(1),vrefl(2),xi,zi,nm2x,nm2z,xm2,zm2,ns2x,ns2z,xs2,zs2);
 
+
 [ xi2,zi2,vref2,xis3,zis3 ] = JacRaytrace( vrefl(1),vrefl(2),xi,zi,nm2x,nm2z,xm2,zm2,ns3x,ns3z,xs3,zs3);
+
 
 delxis=xis-0.0289+9.5245e-06;
 delxis2=xis2-0.0317-3.2234e-05;
