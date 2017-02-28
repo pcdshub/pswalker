@@ -19,6 +19,8 @@ d1, d2, d3, d4, d5, d6 = symbols("d1 d2 d3 d4 d5 d6")
 # The beam at any point in the beamline needs an x, z, and xp to be fully
 # characterized.
 
+# import ipdb; ipdb.set_trace()
+
 ################################################################################
 #                                     P1H                                      #
 ################################################################################
@@ -34,7 +36,8 @@ p1hxp = xp0
 # Declare generic x and z
 x, z = symbols("x z")
 # Using point slope eq for a line to get line of M1H (point is d2, m1hdx)
-m1h_ln = a1 * (z - d2) + m1hdx - x
+m1h_ln = m1hdx - x
+# m1h_ln = a1 * (z - d2) + m1hdx - x
 # Solve for x
 m1h_ln_x = solve(m1h_ln, x)[0]
 # Get the line eq for the beam
@@ -65,7 +68,7 @@ p2hxp = m1hxp
 
 # For walker, we need to be able to get an alpha for a desired x position
 # Declare generic x
-x = symbols("x")
+# x = symbols("x")
 # # Solve p1h x for alpha
 # p2h_alpha = simplify(solve(p2hx - x, a1))
 
@@ -77,12 +80,11 @@ print("P2H XP: {0}".format(p2hxp))
 #                                     M2H                                      #
 ################################################################################
 
-import ipdb; ipdb.set_trace()
-
 # Declare generic x and z
 x, z = symbols("x z")
 # Using point slope eq for a line to get line of M1H (point is d4, m2hdx)
-m2h_ln = a2 * (z - d4) + m2hdx - x
+# m2h_ln = a2 * (z - d4) + m2hdx - x
+m2h_ln = m2hdx - x
 # Solve for x
 m2h_ln_x = solve(m2h_ln, x)[0]
 # Get the line eq for the beam using beam parameters from m1h in point slope
@@ -98,11 +100,11 @@ m2hx = solve(m2h_sub, x)[0]
 # Reflection angle
 m2hxp = 2*a2 - m1hxp
 
-x, z = symbols("x z")
-m2hx_x_subs = m2hx.subs(m2hdx, x) - x
-print(m2hx_x_subs)
-m2hx_x = solve(m2hx_x_subs, x)
-print(m2hx_x)
+# x, z = symbols("x z")
+# m2hx_x_subs = m2hx.subs(m2hdx, x) - x
+# print(m2hx_x_subs)
+# m2hx_x = solve(m2hx_x_subs, x)
+# print(m2hx_x)
 
 
 print("\nM2H X: {0}".format(m2hx))
