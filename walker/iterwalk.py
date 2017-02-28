@@ -64,17 +64,29 @@ class IterWalker(object):
                  self.mirror_1.alpha * (self._l1 + self._l2 + self._l3)) / 
                 (self._l2 + self._l3))
 
-    def _alpha_1_calc_2(self):
-        return alpha1(self.source.x, self.source.xp, self.mirror_2.alpha, 
-                      self.mirror_1.z, self.mirror_2.z, self.imager_1.z,
-                      self.mirror_1.x, self.mirror_2.x, 
-                      self.imager_1.x + (self.p1-600) * self.imager_1.mppix)
+    def _alpha_1_calc_2(self, approx=False):
+        if approx:
+            return alpha1_approx(self.source.x, self.source.xp, self.mirror_2.alpha, 
+                          self.mirror_1.z, self.mirror_2.z, self.imager_1.z,
+                          self.mirror_1.x, self.mirror_2.x, 
+                          self.imager_1.x + (self.p1-600) * self.imager_1.mppix)
+        else:
+            return alpha1(self.source.x, self.source.xp, self.mirror_2.alpha, 
+                          self.mirror_1.z, self.mirror_2.z, self.imager_1.z,
+                          self.mirror_1.x, self.mirror_2.x, 
+                          self.imager_1.x + (self.p1-600) * self.imager_1.mppix)
 
-    def _alpha_2_calc_2(self):
-        return alpha1(self.source.x, self.source.xp, self.mirror_1.alpha, 
-                      self.mirror_1.z, self.mirror_2.z, self.imager_2.z,
-                      self.mirror_1.x, self.mirror_2.x,
-                      self.imager_2.x + (self.p2-600) * self.imager_2.mppix)
+    def _alpha_2_calc_2(self, approx=False):
+        if approx:
+            return alpha2_approx(self.source.x, self.source.xp, self.mirror_1.alpha, 
+                          self.mirror_1.z, self.mirror_2.z, self.imager_2.z,
+                          self.mirror_1.x, self.mirror_2.x,
+                          self.imager_2.x + (self.p2-600) * self.imager_2.mppix)
+        else:
+            return alpha2(self.source.x, self.source.xp, self.mirror_1.alpha, 
+                          self.mirror_1.z, self.mirror_2.z, self.imager_2.z,
+                          self.mirror_1.x, self.mirror_2.x,
+                          self.imager_2.x + (self.p2-600) * self.imager_2.mppix)
 
     def _get_d(self, imager, pos_pix_inp):
         pos_pix_cur = imager.get_centroid()[0]   #Double check that this is the correct pos
@@ -97,12 +109,12 @@ class IterWalker(object):
                 self._n += 1
                 self._turn = "alpha2"
                 self._d2_x = self._get_d(self.imager_2, self.p2)
-                yield self._alpha_1_calc()
+                yield self._alpha_1_calc_2()
             elif self._turn == "alpha2":
                 self._n += 1
                 self._turn = "alpha1"
                 self._d1_x = self._get_d(self.imager_1, self.p1)
-                yield self._alpha_2_calc()
+                yield self._alpha_2_calc_2()
             else:
                 raise Exception           #How would this ever happen
         raise StopIteration("D1 and D2 within tolerance")
@@ -145,9 +157,14 @@ class IterWalker(object):
 def alpha1(x0, xp0, a2, d2, d4, d5, m1hdx, m2hdx, x):
 	return (-a2*d2 + 4*a2*d4 - 3*a2*d5 + 2*d4*xp0 - 2*d5*xp0 - m2hdx + x - sqrt(a2**2*d2**2 - 8*a2**2*d2*d4 + 6*a2**2*d2*d5 + 8*a2**2*d4**2 - 8*a2**2*d4*d5 + a2**2*d5**2 - 4*a2*d2*d4*xp0 + 4*a2*d2*d5*xp0 + 2*a2*d2*m2hdx - 2*a2*d2*x + 8*a2*d4*m1hdx - 8*a2*d4*m2hdx + 4*a2*d4*x - 4*a2*d4*x0 - 8*a2*d5*m1hdx + 6*a2*d5*m2hdx - 2*a2*d5*x + 4*a2*d5*x0 + m2hdx**2 - 2*m2hdx*x + x**2))/(4*(d4 - d5))
             
-
 def alpha2(x0, xp0, a1, d2, d4, d6, m1hdx, m2hdx, x):
-	return (-2*a1*d2 + 8*a1*d4 - 6*a1*d6 - 4*d4*xp0 + 3*d6*xp0 + 2*m1hdx - x - x0 - sqrt(4*a1**2*d2**2 - 32*a1**2*d2*d4 + 24*a1**2*d2*d6 + 32*a1**2*d4**2 - 32*a1**2*d4*d6 + 4*a1**2*d6**2 + 16*a1*d2*d4*xp0 - 12*a1*d2*d6*xp0 - 8*a1*d2*m1hdx + 4*a1*d2*x + 4*a1*d2*x0 - 32*a1*d4**2*xp0 + 32*a1*d4*d6*xp0 + 32*a1*d4*m1hdx - 16*a1*d4*m2hdx - 16*a1*d4*x0 - 4*a1*d6**2*xp0 - 24*a1*d6*m1hdx + 16*a1*d6*m2hdx - 4*a1*d6*x + 12*a1*d6*x0 + 8*d4**2*xp0**2 - 8*d4*d6*xp0**2 - 16*d4*m1hdx*xp0 + 8*d4*m2hdx*xp0 + 8*d4*x0*xp0 + d6**2*xp0**2 + 12*d6*m1hdx*xp0 - 8*d6*m2hdx*xp0 + 2*d6*x*xp0 - 6*d6*x0*xp0 + 4*m1hdx**2 - 4*m1hdx*x - 4*m1hdx*x0 + x**2 + 2*x*x0 + x0**2))/(4*(d4 - d6))
+    return (-2*a1*d2 + 8*a1*d4 - 6*a1*d6 - 4*d4*xp0 + 3*d6*xp0 + 2*m1hdx - x - x0 + sqrt(4*a1**2*d2**2 - 32*a1**2*d2*d4 + 24*a1**2*d2*d6 + 32*a1**2*d4**2 - 32*a1**2*d4*d6 + 4*a1**2*d6**2 + 16*a1*d2*d4*xp0 - 12*a1*d2*d6*xp0 - 8*a1*d2*m1hdx + 4*a1*d2*x + 4*a1*d2*x0 - 32*a1*d4**2*xp0 + 32*a1*d4*d6*xp0 + 32*a1*d4*m1hdx - 16*a1*d4*m2hdx - 16*a1*d4*x0 - 4*a1*d6**2*xp0 - 24*a1*d6*m1hdx + 16*a1*d6*m2hdx - 4*a1*d6*x + 12*a1*d6*x0 + 8*d4**2*xp0**2 - 8*d4*d6*xp0**2 - 16*d4*m1hdx*xp0 + 8*d4*m2hdx*xp0 + 8*d4*x0*xp0 + d6**2*xp0**2 + 12*d6*m1hdx*xp0 - 8*d6*m2hdx*xp0 + 2*d6*x*xp0 - 6*d6*x0*xp0 + 4*m1hdx**2 - 4*m1hdx*x - 4*m1hdx*x0 + x**2 + 2*x*x0 + x0**2))/(4*(d4 - d6))
+
+def alpha1_approx(x0, xp0, a2, d2, d4, d5, m1hdx, m2hdx, x):
+    return (2*a2*d4 - 2*a2*d5 + d4*xp0 - d5*xp0 - m2hdx + x)/(2*(d4 - d5))
+
+def alpha2_approx(x0, xp0, a1, d2, d4, d6, m1hdx, m2hdx, x):
+    return (2*a1*d4 - 2*a1*d6 - d4*xp0 + d6*xp0 + m2hdx - x)/(2*(d4 - d6))
 
 
 # def align(r, theta, l1, l2, l3, alpha1, alpha2):
