@@ -20,7 +20,7 @@ from utils.cvUtils import to_uint8, plot_image
 from multiprocessing import Process
 from time import sleep
 from optparse import OptionParser
-
+from numpy import sqrt
 # from joblib import Memory
 
 # cachedir = "cache"
@@ -162,12 +162,6 @@ def scan_for_beam(seq, imager, do_plot=False):
             plot_image(imager.get())
             break
 
-def solve_alpha_1(x0, xp0, d2, d3, xm1h, xp2h):
-    return (-d3*xp0 - x0 + 2*xm1h - xp2h)/(2*(d2 - d3))
-
-def solve_alpha_2(x0, xp0, d2, d4, d5, a1, xm1h, xm2h, xp3h):
-    return (a1*d2 - a1*d5 + d5*xp0/2 + x0/2 - xm1h + xm2h + xp3h/2)/(d4 - d5)
-
 ################################################################################
 #                              Simulator Functions                             #
 ################################################################################
@@ -275,6 +269,7 @@ if __name__ == "__main__":
     parser.add_option('-w', action='store_true', dest='walk', default=False)
     parser.add_option('-s', action='store_true', dest='seq', default=False)
     parser.add_option('-o', action='store_true', dest='one', default=False)
+    parser.add_option('-t', action='store_true', dest='test', default=False)
     options, args = parser.parse_args()
     
     nom = 0.0014
@@ -438,7 +433,5 @@ if __name__ == "__main__":
             print("Reached End")
             import IPython; IPython.embed()
         
-    # for i in range(2):
-
-
-
+    if options.test:
+	    # Testing region
