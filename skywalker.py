@@ -141,8 +141,8 @@ def move_seq(seq, do_plot=False):
                   p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
         plt.close("all")
         if do_plot:
-	        imagers = Process(target=plot, args=(p2h, p3h, dg3, p1, p2, m1h, m2h))
-	        imagers.start()
+            imagers = Process(target=plot, args=(p2h, p3h, dg3, p1, p2, m1h, m2h))
+            imagers.start()
 
 def scan_for_beam(seq, imager, do_plot=False):
     for s in seq:
@@ -267,6 +267,7 @@ if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option('-p', action='store_true', dest='do_plot', default=False)
     parser.add_option('-w', action='store_true', dest='walk', default=False)
+    parser.add_option('-a', action='store_true', dest='align', default=False)
     parser.add_option('-s', action='store_true', dest='seq', default=False)
     parser.add_option('-o', action='store_true', dest='one', default=False)
     parser.add_option('-t', action='store_true', dest='test', default=False)
@@ -356,7 +357,7 @@ if __name__ == "__main__":
     # # Alignment procedure
 
     # Single Position
-    if options.one:
+    if options.one or options.align:
         simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
                   m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
                   p3h_z, dg3_x, dg3_z, mx, my, ph_e)
@@ -366,10 +367,6 @@ if __name__ == "__main__":
 
 
     # Move beam through sequence
-    # No beam in range [3.333e-7 * i for i in range(-90, 90, 3)
-    # Beam moves close to no amount for this range. -90 gives x still in the 400
-    # range. Otherwise issue is that the beam is still not not
-    # showing itself on p3h or dg3, but it is present on p2h.
     if options.seq:
         n_seq = 6
         alpha_1 = 0e-6
@@ -432,6 +429,22 @@ if __name__ == "__main__":
         except StopIteration:
             print("Reached End")
             import IPython; IPython.embed()
-        
+            
+    if options.align:
+        print("Initial conditions:")
+        print("M1H: {0}, M2H: {1}".format(m1h.alpha, m2h.alpha))
+        print("P3H: {0}, DG3: {1}".format(p3h.centroid[0], dg3.centroid[0])) 
+        print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
+        print("Starting iterations...")
+        m1h_alpha, m2h_alpha = walker.align(move=True)
+        print("Completed {0} iterations!".format(walker.max_n))
+        print("Final alpha 1: {0}. Final alpha 2: {1}".format(m1h.alpha, m2h.alpha))
+        simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
+                  m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                  m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+        if options.do_plot:
+            plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+
     if options.test:
-	    # Testing region
+	    pass
+        # Testing region
