@@ -36,8 +36,7 @@ p1hxp = xp0
 # Declare generic x and z
 x, z = symbols("x z")
 # Using point slope eq for a line to get line of M1H (point is d2, m1hdx)
-m1h_ln = m1hdx - x
-# m1h_ln = a1 * (z - d2) + m1hdx - x
+m1h_ln = a1 * (z - d2) + m1hdx - x
 # Solve for x
 m1h_ln_x = solve(m1h_ln, x)[0]
 # Get the line eq for the beam
@@ -83,8 +82,7 @@ print("P2H XP: {0}".format(p2hxp))
 # Declare generic x and z
 x, z = symbols("x z")
 # Using point slope eq for a line to get line of M1H (point is d4, m2hdx)
-# m2h_ln = a2 * (z - d4) + m2hdx - x
-m2h_ln = m2hdx - x
+m2h_ln = a2 * (z - d4) + m2hdx - x
 # Solve for x
 m2h_ln_x = solve(m2h_ln, x)[0]
 # Get the line eq for the beam using beam parameters from m1h in point slope
