@@ -15,7 +15,7 @@ from psp.Pv import Pv
 from joblib import Memory
 from beamDetector.detector import Detector
 from walker.iterwalk import IterWalker
-from simtrace import run_sim
+from walker.linestep import LineStep
 from utils.cvUtils import to_uint8, plot_image
 from multiprocessing import Process
 from time import sleep
@@ -42,6 +42,8 @@ class Imager(object):
         self.z = z
         self.detector = kwargs.get("det", Detector(prep_mode="clip"))
         self.image    = None
+        self.image_xsz = 0
+        self.image_ysz = 0
         self.centroid = None
         self.bounding_box = None
         self.pos = np.array([self.z, self.x])
@@ -49,13 +51,15 @@ class Imager(object):
         self.sum = None
         self.beam = False
         # self.image_sz = kwargs.get("img_sz", 0.0005)
-        self.mppix = kwargs.get("mppix", 1.66667e-05)
+        self.mppix = kwargs.get("mppix", 1.25e-5)
 
     def get(self):
         """Get an image from the imager."""
         try:
             uint_norm = to_uint8(self.image, "norm")
             self._scale = self.image.sum() / self.sum
+            self.image_ysz, self.image_xsz  = self.image.shape
+            # self.image_ysz -= self.image
             # print(self._scale)
             # import IPython; IPython.embed()
             # import ipdb; ipdb.set_trace()
@@ -118,17 +122,17 @@ class Source(object):
 #                               Helper Functions                               #
 ################################################################################
 
-def put_val(pv, val):
-    try:
-        pv.put(float(val))
-    except ValueError:
-        print("Invalid input type. Must be castable to float.")    
+# def put_val(pv, val):
+#     try:
+#         pv.put(float(val))
+#     except ValueError:
+#         print("Invalid input type. Must be castable to float.")    
 
-def distance(x1, x2):
-    return np.linalg.norm(x2-x1)
+# def distance(x1, x2):
+#     return np.linalg.norm(x2-x1)
 
-def inch2meter(val):
-    return val * 0.0254
+# def inch2meter(val):
+#     return val * 0.0254
 
 def move_seq(seq, do_plot=False):
     for s in tqdm(seq):
@@ -205,9 +209,10 @@ def simulator(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z,
 
     # import IPython; IPython.embed()
 
-def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2):
+def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2, l1=8, 
+         l2=12):
     # import ipdb; ipdb.set_trace()
-    fig = plt.figure(figsize=(4, 12))
+    fig = plt.figure(figsize=(l1, l2))
     fig.suptitle('Beam Images', fontsize=20)
     ax = fig.add_subplot(311)
     ax.imshow(imager1.get())
@@ -268,10 +273,20 @@ if __name__ == "__main__":
     parser.add_option('-p', action='store_true', dest='do_plot', default=False)
     parser.add_option('-w', action='store_true', dest='walk', default=False)
     parser.add_option('-a', action='store_true', dest='align', default=False)
+    parser.add_option('-q', action='store_true', dest='quick', default=False)
     parser.add_option('-s', action='store_true', dest='seq', default=False)
     parser.add_option('-o', action='store_true', dest='one', default=False)
-    parser.add_option('-t', action='store_true', dest='test', default=False)
+    parser.add_option('-t', action='store_true', dest='tan', default=False)
+    parser.add_option('-i', action='store_true', dest='ipython', default=False)
+    parser.add_option('-l', action='store_true', dest='line', default=False)    
+    parser.add_option('--p1', action='store', dest='p1', type="int", default=600)
+    parser.add_option('--p2', action='store', dest='p2', type="int", default=600)
+    parser.add_option('--max_n', action='store', dest='max_n', type="int", default=50)
+    
     options, args = parser.parse_args()
+
+    if not options.quick:
+        from simtrace import run_sim
     
     nom = 0.0014
     m2h_nom = 0.03173
@@ -285,25 +300,25 @@ if __name__ == "__main__":
 
     # M1H Vals
     m1h_x = 0
-    m1h_alpha = 0.0014 + 2e-6
+    m1h_alpha = 0.0014 - 3e-5
     m1h_z = 90.510
 
     # P2H Vals
-    p2h_x = 0.02889
+    p2h_x = 0.028890475500482096
     p2h_z = 100.828
 
     # M2H Vals
     # m2h_x = 0.
-    m2h_x = 0.03682000000000002
-    m2h_alpha =  0.0014 - 3e-6
+    m2h_x = 0.031732317072726328
+    m2h_alpha =  0.0014 - 3e-5
     m2h_z = 101.843
 
     # P3H Vals
-    p3h_x =  m2h_x
+    p3h_x = 0.031732317072726328
     p3h_z = 103.660
 
     # DG3 Vals
-    dg3_x = m2h_x
+    dg3_x = 0.031732317072726328
     dg3_z = 375.000
 
     # Simulation values
@@ -312,27 +327,14 @@ if __name__ == "__main__":
     ph_e = 7000
 
     # Goal Pixels
-    p1 = 600
-    p2 = 600
+    p1 = options.p1
+    p2 = options.p2
     alpha = 0
-
-    # Reset to Zero
-    # p2h_x = 0.
-    # m1h_alpha = 0
-    # m2h_alpha = 0.00
-
-
-    # Additional
-    # m1h_alpha = solve_alpha_1(und_x, und_xp, m1h_z, p2h_z, m1h_x, p2h_x) + nom - np.pi/2
-    # m2h_alpha = solve_alpha_2(und_x, und_xp, m1h_z, m2h_z, p3h_z, m1h_alpha,  m1h_x,  m2h_x, p3h_x) + nom - np.pi/2
-# x0, xp0, d2, d4, d5, a1, xm1h, xm2h, xp3h
-
     
     # Detector Obj
-    det_p23h = Detector(kernel=(17,17), threshold=6.0)
+    det_p2h = Detector(kernel=(17,17), threshold=6.0)
+    det_p3h = Detector(kernel=(17,17), threshold=6.0)
     det_dg3 = Detector(kernel=(31,31), threshold=3.0)
-
-    # import ipdb; ipdb.set_trace()
 
     # Beamline Objects
     # Undulator
@@ -340,16 +342,19 @@ if __name__ == "__main__":
     # M1H
     m1h = Mirror(m1h_x, m1h_alpha, m1h_z)
     # P2H
-    p2h = Imager(p2h_x, p2h_z, det=det_p23h)
+    p2h = Imager(p2h_x, p2h_z, det=det_p2h)
     # M2H
     m2h = Mirror(m2h_x, m2h_alpha, m2h_z)
     # P3H
-    p3h = Imager(p3h_x, p3h_z, det=det_p23h)
+    p3h = Imager(p3h_x, p3h_z, det=det_p3h, mppix=1.25e-7)
     # DG3
-    dg3 = Imager(dg3_x, dg3_z, det=det_dg3)
+    dg3 = Imager(dg3_x, dg3_z, det=det_dg3, mppix=1.25e-5)
 
     # Walker Object
-    walker = IterWalker(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2)
+    walker = IterWalker(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2, tan=options.tan)
+    walker.max_n = options.max_n
+    step = LineStep(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2)
+
 
     # from IPython import embed; embed()
 
@@ -357,7 +362,7 @@ if __name__ == "__main__":
     # # Alignment procedure
 
     # Single Position
-    if options.one or options.align:
+    if options.one:
         simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
                   m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
                   p3h_z, dg3_x, dg3_z, mx, my, ph_e)
@@ -431,20 +436,86 @@ if __name__ == "__main__":
             import IPython; IPython.embed()
             
     if options.align:
+        simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+                  m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+                  p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+        if options.do_plot:
+            imagers = Process(target=plot, args=(p2h, p3h, dg3, p1, p2, m1h, m2h))
+            imagers.start()
         print("Initial conditions:")
-        print("M1H: {0}, M2H: {1}".format(m1h.alpha, m2h.alpha))
-        print("P3H: {0}, DG3: {1}".format(p3h.centroid[0], dg3.centroid[0])) 
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
+        # import ipdb; ipdb.set_trace()
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
         print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
+
+        # # import IPython; IPython.embed()
+        # print("Finding x position for m2h...")
+        # m2h_x = ((m2h.z*walker.goal_x_1 - m2h.z*walker.goal_x_2 - 
+        #           dg3_z*walker.goal_x_1 + p3h_z*walker.goal_x_2)/(p3h_z - dg3_z))
+        # m2h.x = m2h_x
+
         print("Starting iterations...")
         m1h_alpha, m2h_alpha = walker.align(move=True)
         print("Completed {0} iterations!".format(walker.max_n))
-        print("Final alpha 1: {0}. Final alpha 2: {1}".format(m1h.alpha, m2h.alpha))
+        m1h.alpha=m1h_alpha
+        m2h.alpha=m2h_alpha
         simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
                   m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
                   m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+
+        print("Final Positions:")
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
+
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
+        print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
         if options.do_plot:
             plot(p2h, p3h, dg3, p1, p2, m1h, m2h)
+            # imagers = Process(target=plot, args=(p2h, p3h, dg3, p1, p2, m1h, m2h))
+            # imagers.start()
+        # import IPython; IPython.embed()
 
-    if options.test:
-	    pass
-        # Testing region
+    if options.quick:
+        print("Initial conditions:")
+        print("M1H: {0}, M2H: {1}".format(m1h.alpha, m2h.alpha))
+        m1h_alpha, m2h_alpha = walker.align(move=True)
+        print("Final alpha 1: {0}. Final alpha 2: {1}".format(m1h.alpha, m2h.alpha))
+
+
+    if options.line:
+        simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
+                  m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+                  p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+        if options.do_plot:
+            imagers = Process(target=plot, args=(p2h, p3h, dg3, p1, p2, m1h, m2h))
+            imagers.start()
+        print("Initial conditions:")
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
+        # import ipdb; ipdb.set_trace()
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
+        print("D1: {0} D2: {1}\n".format(step.d1, step.d2))
+
+        m1h_x, m2h_x, m1h_alpha, m2h_alpha = step.align()
+        m1h.x = m1h_x
+        m2h.x = m2h_x
+        m1h.alpha = m1h_alpha
+        m2h.alpha = m2h_alpha
+        simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, 
+                  m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                  m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, mx, my, ph_e)
+
+        print("Final Positions:")
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
+        print("D1: {0} D2: {1}\n".format(step.d1, step.d2))
+        if options.do_plot:
+            plot(p2h, p3h, dg3, p1, p2, m1h, m2h)        
+    if options.ipython:
+	    import IPython; IPython.embed()
