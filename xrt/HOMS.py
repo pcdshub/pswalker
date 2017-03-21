@@ -15,6 +15,8 @@ Created with xrtQook
 
 
 
+
+
 """
 
 import numpy as np
@@ -55,30 +57,30 @@ def build_beamline():
         bl=HOMS,
         name=None,
         center=[0, 90510, 0],
-        yaw=0.0014,
-        positionRoll=np.pi/2)
+        pitch=0.0014+1e-6,
+        positionRoll=-np.pi/2)
 
     HOMS.P2H = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[28.8904755005, 100828, 0])
+        center=[-28.8904755005, 100828, 0])
 
     HOMS.M2H = roes.OE(
         bl=HOMS,
         name=None,
-        center=[31.7323170727, 101843, 0],
-        yaw=0.0014,
+        center=[-31.7323170727, 101843, 0],
+        pitch=-0.0014+8e-6,
         positionRoll=np.pi/2)
 
     HOMS.P3H = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[31.732317, 103660, 0])
+        center=[-31.732317, 103660, 0])
 
     HOMS.DG3 = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[31.732317, 375000, 0])
+        center=[-31.732317, 375000, 0])
 
     return HOMS
 
@@ -129,6 +131,7 @@ def align_beamline(HOMS, energy):
     SourceBeam.y[:] = 0
     SourceBeam.z[:] = 0
     SourceBeam.state[:] = 1
+    SourceBeam.E[:] = energy
 
     tmpy = HOMS.P1H.center[1]
     newx = HOMS.P1H.center[0]
@@ -202,8 +205,7 @@ def define_plots():
     P2H = xrtplot.XYCPlot(
         beam=r"P2Hbeam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x",
-            limits=[28.890475500482096-2, 28.890475500482096+2]),
+            label=r"x"),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             limits=[-4,4]),
@@ -218,8 +220,7 @@ def define_plots():
     P3H = xrtplot.XYCPlot(
         beam=r"P3HBeam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x",
-            limits=[31.732317072726328-4, 31.732317072726328+4]),
+            label=r"x"),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             limits=[-4, 4]),
@@ -233,18 +234,16 @@ def define_plots():
     DG3 = xrtplot.XYCPlot(
         beam=r"DG3Beam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x",
-            limits=[31.732317072726328-4, 31.732317072726328+4]),
+            label=r"x"),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
-            unit=r"m",
-            factor=1e-1,
             limits=[-4, 4]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
         ePos=0,
-        title=r"DG3")
+        title=r"DG3",
+        invertColorMap=True)
     plots.append(DG3)
     return plots
 
