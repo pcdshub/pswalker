@@ -2,7 +2,7 @@
 """
 
 __author__ = "Konstantin Klementiev", "Roman Chernikov"
-__date__ = "2017-03-20"
+__date__ = "2017-03-22"
 
 Created with xrtQook
 
@@ -57,7 +57,7 @@ def build_beamline():
         bl=HOMS,
         name=None,
         center=[0, 90510, 0],
-        pitch=0.0014+1e-6,
+        pitch=0.0014,
         positionRoll=-np.pi/2)
 
     HOMS.P2H = rscreens.Screen(
@@ -69,7 +69,7 @@ def build_beamline():
         bl=HOMS,
         name=None,
         center=[-31.7323170727, 101843, 0],
-        pitch=-0.0014+8e-6,
+        pitch=-0.0014 + 2e-6,
         positionRoll=np.pi/2)
 
     HOMS.P3H = rscreens.Screen(
@@ -185,19 +185,24 @@ def align_beamline(HOMS, energy):
 
 def define_plots():
     plots = []
-
     P1H = xrtplot.XYCPlot(
         beam=r"P1Hbeam",
         xaxis=xrtplot.XYCAxis(
             label=r"x",
+            unit=r"m",
+            factor=0.001,
             limits=[-0.004, 0.004],
             density=r"kde"),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
-            limits=[-4, 4]),
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
+        xPos=0,
+        yPos=0,
         ePos=0,
         title=r"P1H")
     plots.append(P1H)
@@ -205,10 +210,16 @@ def define_plots():
     P2H = xrtplot.XYCPlot(
         beam=r"P2Hbeam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x"),
+            label=r"x",
+            unit=r"m",
+            factor=0.001,
+            limits=r"auto",
+            offset=-0.028890475500482096),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
-            limits=[-4,4]),
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
@@ -220,10 +231,16 @@ def define_plots():
     P3H = xrtplot.XYCPlot(
         beam=r"P3HBeam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x"),
+            label=r"x",
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004],
+            offset=-0.031732317072726328),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
-            limits=[-4, 4]),
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
@@ -234,21 +251,26 @@ def define_plots():
     DG3 = xrtplot.XYCPlot(
         beam=r"DG3Beam",
         xaxis=xrtplot.XYCAxis(
-            label=r"x"),
+            label=r"x",
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004],
+            offset=-0.031732317072726328),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
-            limits=[-4, 4]),
+            unit=r"m",
+            factor=0.001,
+            limits=[-0.004, 0.004]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
         ePos=0,
-        title=r"DG3",
-        invertColorMap=True)
+        title=r"DG3")
     plots.append(DG3)
     return plots
 
 
-def main():
+def ray_trace(a1=0.0014, a2=0.0014, ret_imgs=False):
     HOMS = build_beamline()
     E0 = list(HOMS.Source.energies)[0]
     align_beamline(HOMS, E0)
@@ -257,7 +279,8 @@ def main():
         plots=plots,
         backend=r"raycing",
         beamLine=HOMS)
-
+    if ret_imgs:
+        return [plot.total2D for plot in plots]
 
 if __name__ == '__main__':
-    main()
+    ray_trace()
