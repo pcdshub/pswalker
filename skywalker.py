@@ -21,6 +21,7 @@ from multiprocessing import Process
 from time import sleep
 from optparse import OptionParser
 from numpy import sqrt
+from xrtsim.HOMS import ray_trace
 # from joblib import Memory
 
 # cachedir = "cache"
@@ -209,6 +210,18 @@ def simulator(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z,
 
     # import IPython; IPython.embed()
 
+
+def run_ray_trace(imager1, imager2, imager3):
+    _, image1, image2, image3 = ray_trace(ret_imgs=True)
+    imager1.image = image1
+    imager2.image = image2
+    imager3.image = image3
+    imager1.sum = imager1.image.sum()
+    imager2.sum = imager1.image.sum()
+    imager3.sum = imager1.image.sum()
+    imager1.mmpix=imager2.mmpix=imager3.mmpix=0.008/image1.shape[0]
+    import IPython; IPython.embed()
+
 def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2, l1=8, 
          l2=12):
     # import ipdb; ipdb.set_trace()
@@ -279,13 +292,14 @@ if __name__ == "__main__":
     parser.add_option('-t', action='store_true', dest='tan', default=False)
     parser.add_option('-i', action='store_true', dest='ipython', default=False)
     parser.add_option('-l', action='store_true', dest='line', default=False)    
+    parser.add_option('-x', action='store_true', dest='xrt', default=False)    
     parser.add_option('--p1', action='store', dest='p1', type="int", default=600)
     parser.add_option('--p2', action='store', dest='p2', type="int", default=600)
     parser.add_option('--max_n', action='store', dest='max_n', type="int", default=50)
     
     options, args = parser.parse_args()
 
-    if not options.quick:
+    if not options.quick and not options.xrt:
         from simtrace import run_sim
     
     nom = 0.0014
@@ -362,7 +376,7 @@ if __name__ == "__main__":
     # # Alignment procedure
 
     # Single Position
-    if options.one:
+    if options.one and not options.xrt:
         simulator(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, m1h_x, 
                   m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
                   p3h_z, dg3_x, dg3_z, mx, my, ph_e)
@@ -517,5 +531,17 @@ if __name__ == "__main__":
         print("D1: {0} D2: {1}\n".format(step.d1, step.d2))
         if options.do_plot:
             plot(p2h, p3h, dg3, p1, p2, m1h, m2h)        
+
+    if options.xrt:
+        run_ray_trace(p2h, p3h, dg3)
+        print("Initial conditions:")
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
+        # import ipdb; ipdb.set_trace()
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
+        print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
+
+
     if options.ipython:
-	    import IPython; IPython.embed()
+        import IPython; IPython.embed()
