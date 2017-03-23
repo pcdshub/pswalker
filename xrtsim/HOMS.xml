@@ -27,6 +27,9 @@
 			<geom type="param">Bragg reflected</geom>
 			<table type="param">Chantler</table>
 			<name type="param">None</name>
+			<nuPoisson type="param">0.0</nuPoisson>
+			<calcBorrmann type="param">None</calcBorrmann>
+			<useTT type="param">False</useTT>
 			<kind type="param">mirror</kind>
 			<efficiency type="param">None</efficiency>
 			<efficiencyFile type="param">None</efficiencyFile>
@@ -103,10 +106,10 @@
 			<bl type="param">HOMS</bl>
 			<name type="param">None</name>
 			<center type="param">[0, 90510, 0]</center>
-			<pitch type="param">0</pitch>
+			<pitch type="param">0.0014</pitch>
 			<roll type="param">0</roll>
-			<yaw type="param">0.0014</yaw>
-			<positionRoll type="param">np.pi/2</positionRoll>
+			<yaw type="param">0</yaw>
+			<positionRoll type="param">-np.pi/2</positionRoll>
 			<rotationSequence type="param">RzRyRx</rotationSequence>
 			<extraPitch type="param">0</extraPitch>
 			<extraRoll type="param">0</extraRoll>
@@ -145,7 +148,7 @@
 		<properties type="prop">
 			<bl type="param">HOMS</bl>
 			<name type="param">None</name>
-			<center type="param">[28.890475500482096, 100828, 0]</center>
+			<center type="param">[-0.0288904*1000, 100828, 0]</center>
 			<x type="param">auto</x>
 			<z type="param">auto</z>
 			<compressX type="param">None</compressX>
@@ -166,7 +169,7 @@
 		<properties type="prop">
 			<bl type="param">HOMS</bl>
 			<name type="param">None</name>
-			<center type="param">[31.732317072726328, 101843, 0]</center>
+			<center type="param">[-0.0317324*1000, 101843, 0]</center>
 			<pitch type="param">0</pitch>
 			<roll type="param">0</roll>
 			<yaw type="param">0.0014</yaw>
@@ -209,7 +212,7 @@
 		<properties type="prop">
 			<bl type="param">HOMS</bl>
 			<name type="param">None</name>
-			<center type="param">[31.7323170, 103660, 0]</center>
+			<center type="param">[-0.0317324*1000, 101843, 0]</center>
 			<x type="param">auto</x>
 			<z type="param">auto</z>
 			<compressX type="param">None</compressX>
@@ -230,7 +233,7 @@
 		<properties type="prop">
 			<bl type="param">HOMS</bl>
 			<name type="param">None</name>
-			<center type="param">[31.7323170, 375000, 0]</center>
+			<center type="param">[-0.0317324*1000, 101843, 0]</center>
 			<x type="param">auto</x>
 			<z type="param">auto</z>
 			<compressX type="param">None</compressX>
@@ -259,7 +262,7 @@
 			<unit type="param">mm</unit>
 			<factor type="param">None</factor>
 			<data type="param">auto</data>
-			<limits type="param">[-0.004, 0.004]</limits>
+			<limits type="param">None</limits>
 			<offset type="param">0</offset>
 			<bins type="param">128</bins>
 			<ppb type="param">2</ppb>
@@ -329,7 +332,7 @@
 			<unit type="param">mm</unit>
 			<factor type="param">None</factor>
 			<data type="param">auto</data>
-			<limits type="param">[28.890475500482096-2, 28.890475500482096+2]</limits>
+			<limits type="param">None</limits>
 			<offset type="param">0</offset>
 			<bins type="param">128</bins>
 			<ppb type="param">2</ppb>
@@ -399,7 +402,7 @@
 			<unit type="param">mm</unit>
 			<factor type="param">None</factor>
 			<data type="param">auto</data>
-			<limits type="param">[31.732317072726328-4, 31.732317072726328+4]</limits>
+			<limits type="param">None</limits>
 			<offset type="param">0</offset>
 			<bins type="param">128</bins>
 			<ppb type="param">2</ppb>
@@ -469,7 +472,7 @@
 			<unit type="param">mm</unit>
 			<factor type="param">None</factor>
 			<data type="param">auto</data>
-			<limits type="param">[31.732317072726328-4, 31.732317072726328+4]</limits>
+			<limits type="param">None</limits>
 			<offset type="param">0</offset>
 			<bins type="param">128</bins>
 			<ppb type="param">2</ppb>
@@ -481,8 +484,8 @@
 		<yaxis type="prop">
 			<_object type="object">xrt.plotter.XYCAxis</_object>
 			<label type="param">z</label>
-			<unit type="param">m</unit>
-			<factor type="param">1e-1</factor>
+			<unit type="param">mm</unit>
+			<factor type="param">None</factor>
 			<data type="param">auto</data>
 			<limits type="param">[-4, 4]</limits>
 			<offset type="param">0</offset>
@@ -550,6 +553,8 @@
 	<afterScriptKWargs type="param">{}</afterScriptKWargs>
 </run_ray_tracing>
 <description>
+
+
 
 
 
