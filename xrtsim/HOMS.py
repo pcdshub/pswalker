@@ -36,13 +36,15 @@ crystalSi01 = rmats.CrystalSi(
     name=None)
 
 
-def build_beamline():
+def build_beamline(und_x, und_xp, und_y, und_yp, und_z, p1h_x, p1h_z,
+                  m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                  m2h_z, p3h_x, p3h_z, dg3_x, dg3_z):
     HOMS = raycing.BeamLine()
 
     HOMS.Source = rsources.GeometricSource(
         bl=HOMS,
         name=None,
-        center=[0, 0, 0],
+        center=[-und_x, und_z, und_y],
         dx=0.1,
         dz=0.1,
         dxprime=0.0000005,
@@ -51,36 +53,36 @@ def build_beamline():
     HOMS.P1H = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[0, 89894, 0])
+        center=[-p1h_x*1e3, p1h_z*1e3, 0])
 
     HOMS.M1H = roes.OE(
         bl=HOMS,
         name=None,
-        center=[0, 90510, 0],
-        pitch=0.0014,
+        center=[-m1h_x*1e3, m1h_z*1e3, 0],
+        pitch=m1h_alpha,
         positionRoll=-np.pi/2)
 
     HOMS.P2H = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[-28.8904755005, 100828, 0])
+        center=[-p2h_x*1e3, p2h_z*1e3, 0])
 
     HOMS.M2H = roes.OE(
         bl=HOMS,
         name=None,
-        center=[-31.7323170727, 101843, 0],
-        pitch=-0.0014 + 2e-6,
+        center=[-m2h_x*1e3, m2h_z*1e3, 0],
+        pitch=-m2h_alpha,
         positionRoll=np.pi/2)
 
     HOMS.P3H = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[-31.732317, 103660, 0])
+        center=[-p3h_x*1e3, p3h_z*1e3, 0])
 
     HOMS.DG3 = rscreens.Screen(
         bl=HOMS,
         name=None,
-        center=[-31.732317, 375000, 0])
+        center=[-dg3_x*1e3, dg3_z*1e3, 0])
 
     return HOMS
 
@@ -183,26 +185,26 @@ def align_beamline(HOMS, energy):
         beam=M2HBeam)
 
 
-def define_plots():
+def define_plots(yag_sz, yag_res, p1h_x, p2h_x, p3h_x, dg3_x):
     plots = []
     P1H = xrtplot.XYCPlot(
         beam=r"P1Hbeam",
         xaxis=xrtplot.XYCAxis(
             label=r"x",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004],
-            density=r"kde"),
+            limits=[-yag_sz/2, yag_sz/2],
+            offset=-p1h_x),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004]),
+            limits=[-yag_sz/2, yag_sz/2]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
-        xPos=0,
-        yPos=0,
         ePos=0,
         title=r"P1H")
     plots.append(P1H)
@@ -212,14 +214,16 @@ def define_plots():
         xaxis=xrtplot.XYCAxis(
             label=r"x",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=r"auto",
-            offset=-0.028890475500482096),
+            limits=[-yag_sz/2, yag_sz/2],
+            offset=-p2h_x),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004]),
+            limits=[-yag_sz/2, yag_sz/2]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
@@ -233,14 +237,16 @@ def define_plots():
         xaxis=xrtplot.XYCAxis(
             label=r"x",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004],
-            offset=-0.031732317072726328),
+            limits=[-yag_sz/2, yag_sz/2],
+            offset=-p3h_x),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004]),
+            limits=[-yag_sz/2, yag_sz/2]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
@@ -253,14 +259,16 @@ def define_plots():
         xaxis=xrtplot.XYCAxis(
             label=r"x",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004],
-            offset=-0.031732317072726328),
+            limits=[-yag_sz/2, yag_sz/2],
+            offset=-dg3_x),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             unit=r"m",
+            bins=yag_res,
             factor=0.001,
-            limits=[-0.004, 0.004]),
+            limits=[-yag_sz/2, yag_sz/2]),
         caxis=xrtplot.XYCAxis(
             label=r"energy",
             unit=r"eV"),
@@ -270,11 +278,16 @@ def define_plots():
     return plots
 
 
-def ray_trace(a1=0.0014, a2=0.0014, ret_imgs=False):
-    HOMS = build_beamline()
+def ray_trace(und_x, und_xp, und_y, und_yp, und_z, p1h_x, p1h_z, m1h_x, 
+              m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, 
+              p3h_z, dg3_x, dg3_z, yag_sz, yag_res, ret_imgs=False):
+    
+    HOMS = build_beamline(und_x, und_xp, und_y, und_yp, und_z, p1h_x, p1h_z, 
+                  m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, 
+                  m2h_z, p3h_x, p3h_z, dg3_x, dg3_z)
     E0 = list(HOMS.Source.energies)[0]
     align_beamline(HOMS, E0)
-    plots = define_plots()
+    plots = define_plots(yag_sz, yag_res, p1h_x, p2h_x, p3h_x, dg3_x)
     xrtrun.run_ray_tracing(
         plots=plots,
         backend=r"raycing",
