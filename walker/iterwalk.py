@@ -119,13 +119,16 @@ class IterWalker(object):
 
     @property
     def goal_x_1(self):
-        return self.imager_1.x - (self.p1 - ((
-            self.imager_1.image_xsz+1)/2-1))*self.imager_1.mppix
+        goal = self.imager_1.x + (self.p1 - self.imager_1.image_xsz/2 + 1)*self.imager_1.mppix
+        # print(goal)
+        return goal
 
     @property
     def goal_x_2(self):
-        return self.imager_2.x - (self.p2 - ((
-            self.imager_2.image_xsz+1)/2-1))*self.imager_2.mppix
+        goal = self.imager_2.x + (self.p2 - self.imager_2.image_xsz/2 + 1)*self.imager_2.mppix
+        # import IPython; IPython.embed()
+        # print(goal)
+        return goal
         
 # x0, xp0, a1, a2, d2, d4, d5, d6, m1hdx, m2hdx, x, = sp.symbols(
 # 	"x0 xp0 a1 a2 d2 d4 d5 d6 m1hdx m2hdx x")

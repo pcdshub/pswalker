@@ -211,16 +211,21 @@ def simulator(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z,
     # import IPython; IPython.embed()
 
 
-def run_ray_trace(imager1, imager2, imager3):
-    _, image1, image2, image3 = ray_trace(ret_imgs=True)
-    imager1.image = image1
-    imager2.image = image2
-    imager3.image = image3
+def run_ray_trace(imager1, imager2, imager3, und_x, und_xp, und_y, und_yp, und_z, 
+                  p1h_x, p1h_z, m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, 
+                  m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, yag_sz, yag_res):
+    _, image1, image2, image3 = ray_trace(
+        und_x, und_xp, und_y, und_yp, und_z, p1h_x, p1h_z, m1h_x, m1h_alpha, 
+        m1h_z, p2h_x, p2h_z, m2h_x, m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, 
+        yag_sz, yag_res, ret_imgs=True)
+    imager1.image = image1[...,::-1]
+    imager2.image = image2[...,::-1]
+    imager3.image = image3[...,::-1]
     imager1.sum = imager1.image.sum()
     imager2.sum = imager1.image.sum()
     imager3.sum = imager1.image.sum()
-    imager1.mmpix=imager2.mmpix=imager3.mmpix=0.008/image1.shape[0]
-    import IPython; IPython.embed()
+    imager1.mmpix=imager2.mmpix=imager3.mmpix = yag_sz/image1.shape[0]
+    # import IPython; IPython.embed()
 
 def plot(imager1, imager2, imager3, p1, p2, m1h, m2h, centroid=True, r=2, l1=8, 
          l2=12):
@@ -293,9 +298,9 @@ if __name__ == "__main__":
     parser.add_option('-i', action='store_true', dest='ipython', default=False)
     parser.add_option('-l', action='store_true', dest='line', default=False)    
     parser.add_option('-x', action='store_true', dest='xrt', default=False)    
-    parser.add_option('--p1', action='store', dest='p1', type="int", default=600)
-    parser.add_option('--p2', action='store', dest='p2', type="int", default=600)
-    parser.add_option('--max_n', action='store', dest='max_n', type="int", default=50)
+    parser.add_option('--p1', action='store', dest='p1', type="int", default=60)
+    parser.add_option('--p2', action='store', dest='p2', type="int", default=60)
+    parser.add_option('--max_n', action='store', dest='max_n', type="int", default=100)
     
     options, args = parser.parse_args()
 
@@ -308,37 +313,42 @@ if __name__ == "__main__":
     # Undulator Vals
     und_x = 0
     und_xp = 0
-    und_y = 0
+    und_y = 0.1
     und_yp = 0
     und_z = 0
 
+    p1h_x = 0
+    p1h_z = 89.894
+
     # M1H Vals
     m1h_x = 0
-    m1h_alpha = 0.0014 - 3e-5
+    m1h_alpha = 0.0014
     m1h_z = 90.510
 
     # P2H Vals
-    p2h_x = 0.028890475500482096
+    p2h_x = 0.0288904
     p2h_z = 100.828
 
     # M2H Vals
     # m2h_x = 0.
-    m2h_x = 0.031732317072726328
-    m2h_alpha =  0.0014 - 3e-5
+    m2h_x = 0.0317324
+    m2h_alpha =  0.0014
     m2h_z = 101.843
 
     # P3H Vals
-    p3h_x = 0.031732317072726328
+    p3h_x = 0.0317324
     p3h_z = 103.660
 
     # DG3 Vals
-    dg3_x = 0.031732317072726328
+    dg3_x = 0.0317324
     dg3_z = 375.000
 
     # Simulation values
     mx = 1201
     my = 301
     ph_e = 7000
+    yag_sz = 0.008
+    yag_res = 500
 
     # Goal Pixels
     p1 = options.p1
@@ -346,9 +356,9 @@ if __name__ == "__main__":
     alpha = 0
     
     # Detector Obj
-    det_p2h = Detector(kernel=(17,17), threshold=6.0)
-    det_p3h = Detector(kernel=(17,17), threshold=6.0)
-    det_dg3 = Detector(kernel=(31,31), threshold=3.0)
+    det_p2h = Detector(kernel=(13,13), threshold=6.0)
+    det_p3h = Detector(kernel=(13,13), threshold=6.0)
+    det_dg3 = Detector(kernel=(19,19), threshold=3.0)
 
     # Beamline Objects
     # Undulator
@@ -360,9 +370,9 @@ if __name__ == "__main__":
     # M2H
     m2h = Mirror(m2h_x, m2h_alpha, m2h_z)
     # P3H
-    p3h = Imager(p3h_x, p3h_z, det=det_p3h, mppix=1.25e-7)
+    p3h = Imager(p3h_x, p3h_z, det=det_p3h, mppix=yag_sz/yag_res)
     # DG3
-    dg3 = Imager(dg3_x, dg3_z, det=det_dg3, mppix=1.25e-5)
+    dg3 = Imager(dg3_x, dg3_z, det=det_dg3, mppix=yag_sz/yag_res)
 
     # Walker Object
     walker = IterWalker(undulator, m1h, m2h, p3h, dg3, p1=p1, p2=p2, tan=options.tan)
@@ -533,15 +543,32 @@ if __name__ == "__main__":
             plot(p2h, p3h, dg3, p1, p2, m1h, m2h)        
 
     if options.xrt:
-        run_ray_trace(p2h, p3h, dg3)
+        run_ray_trace(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, p1h_x, 
+                      p1h_z, m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, 
+                      m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, yag_sz, 
+                      yag_res)
         print("Initial conditions:")
         print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
         print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
-        # import ipdb; ipdb.set_trace()
         print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
                                           dg3.get_centroid()[0])) 
         print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
 
+        print("Starting iterations...")
+        m1h_alpha, m2h_alpha = walker.align(move=True)
+        print("Completed {0} iterations!".format(walker.max_n))
+        m1h.alpha=m1h_alpha
+        m2h.alpha=m2h_alpha
+        run_ray_trace(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, p1h_x, 
+                      p1h_z, m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, 
+                      m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, yag_sz,
+                      yag_res)
+        print("Final Positions:")
+        print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
+        print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
 
+        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+                                          dg3.get_centroid()[0])) 
+        print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
     if options.ipython:
         import IPython; IPython.embed()
