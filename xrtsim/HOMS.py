@@ -262,8 +262,7 @@ def define_plots(yag_sz, yag_res, p1h_x, p2h_x, p3h_x, dg3_x):
             bins=yag_res,
             factor=0.001,
             limits=[-yag_sz/2, yag_sz/2],
-            invertAxis=True,
-            offset=0), #Dont forget to set this back
+            offset=-dg3_x),
         yaxis=xrtplot.XYCAxis(
             label=r"z",
             unit=r"m",

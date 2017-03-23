@@ -543,16 +543,17 @@ if __name__ == "__main__":
             plot(p2h, p3h, dg3, p1, p2, m1h, m2h)        
 
     if options.xrt:
-        run_ray_trace(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, p1h_x, 
-                      p1h_z, m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, 
-                      m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, yag_sz, 
-                      yag_res)
+
+        # run_ray_trace(p2h, p3h, dg3, und_x, und_xp, und_y, und_yp, und_z, p1h_x, 
+        #               p1h_z, m1h_x, m1h_alpha, m1h_z, p2h_x, p2h_z, m2h_x, 
+        #               m2h_alpha, m2h_z, p3h_x, p3h_z, dg3_x, dg3_z, yag_sz, 
+        #               yag_res)
         print("Initial conditions:")
         print("M1H Alpha: {0}, M2H Alpha: {1}".format(m1h.alpha, m2h.alpha))
         print("M1H X: {0}, M2H X: {1}".format(m1h.x, m2h.x))
-        print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
-                                          dg3.get_centroid()[0])) 
-        print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
+        # print("P3H: {0}, DG3: {1}".format(p3h.get_centroid()[0], 
+        #                                   dg3.get_centroid()[0])) 
+        # print("D1: {0} D2: {1}\n".format(walker.d1, walker.d2))
 
         print("Starting iterations...")
         m1h_alpha, m2h_alpha = walker.align(move=True)
