@@ -59,7 +59,7 @@ print("M1H XP: {0}".format(m1hxp))
 
 p2hz = d3
 # X position follows the line eq but using x position at m1h and new angle
-p2hx_eq = m1hx + m1hxp * (d3-d2)
+p2hx_eq = m1hx + m1hxp * (d3-m1hz)
 # Simplify
 p2hx = simplify(p2hx_eq)
 # Angle of the beam isnt changing
@@ -115,7 +115,7 @@ print("M2H XP: {0}".format(m2hxp))
 
 p3hz = d5
 # X position follows the line eq but using x position at m2h and new angle
-p3hx_eq = m2hx + m2hxp*(d5-d4)
+p3hx_eq = m2hx + m2hxp*(d5-m2hz)
 # Simplify
 p3hx = simplify(p3hx_eq)
 # Angle doesn't change
@@ -141,7 +141,7 @@ print("Alpha1: {0}".format(p3h_alpha))
 
 dg3z = d6
 # X position follows the line eq but using x position at m2h and new angle
-dg3x_eq = m2hx + m2hxp*(d6-d4)
+dg3x_eq = m2hx + m2hxp*(d6-m2hz)
 # Simplify
 dg3x = simplify(dg3x_eq)
 # Angle doesn't change
