@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from psp.Pv import Pv
+from epics import caget
 from beamDetector.detector import Detector
 from utils.cvUtils import to_uint8, plot_image
 
@@ -55,11 +55,6 @@ class Imager(object):
         self.simulation = kwargs.get("simulation", False)
         
         self._check_args()
-        
-        if self.pv_yag:
-            self._pv_obj_yag = Pv.pv(self.pv_yag)
-        if self.pv_camera:
-            self._pv_obj_camera = Pv.pv(self.pv_camera)
 
     def _check_args(self):
         pass
@@ -76,7 +71,7 @@ class Imager(object):
 	            self.sum = self.image.sum()
 	            return self.get_image(norm=norm)
 	    else:
-	        self.image = to_uint8(self._pv_obj_camera.get(), norm)
+	        self.image = to_uint8(caget(self.pv_camera), norm)
 	        return self.image
 
 	def get_beam(self, norm="clip", cent=True, bbox=True):
