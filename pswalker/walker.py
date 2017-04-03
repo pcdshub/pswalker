@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import utils.WalkerException as wexc
+import warnings
 
 from epics import caget
 from beamDetector.detector import Detector
@@ -31,7 +33,7 @@ class Imager(object):
     beamline. 
     """
 
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         self.x = kwargs.get("x", None)
         self.z = kwargs.get("z", None)
         self.detector = kwargs.get("det", Detector(prep_mode="clip"))
@@ -116,10 +118,12 @@ class Imager(object):
 
     def insert(self):
         """Moves the yag to the inserted position."""
+        # This will be filled in with lightpath functions/methods.
         pass
     
     def remove(self):
         """Moves the yag to the removed position."""
+        # This will be filled in with lightpath functions/methods.
         pass
 
 ################################################################################
@@ -131,11 +135,62 @@ class Mirror(object):
     Mirror class to encapsulate the two HOMS (or any) mirrors.
     """
 
-    def __init__(self, x, alpha, z):
-        self.x = x
-        self.alpha = alpha
-        self.z = z
-        self.pos = np.array([self.z, self.x])
+    def __init__(self, **kwargs):
+        self._x          = kwargs.get("x", None)
+        self._x_offset   = kwargs.get("x_offset", 0)
+        self.alpha       = kwargs.get("alpha", None)
+        self.z           = kwargs.get("z", None)
+        self.pos         = np.array([self.z, self.x])
+        self.x_pv        = kwargs.get("x_pv", None)
+        self.alpha_pv    = kwargs.get("alpha_pv", None)
+        self.simulation  = kwargs.get("simulation", False)
+
+        self._check_args()
+        
+        if self.x is None and not self.simulation:
+            self.x = caget(self.x_pv) + self.x_offset
+
+    def _check_args(self):
+        # Only allowed to set alpha in sim mode
+        if self.alpha is not None and not self.simulation:
+            raise wexc.ImagerInputError(
+                "Can only set alpha in simulation mode.")
+        # Must set x motor pv if not in sim mode. Warning if set in sim mode.
+        if self.x_pv is None and not self.simulation:
+            raise wexc.ImagerInputError(
+                "Must input x motor pv when not in simulation mode.")
+        elif self.x_pv and self.simulation:
+            warnings.warn("Ignoring input - X motor pv inputted when simulation \
+mode is active.")
+		# Must set alpha motor pv not in sim mode. Warning if set in sim mode.
+        if self.alpha_pv is None and not self.simulation:
+            raise wexc.ImagerInputError(
+                "Must input alpha motor pv when not in simulation mode.")
+        elif self.alpha_pv and self.simuation:
+            warnings.warn("Ignoring input - alpha motor pv inputted when \
+simulation mode is active.")
+
+    @property
+    def x(self):
+        if self.simulation:
+            return self._x + self._x_offset
+        else
+            return caget(self.x_pv) + self._x_offset
+    @x.setter
+    def x(self, val):
+        if self.simulation:
+            self._x = val - self._x_offset
+        else:
+            caput(self.x_pv, val - self._x_offset)
+
+    @property
+    def x_offset(self):
+        return self._x_offset
+    @x_offset.setter
+    def x_offset(self, val):
+        self._x_offset = val
+        if not
+        
 
 ################################################################################
 #                                 Source Class                                 #
