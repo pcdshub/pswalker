@@ -125,7 +125,7 @@ p3hxp = m2hxp
 # Declare generic x
 x = symbols("x")
 # Solve p1h x for alpha
-p3h_alpha = solve(p3hx - x, a1)
+p3h_alpha = solve(p3hx - x, a1)[0]
 
 # print(p3h_alpha)
 
@@ -151,7 +151,7 @@ dg3xp = m2hxp
 # Declare generic x
 x = symbols("x")
 # Solve p1h x for alpha
-dg3_alpha = solve(dg3x - x, a2)
+dg3_alpha = solve(dg3x - x, a2)[0]
 
 # print(dg3_alpha)
 
@@ -161,4 +161,17 @@ print("DG3 XP: {0}".format(dg3xp))
 print("Alpha2: {0}".format(dg3_alpha))
 
 
+################################################################################
+#                              Analytical Solution                             #
+################################################################################
 
+
+
+# Substitute the second equation into alpha_2 in the first
+alpha_1_eq = p3h_alpha.subs(a2, dg3_alpha)
+
+# Move alpha_1 over to the right and re-solve for alpha_1 with the substitutions
+alpha_1 = solve(alpha_1_eq - a1, a1)
+
+# print(alpha_1_eq)
+print(alpha_1)
