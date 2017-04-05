@@ -12,7 +12,7 @@ from tqdm import tqdm
 class IterWalker(object):
     def __init__(self, source, mirror_1, mirror_2, imager_1, imager_2, **kwargs):
         # Required
-        self.source = source 
+        self.source = source
         self.mirror_1 = mirror_1
         self.mirror_2 = mirror_2
         self.imager_1 = imager_1
@@ -70,35 +70,6 @@ class IterWalker(object):
 
     def step(self):
         return self._alpha_1_calc(), self._alpha_2_calc()
-
-    # def _step(self):
-    #     while self._n < self.max_n:
-    #         self._old_turn = self._turn
-    #         if self._turn == "alpha1":
-    #             self._turn = "alpha2"
-    #             self._d2_x = self._get_d(self.imager_2, self.p2)
-    #             yield self._alpha_1_calc()
-    #         elif self._turn == "alpha2":
-    #             self._n += 1
-    #             self._turn = "alpha1"
-    #             self._d1_x = self._get_d(self.imager_1, self.p1)
-    #             yield self._alpha_2_calc()
-    #         else:
-    #             raise Exception           #How would this ever happen
-    #     raise StopIteration("Reached max number of iterations")
-
-    # def step(self, p1=None, p2=None, do_step=False):
-    #     if p1 is not None: self.p1 = p1
-    #     if p2 is not None: self.p2 = p2
-    #     self._d1_x = self._get_d(self.imager_1, self.p1)
-    #     self._d2_x = self._get_d(self.imager_2, self.p2)
-    #     # import ipdb; ipdb.set_trace()
-    #     next_alpha = next(self._step())
-    #     # print(self._d1_calc(), self._d2_calc())
-    #     if do_step:
-    #         self._move_mirror(next_alpha)
-    #     else:
-    #         return next_alpha, self._old_turn
         
     def align(self, p1=None, p2=None, move=False):
         if p1 is not None: self.p1 = p1
