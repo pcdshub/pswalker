@@ -4,6 +4,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import importlib
+
 import pandas as pd
 import numpy as np
 
@@ -17,6 +19,8 @@ class ModelBuilder(object):
 	
 	def __init__(self, **kwargs):
 		self.move_data = pd.DataFrame()
+		self.p1 = kwargs.get("p1", None)
+		self.p2 = kwargs.get("p2", None)
 
 	def get_move_logs(self):
 		# Performs the steps necessary to obtain the move logs
@@ -37,7 +41,16 @@ class ModelBuilder(object):
 		Builds a model using the data supplied.
 		"""
 		pass
-		
-
 	
+	def _set_goal_points(self, model):
+		model.p1 = self.p1
+		model.p2 = self.p2
+		return model
+		
+	def load(self, saved_model):
+	    model_module = importlib.import_module("models.{0}".format(saved_model))
+	    model = model_module.get_model()
+	    model = self._set_goal_points(model)
+	    return model
+	    
 	
