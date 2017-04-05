@@ -1,1 +1,0 @@
-# ModelBuilder component of Skywalker
