@@ -10,7 +10,7 @@ class Imager(object):
         self.z = kwargs.get("z", None)
         self.image_xsz = 0
         self.image_ysz = 0
-        self.mppix = kwargs.get("mppix", 1.25e-5)
+        self.mppix = kwargs.get("mppix", 0.001)
 
 
 ################################################################################
