@@ -55,6 +55,11 @@ print("\nM1H X: {0}".format(m1hx))
 print("M1H Z: {0}".format(m1hz))
 print("M1H XP: {0}".format(m1hxp))
 
+# Output:
+# M1H X: (a1*d2*xp0 + a1*x0 - m1hdx*xp0)/(a1 - xp0)
+# M1H Z: (a1*d2 - m1hdx + x0)/(a1 - xp0)
+# M1H XP: 2*a1 - xp0
+
 ################################################################################
 #                                     P2H                                      #
 ################################################################################
@@ -70,6 +75,11 @@ p2hxp = m1hxp
 print("\nP2H X: {0}".format(p2hx))
 print("P2H Z: {0}".format(p2hz))
 print("P2H XP: {0}".format(p2hxp))
+
+# Output:
+# P2H X: -2*a1*d2 + 2*a1*d3 - d3*xp0 + 2*m1hdx - x0
+# P2H Z: d3
+# P2H XP: 2*a1 - xp0
 
 ################################################################################
 #                                     M2H                                      #
@@ -98,6 +108,11 @@ print("\nM2H X: {0}".format(m2hx))
 print("M2H Z: {0}".format(m2hz))
 print("M2H XP: {0}".format(m2hxp))
 
+# Output:
+# M2H X: (2*a1*a2*d2 - 2*a1*a2*d4 + 2*a1*m2hdx + a2*d4*xp0 - 2*a2*m1hdx + a2*x0 - m2hdx*xp0)/(2*a1 - a2 - xp0)
+# M2H Z: (-2*a1*d2 + a2*d4 + 2*m1hdx - m2hdx - x0)/(-2*a1 + a2 + xp0)
+# M2H XP: -2*a1 + 2*a2 + xp0
+
 ################################################################################
 #                                     P3H                                      #
 ################################################################################
@@ -120,6 +135,12 @@ print("\nP3H X: {0}".format(p3hx))
 print("P3H Z: {0}".format(p3hz))
 print("P3H XP: {0}".format(p3hxp))
 print("Alpha1: {0}".format(p3h_alpha))
+
+# Output:
+# P3H X: 2*a1*d2 - 2*a1*d5 - 2*a2*d4 + 2*a2*d5 + d5*xp0 - 2*m1hdx + 2*m2hdx + x0
+# P3H Z: d5
+# P3H XP: -2*a1 + 2*a2 + xp0
+# Alpha1: (a2*d4 - a2*d5 - d5*xp0/2 + m1hdx - m2hdx - x0/2 + xp3h/2)/(d2 - d5)
 
 ################################################################################
 #                                     DG3                                      #
@@ -144,6 +165,11 @@ print("DG3 Z: {0}".format(dg3z))
 print("DG3 XP: {0}".format(dg3xp))
 print("Alpha2: {0}".format(dg3_alpha))
 
+# Output:
+# DG3 X: 2*a1*d2 - 2*a1*d6 - 2*a2*d4 + 2*a2*d6 + d6*xp0 - 2*m1hdx + 2*m2hdx + x0
+# DG3 Z: d6
+# DG3 XP: -2*a1 + 2*a2 + xp0
+# Alpha2: (a1*d2 - a1*d6 + d6*xp0/2 - m1hdx + m2hdx + x0/2 - xdg3/2)/(d4 - d6)
 
 ################################################################################
 #                              Analytical Solution                             #
@@ -156,3 +182,7 @@ alpha_1_eq = p3h_alpha.subs(a2, dg3_alpha)
 alpha_1 = sp.solve(alpha_1_eq - a1, a1)[0]
 
 print("\nAlpha1: {0}".format(alpha_1))
+
+# Outputs:
+# Alpha1: (-d4*d5*xp0 + d4*d6*xp0 - d4*xdg3 + d4*xp3h + 2*d5*m1hdx - 2*d5*m2hdx - d5*x0 + d5*xdg3 - 2*d6*m1hdx + 2*d6*m2hdx + d6*x0 - d6*xp3h)/(2*(d2*d5 - d2*d6 - d4*d5 + d4*d6))
+
