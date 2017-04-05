@@ -48,7 +48,7 @@ class ModelBuilder(object):
 		return model
 		
 	def load(self, saved_model):
-	    model_module = importlib.import_module("models.{0}".format(saved_model))
+	    model_module = importlib.import_module("pswalker.models.{0}".format(saved_model))
 	    model = model_module.get_model()
 	    model = self._set_goal_points(model)
 	    return model
