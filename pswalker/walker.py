@@ -34,17 +34,12 @@ class Imager(object):
     """
 
     def __init__(self, **kwargs):
-        self.x = kwargs.get("x", None)
-        self.z = kwargs.get("z", None)
         self.detector = kwargs.get("det", Detector(prep_mode="clip"))
         self.image    = None
         self.image_xsz = 0
         self.image_ysz = 0
         self.centroid = None
         self.bounding_box = None
-        self.pos = np.array([self.z, self.x])
-        self._scale = None
-        self.sum = None
         self.beam = False
         self.inserted = False
         self.mppix = kwargs.get("mppix", 1.25e-5)
@@ -66,9 +61,8 @@ class Imager(object):
         if self.simulation:
 	        try:
 	            uint_norm = to_uint8(self.image, "norm")
-	            self._scale = self.image.sum() / self.sum
 	            self.image_ysz, self.image_xsz  = self.image.shape
-	            return to_uint8(uint_norm * self._scale, "clip")
+	            return to_uint8(uint_norm, "clip")
 	        except TypeError:
 	            self.sum = self.image.sum()
 	            return self.get_image(norm=norm)

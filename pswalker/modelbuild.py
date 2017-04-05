@@ -7,6 +7,7 @@ from __future__ import print_function
 import pandas as pd
 import numpy as np
 
+from scipy.optimize import minimize
 
 
 class ModelBuilder(object):
@@ -15,8 +16,7 @@ class ModelBuilder(object):
 	"""
 	
 	def __init__(self, **kwargs):
-		pass
-
+		self.move_data = pd.DataFrame()
 
 	def get_move_logs(self):
 		# Performs the steps necessary to obtain the move logs
@@ -31,6 +31,13 @@ class ModelBuilder(object):
 		# Parses the logs to get a table of logs going from 
 		# alpha1, alpha2 => pixel on imager 2
 		pass
+
+	def build(self, mode="both"):
+		"""
+		Builds a model using the data supplied.
+		"""
+		pass
+		
 
 	
 	
