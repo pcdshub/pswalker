@@ -1,5 +1,5 @@
 
-from pswalker.modelbuild import ModelBuilder
+from pswalker.cnc import CNC
 from pswalker.models.templates.model_two_flat_tilted_mirrors_two_imagers import (
     TwoFlatTiltedMirrorsTwoImagers)
 
@@ -23,9 +23,12 @@ def get_model():
     m.p2 = None
     return m
 
+def test_cnc_instantiates():
+    assert CNC()
+
 def test_correct_model_loaded():
     test_model = get_model()
-    builder = ModelBuilder()
+    cnc = CNC()
     model = builder.load("test_model")
 
     assert test_model.source.x == model.source.x

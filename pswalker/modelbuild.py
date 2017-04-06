@@ -42,15 +42,5 @@ class ModelBuilder(object):
 		"""
 		raise NotImplementedError
 	
-	def _set_goal_points(self, model):
-		model.p1 = self.p1
-		model.p2 = self.p2
-		return model
-		
-	def load(self, saved_model):
-	    model_module = importlib.import_module("pswalker.models.{0}".format(saved_model))
-	    model = model_module.get_model()
-	    model = self._set_goal_points(model)
-	    return model
 	    
 	
