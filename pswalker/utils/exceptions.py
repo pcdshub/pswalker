@@ -21,10 +21,43 @@ class MirrorInputError(WalkerException):
 	pass
 
 ################################################################################
-#                            ModelWalker Exceptions                            #
+#                             ModelWalk Exceptions                             #
 ################################################################################
 
-class ModelWalkerException(PSWalkException):
-	"""Base ModelWalker exception class."""
+class ModelWalkException(PSWalkException):
+	"""Base ModelWalk exception class."""
+	pass
+
+
+################################################################################
+#                              IterWalk Exceptions                             #
+################################################################################
+
+class IterWalkException(PSWalkException):
+	"""Base IterWalk exception class."""
+	pass
+
+################################################################################
+#                                CNC Exceptions                                #
+################################################################################
+
+class CNCException(PSWalkException):
+	"""Base CNC exception class."""
+	pass
+
+################################################################################
+#                             ModelBuild Exceptions                            #
+################################################################################
+
+class ModelBuildException(PSWalkException):
+	"""Base ModelBuild exception class."""
+	pass
+
+################################################################################
+#                               Monitor Exceptions                             #
+################################################################################
+
+class MonitorException(PSWalkException):
+	"""Base ModelBuild exception class."""
 	pass
 
