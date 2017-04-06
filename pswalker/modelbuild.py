@@ -24,23 +24,23 @@ class ModelBuilder(object):
 
 	def get_move_logs(self):
 		# Performs the steps necessary to obtain the move logs
-		pass
+		raise NotImplementedError
 	
 	def get_imager_1_logs(self):
 		# Parses the logs to get a table of logs going from 
 		# alpha1, alpha2 => pixe on imager 2
-		pass
+		raise NotImplementedError
 
 	def get_imager_2_logs(self):
 		# Parses the logs to get a table of logs going from 
 		# alpha1, alpha2 => pixel on imager 2
-		pass
+		raise NotImplementedError
 
 	def build(self, mode="both"):
 		"""
 		Builds a model using the data supplied.
 		"""
-		pass
+		raise NotImplementedError
 	
 	def _set_goal_points(self, model):
 		model.p1 = self.p1

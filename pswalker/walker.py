@@ -43,7 +43,6 @@ class Imager(object):
         self.beam = False
         self.inserted = False
         self.mppix = kwargs.get("mppix", 1.25e-5)
-
         self.insert_val = kwargs.get("insert", 0.0)
         self.remove_val = kwargs.get("remove", 0.0)
         # self.image_sz = kwargs.get("img_sz", 0.0005)
@@ -113,12 +112,12 @@ class Imager(object):
     def insert(self):
         """Moves the yag to the inserted position."""
         # This will be filled in with lightpath functions/methods.
-        pass
+        raise NotImplementedError
     
     def remove(self):
         """Moves the yag to the removed position."""
         # This will be filled in with lightpath functions/methods.
-        pass
+        raise NotImplementedError
 
 ################################################################################
 #                                 Mirror Class                                 #
