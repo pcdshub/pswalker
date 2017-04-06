@@ -20,8 +20,43 @@ from utils.cvUtils import to_uint8, plot_image
 ################################################################################
 
 class Walker(object):
-    pass
+    """
+    Walker class that will actually perform the motions proposed by iterwalk or
+    modelwalk. High level methods will call lightpath functions for lower level
+    functionality (insert, remove and various checks).
+    """
 
+    def __init__(self, **kwargs):
+        # This should be linked somehow to the templated models. A simple idea
+        # is for walker to be a class that (dynamically?) inherits from the
+        # model template that represents the system. For now I kept them separate
+        # to avoid "premature optimization"
+        self.source = kwargs.get("source", Source())
+        self.mirror_1 = kwargs.get("mirror_1", FlatMirror())
+        self.mirror_2 = kwargs.get("mirror_2", FlatMirror())
+        self.imager_1 = kwargs.get("imager_1", Imager())
+        self.imager_2 = kwargs.get("imager_2", Imager())
+        self.p1 = kwargs.get("p1", 250)   #Desired point at imager 1
+        self.p2 = kwargs.get("p2", 250)   #Desired point at imager 2
+
+    def move_alpha_1(self, new_alpha):
+        """Performs the necessary steps to do a move of mirror 1."""
+        # There are two objectives for a move made by walker:
+        # 1) Get to the goal
+        # 2) Archive data from the move
+        
+        # The first is simple. A proposal for the second would be to do a scan
+        # of n points between current_alpha1 and new_alpha1 and then at each
+        # point store alpha1, alpha2 and pixel position on the imager(s).
+
+        # This seems like a slight variation on some of the canonical bluesky
+        # scan demo so if that isn't what we are doing, why not?
+        raise NotImplementedError
+
+    def move_alpha_2(self, new_alpha):
+        """Performs the necessary steps to do a move of mirror 2."""
+        # Exactly the same as notes on move_alpha_1 but with alpha2.
+        raise NotImplementedError
 
 ################################################################################
 #                                 Imager Class                                 #
@@ -32,7 +67,6 @@ class Imager(object):
     Imager object that will encapsulate the various yag screens along the
     beamline. 
     """
-
     def __init__(self, **kwargs):
         self.detector = kwargs.get("det", Detector(prep_mode="clip"))
         self.image    = None
@@ -42,18 +76,10 @@ class Imager(object):
         self.bounding_box = None
         self.beam = False
         self.inserted = False
-        self.mppix = kwargs.get("mppix", 1.25e-5)
-        self.insert_val = kwargs.get("insert", 0.0)
-        self.remove_val = kwargs.get("remove", 0.0)
-        # self.image_sz = kwargs.get("img_sz", 0.0005)
+        self.mppix = kwargs.get("mppix", 1.25e-5) # meters per pixel
         self.pv_yag = kwargs.get("yag", None)
         self.pv_camera = kwargs.get("camera", None)
         self.simulation = kwargs.get("simulation", False)
-        
-        self._check_args()
-
-    def _check_args(self):
-        pass
 
     def get_image(self, norm="clip"):
         """Get a new image from the imager."""
@@ -123,7 +149,7 @@ class Imager(object):
 #                                 Mirror Class                                 #
 ################################################################################
 
-class Mirror(object):
+class FlatMirror(object):
     """
     Mirror class to encapsulate the two HOMS (or any) mirrors.
     """
@@ -176,13 +202,14 @@ simulation mode is active.")
         else:
             caput(self.x_pv, val - self._x_offset)
 
-    @property
-    def x_offset(self):
-        return self._x_offset
-    @x_offset.setter
-    def x_offset(self, val):
-        self._x_offset = val
-        if not
+    # @property
+    # def x_offset(self):
+    #     return self._x_offset
+    
+    # @x_offset.setter
+    # def x_offset(self, val):
+    #     self._x_offset = val
+    #     if not
         
 
 ################################################################################
@@ -190,10 +217,8 @@ simulation mode is active.")
 ################################################################################
 
 class Source(object):
-    def __init__(self, x, xp, y, yp, z):
-        self.x  = x
-        self.xp = xp
-        self.y  = y
-        self.yp = yp
-        self.z = z
-        self.pos = np.array([self.z, self.x])
+    def __init__(self):
+        # I believe there is a Linac class somewhere in blinst but I don't know
+        # how well it works or it is something we even want to use. It could be
+        # too low level for what we trying to do.
+        pass
