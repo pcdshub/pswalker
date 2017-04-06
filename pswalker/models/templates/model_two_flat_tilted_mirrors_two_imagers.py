@@ -21,7 +21,3 @@ class TwoFlatTiltedMirrorsTwoImagers(object):
     def goal_x_2(self):
         goal = self.imager_2.x + (self.p2 - self.imager_2.image_xsz/2 + 1)*self.imager_2.mppix
         return goal
-
-    def __eq__(self, other):
-        """Useful for testing and misc checks."""
-        return self.__dict__ == other.__dict__

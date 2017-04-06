@@ -23,12 +23,6 @@ class CNC(object):
 		self.model_walker = kwargs.get("model_walker", None)
 		self.p1 = kwargs.get("p1", None)
 		self.p2 = kwargs.get("p2", None)
-		
-	def _build_model(self):
-		"""
-		Method that builds a model using the data from the logger.
-		"""
-		pass
 	
 	def modelbuild(self, load_model=None):
 		"""
