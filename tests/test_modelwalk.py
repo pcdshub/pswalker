@@ -30,6 +30,9 @@ def get_model(p1, p2):
     m.p2 = p2
     return m
 
+def test_ModelWalker_instantiates_correctly():
+    assert ModelWalker()
+
 def test_algorithm_correctness_01():
     walker = Walker()
     model = get_model(250, 250)
