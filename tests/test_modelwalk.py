@@ -31,13 +31,15 @@ def get_model(p1, p2):
     return m
 
 def test_ModelWalker_instantiates_correctly():
-    assert ModelWalker()
+    walker = Walker()
+    model = get_model(250, 250)
+    assert ModelWalker(walker, model)
 
 def test_algorithm_correctness_01():
     walker = Walker()
     model = get_model(250, 250)
     modWalker = ModelWalker(walker, model)
-    alpha1, alpha2 = modWalker.align()
+    alpha1, alpha2 = modWalker.step()
     assert round(alpha1, 4) == 0.0014
     assert round(alpha2, 4) == 0.0014
 
@@ -46,7 +48,7 @@ def test_algorithm_correctness_02():
     walker = Walker()
     model = get_model(300, 400)
     modWalker = ModelWalker(walker, model)
-    alpha1, alpha2 = modWalker.align()
+    alpha1, alpha2 = modWalker.step()
     assert round(alpha1, 10) == round(0.0013644716418, 10)
     assert round(alpha2, 10) == round(0.0013674199723, 10)
 
@@ -54,7 +56,7 @@ def test_algorithm_correctness_03():
     walker = Walker()
     model = get_model(180, 150)
     modWalker = ModelWalker(walker, model)
-    alpha1, alpha2 = modWalker.align()
+    alpha1, alpha2 = modWalker.step()
     assert round(alpha1, 10) == round(0.00144856550472, 10)
     assert round(alpha2, 10) == round(0.00144768100557, 10)
 

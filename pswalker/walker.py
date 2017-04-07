@@ -3,13 +3,12 @@ Walker module that contains the class that allows the various walkers to
 interface with the hardware components.
 """
 
-from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-import utils.WalkerException as wexc
 import warnings
+import numpy as np
+import utils.exceptions as uexc
 
 from epics import caget
 from beamDetector.detector import Detector
@@ -84,19 +83,19 @@ class Imager(object):
     def get_image(self, norm="clip"):
         """Get a new image from the imager."""
         if self.simulation:
-	        try:
-	            uint_norm = to_uint8(self.image, "norm")
-	            self.image_ysz, self.image_xsz  = self.image.shape
-	            return to_uint8(uint_norm, "clip")
-	        except TypeError:
-	            self.sum = self.image.sum()
-	            return self.get_image(norm=norm)
-	    else:
-	        self.image = to_uint8(caget(self.pv_camera), norm)
-	        return self.image
+            try:
+                uint_norm = to_uint8(self.image, "norm")
+                self.image_ysz, self.image_xsz  = self.image.shape
+                return to_uint8(uint_norm, "clip")
+            except TypeError:
+                self.sum = self.image.sum()
+                return self.get_image(norm=norm)
+        else:
+            self.image = to_uint8(caget(self.pv_camera), norm)
+            return self.image
 
-	def get_beam(self, norm="clip", cent=True, bbox=True):
-	    """Return beam info (centroid and bounding box) of the saved image."""
+    def get_beam(self, norm="clip", cent=True, bbox=True):
+        """Return beam info (centroid and bounding box) of the saved image."""
         try:
             self.centroid, self.bounding_box = self.detector.find(self.image)
             self.beam = True
@@ -111,7 +110,7 @@ class Imager(object):
         except IndexError:
             self.beam = False
             return None
-	    
+        
     def get_centroid(self, norm="clip"):
         """Return the centroid of the stored image."""
         return self.get_beam(norm, cent=True, bbox=False)
@@ -159,31 +158,31 @@ class FlatMirror(object):
         self._x_offset   = kwargs.get("x_offset", 0)
         self.alpha       = kwargs.get("alpha", None)
         self.z           = kwargs.get("z", None)
-        self.pos         = np.array([self.z, self.x])
         self.x_pv        = kwargs.get("x_pv", None)
         self.alpha_pv    = kwargs.get("alpha_pv", None)
-        self.simulation  = kwargs.get("simulation", False)
+        self.simulation  = kwargs.get("simulation", True)
+        # self.pos         = np.array([self.z, self.x])
 
         self._check_args()
         
-        if self.x is None and not self.simulation:
+        if self._x is None and not self.simulation:
             self.x = caget(self.x_pv) + self.x_offset
 
     def _check_args(self):
         # Only allowed to set alpha in sim mode
         if self.alpha is not None and not self.simulation:
-            raise wexc.ImagerInputError(
+            raise uexc.ImagerInputError(
                 "Can only set alpha in simulation mode.")
         # Must set x motor pv if not in sim mode. Warning if set in sim mode.
         if self.x_pv is None and not self.simulation:
-            raise wexc.ImagerInputError(
+            raise uexc.ImagerInputError(
                 "Must input x motor pv when not in simulation mode.")
         elif self.x_pv and self.simulation:
             warnings.warn("Ignoring input - X motor pv inputted when simulation \
 mode is active.")
-		# Must set alpha motor pv not in sim mode. Warning if set in sim mode.
+        # Must set alpha motor pv not in sim mode. Warning if set in sim mode.
         if self.alpha_pv is None and not self.simulation:
-            raise wexc.ImagerInputError(
+            raise uexc.ImagerInputError(
                 "Must input alpha motor pv when not in simulation mode.")
         elif self.alpha_pv and self.simuation:
             warnings.warn("Ignoring input - alpha motor pv inputted when \
@@ -193,7 +192,7 @@ simulation mode is active.")
     def x(self):
         if self.simulation:
             return self._x + self._x_offset
-        else
+        else:
             return caget(self.x_pv) + self._x_offset
     @x.setter
     def x(self, val):

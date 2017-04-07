@@ -30,7 +30,7 @@ def test_CNC_instantiates_correctly():
 def test_correct_model_loaded():
     test_model = get_model()
     cnc = CNC()
-    model = builder.load("test_model")
+    model = cnc._load("test_model")
 
     assert test_model.source.x == model.source.x
     assert test_model.source.xp == model.source.xp

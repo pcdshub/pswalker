@@ -4,10 +4,10 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-# from joblib import Memory
+
 from matplotlib.patches import Rectangle
 from multiprocessing import Process
-from utils.cvUtils import to_uint8
+from ..utils.cvUtils import to_uint8
 
 # cachedir = "cache"
 # mem = Memory(cachedir=cachedir, verbose=0)
