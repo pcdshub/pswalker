@@ -1,5 +1,7 @@
 # Monitor and Logging Module for Skywalker
 
+import pandas as pd
+
 class Monitor(object):
 	"""
 	Monitor class that writes the EPICS data to some place that can is
@@ -13,8 +15,8 @@ class Monitor(object):
 	that makes querying for info easy.
 	"""
 	
-	def __init__(self):
-		pass
+	def __init__(self, **kwargs):
+        self._all_data = pd.DataFrame()
 
 	def get_all_data(self):
 		"""Return the full contents of the log."""
@@ -23,3 +25,11 @@ class Monitor(object):
 	def get_last_n_points(self, n):
 		"""Returns the last n entries of data."""
 		pass
+
+    @property
+    def current_centroid(self):
+        """
+        Get the most recent entry of centroids and return them as a tuple.
+        """
+        return None, None
+        

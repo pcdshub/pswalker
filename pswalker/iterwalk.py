@@ -9,3 +9,10 @@ class IterWalker(object):
 
 	def __init__(self):
 		pass
+
+    def step(self):
+        """
+        Return *both* alphas for next step. Only one of them has to be different
+        though. This is done to unify the interface to walker.
+        """
+        raise NotImplementedError

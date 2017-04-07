@@ -25,10 +25,19 @@ class CNC(object):
         self.model_walker = kwargs.get("model_walker", None)
         self.p1 = kwargs.get("p1", None)
         self.p2 = kwargs.get("p2", None)
-
         self.load_model = kwargs.get("load_model", None)
+
+    def _converged(self):
+        """
+        Returns True if beam centroids are at the same positions as p1 and p2.
+        Returns False otherwise.
+        """
+        if self.monitor.current_centroids == (self.p1, self.p2):
+            return True
+        else:
+            return False
         
-    def modelbuild(self):
+    def _modelbuild(self):
         """
         Runs the model building => modelwalk loop
         """
@@ -45,11 +54,10 @@ class CNC(object):
         model = self._set_goal_points(model)
         return model
         
-    def modelwalk(self):
+    def _modelwalk(self):
         """
         Runs the modelwalk loop.
-        """
-        
+        """        
         if self.load_model:
             # Load the model from a saved module
             self.model = self._load(load_model)
@@ -59,12 +67,47 @@ class CNC(object):
         # Create a new model walker instance if we havent already
         if self.model_walker is None:
             self.model_walker = ModelWalker(self.walker, self.model)
-        # Perform the alignment using the walker
-        self.model_walker.align(do_move=True)
+        # Get new alphas from model_walker
+        new_alpha_1, new_alpha_2 = self.model_walker.align(do_move=False)
+        # Pass new alphas to walker to do the move
+        self.walker.move_alpha_1(new_alpha_1)
+        self.walker.move_alpha_2(new_alpha_2)
 
-
-    def iterwalk(self):
+    def _iterwalk(self):
         """
         Runs the iterwalk loop.
         """
+        
         raise NotImplementedError
+
+    def walk(self, mode='iter'):
+        """
+        Top level method that will call each of the walking algorithms
+        singularly or in sequences depending on the inputted walk mode.
+        """
+
+        if mode == "iter":
+            # Run iterwalk algorithm until completion or failure
+            self.iterwalk()
+        elif mode == "model":
+            # Run a step of modelwalk. End walk execution after step.
+            self.modelwalk()
+        elif mode == "build":
+            # Build a model using saved data then run a step of modelwalk.
+            self.modelbuild()
+        elif mode == "auto":
+            # (1) If there is a model ready to be loaded, load it and run model
+            # walk
+            # 	If model walk fails, run (3)
+            #	If converges, end run
+            # (2) If no model is provided but enough data to build a model, build
+            # a new one
+            #	Pass built model into modelwalk and run (1)
+            # (3) No model provided and one cannot be built
+            #   Take iterwalk step
+            #	If midway through step enough data is collected to build a new
+            #	model, run (2)
+            #	If converges, end run
+            	
+            raise NotImplementedError
+        

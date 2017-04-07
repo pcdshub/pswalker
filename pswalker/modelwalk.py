@@ -48,7 +48,7 @@ class ModelWalker(object):
         self.walker.move_alpha_1(self.new_alpha_1)
         self.walker.move_alpha_2(self.new_alpha_2)
 
-    def align(self, **kwargs):
+    def step(self, **kwargs):
         """
         Finds the correct angles to move the mirror to then returns them. Will
         also move the mirrors if do_move is True.
