@@ -2,12 +2,26 @@
 
 import numpy as np
 
+# Using base iterwalker exceptions for now. Implement more detailed excs later
 from utils.exceptions import IterWalkerException
 
 class IterWalker(object):
     """
     IterWalker class that aligns the mirrors by iteratively optimizing the mirror
     positions.
+
+    For the first move on each motor, it will take increasingly large step sizes
+    in some direction until the beam has noticeably moved on the imager (where
+    noticeably means maybe 5ish pixels). It will then do a linear fit on the two
+    (or more) points obtained from the move and use that to calculate the alpha
+    necessary to move to the desired point. The eq will have the form:
+
+    x0 + x1*a1 + x2*a2
+
+    fitting to x0, x1, and x2. For the first few moves, instead of moving all 
+    the way it will only move 1/2-3/4ths of the way to the point as a way to 
+    prevent overshooting due to poor curve fitting. The fit is then refined 
+    using that move to then make a final move to the goal point.
     """
 
     def __init__(self, walker, monitor, **kwargs):
