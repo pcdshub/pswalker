@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 
 import importlib
+import numpy as np
 
 from monitor import Monitor
 from walker import Walker
@@ -19,21 +20,21 @@ class CNC(object):
     
     def __init__(self, **kwargs):
         self.monitor = kwargs.get("monitor", Monitor())
-        self.walker = kwargs.get("walker", Walker())
+        self.walker = kwargs.get("walker", Walker(self.monitor))
         self.model_builder = kwargs.get("model_builder", ModelBuilder())
         self.model = kwargs.get("model", None)
         self.iter_walker = kwargs.get("iter_walker", None)
         self.model_walker = kwargs.get("model_walker", None)
-        self.p1 = kwargs.get("p1", None)
-        self.p2 = kwargs.get("p2", None)
         self.load_model = kwargs.get("load_model", None)
+        self.p1 = kwargs.get("p1", 0)
+        self.p2 = kwargs.get("p2", 0)
 
     def _converged(self):
         """
         Returns True if beam centroids are at the same positions as p1 and p2.
         Returns False otherwise.
         """
-        if self.monitor.current_centroids == (self.p1, self.p2):
+        if self.monitor.current_centroids == np.array((self.p1, self.p2))
             return True
         else:
             return False
@@ -69,17 +70,25 @@ class CNC(object):
         if self.model_walker is None:
             self.model_walker = ModelWalker(self.walker, self.model)
         # Get new alphas from model_walker
-        new_alpha_1, new_alpha_2 = self.model_walker.align(do_move=False)
+        new_alpha_1, new_alpha_2 = self.model_walker.step(do_move=False)
         # Pass new alphas to walker to do the move
         self.walker.move_alpha_1(new_alpha_1)
         self.walker.move_alpha_2(new_alpha_2)
 
     def _iterwalk(self):
         """
-        Runs the iterwalk loop.
+        Runs the iterwalk loop until convergence
         """
-        
-        raise NotImplementedError
+        if self.iter_walker is None:
+            self.iter_walker = IterWalker(self.walker, self.monitor, 
+                                          p1=self.p1, p2=self.p2)
+        while not self._converged:
+            # Get new alpha(s) from iter_walker
+            # NOTE: it will only receive one new alpha.
+            new_alpha_1, new_alpha_2 = self.iter_walker.step(do_move=False)
+            # Pass new alphas to walker to do the move
+            self.walker.move_alpha_1(new_alpha_1)
+            self.walker.move_alpha_2(new_alpha_2)
 
     def walk(self, mode='iter'):
         """
@@ -89,13 +98,13 @@ class CNC(object):
 
         if mode == "iter":
             # Run iterwalk algorithm until completion or failure
-            self.iterwalk()
+            self._iterwalk()
         elif mode == "model":
             # Run a step of modelwalk. End walk execution after step.
-            self.modelwalk()
+            self._modelwalk()
         elif mode == "build":
             # Build a model using saved data then run a step of modelwalk.
-            self.modelbuild()
+            self._modelbuild()
         elif mode == "auto":
             # (1) If there is a model ready to be loaded, load it and run model
             # walk
@@ -111,4 +120,3 @@ class CNC(object):
             #	If converges, end run
             	
             raise NotImplementedError
-        

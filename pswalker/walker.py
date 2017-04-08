@@ -25,18 +25,19 @@ class Walker(object):
     functionality (insert, remove and various checks).
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, monitor, **kwargs):
         # This should be linked somehow to the templated models. A simple idea
         # is for walker to be a class that (dynamically?) inherits from the
         # model template that represents the system. For now I kept them separate
         # to avoid "premature optimization"
+        self.monitor = monitor
         self.source = kwargs.get("source", Source())
         self.mirror_1 = kwargs.get("mirror_1", FlatMirror())
         self.mirror_2 = kwargs.get("mirror_2", FlatMirror())
         self.imager_1 = kwargs.get("imager_1", Imager())
         self.imager_2 = kwargs.get("imager_2", Imager())
-        self.p1 = kwargs.get("p1", 250)   #Desired point at imager 1
-        self.p2 = kwargs.get("p2", 250)   #Desired point at imager 2
+        self.p1 = kwargs.get("p1", 0)   #Desired point at imager 1
+        self.p2 = kwargs.get("p2", 0)   #Desired point at imager 2
 
     def move_alpha_1(self, new_alpha):
         """Performs the necessary steps to do a move of mirror 1."""

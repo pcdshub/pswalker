@@ -29,7 +29,13 @@ class Monitor(object):
     @property
     def current_centroid(self):
         """
-        Get the most recent entry of centroids and return them as a tuple.
+        Get the most recent entry of centroids and return as a numpy array.
         """
-        return None, None
-        
+        return np.array((0, 0))
+       
+    @property
+    def current_alphas(self):
+        """
+        Get the most recent entry of mirror pitches and return as a numpy array. 
+        """
+        return np.array((0, 0))
