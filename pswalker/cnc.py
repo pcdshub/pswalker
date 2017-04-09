@@ -70,10 +70,7 @@ class CNC(object):
         if self.model_walker is None:
             self.model_walker = ModelWalker(self.walker, self.model)
         # Get new alphas from model_walker
-        new_alpha_1, new_alpha_2 = self.model_walker.step(do_move=False)
-        # Pass new alphas to walker to do the move
-        self.walker.move_alpha_1(new_alpha_1)
-        self.walker.move_alpha_2(new_alpha_2)
+        self.model_walker.step(do_move=True)
 
     def _iterwalk(self):
         """
@@ -83,12 +80,9 @@ class CNC(object):
             self.iter_walker = IterWalker(self.walker, self.monitor, 
                                           p1=self.p1, p2=self.p2)
         while not self._converged:
-            # Get new alpha(s) from iter_walker
-            # NOTE: it will only receive one new alpha.
-            new_alpha_1, new_alpha_2 = self.iter_walker.step(do_move=False)
-            # Pass new alphas to walker to do the move
-            self.walker.move_alpha_1(new_alpha_1)
-            self.walker.move_alpha_2(new_alpha_2)
+            # Get new alpha(s) from iter_walker and move to them
+            self.iter_walker.step(mirror_1=True)
+            self.iter_walker.step(mirror_2=True)
 
     def walk(self, mode='iter'):
         """
