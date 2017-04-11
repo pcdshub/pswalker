@@ -3,7 +3,7 @@
 import numpy as np
 
 # Using base iterwalker exceptions for now. Implement more detailed excs later
-from utils.exceptions import IterWalkerException
+from .utils.exceptions import IterWalkException
 
 class IterWalker(object):
     """
@@ -78,6 +78,8 @@ class IterWalker(object):
                 self.walker.jog_alphas_to_pixels(current_centroids[0], self.p2)
             else:
                 raise IterWalkerException
+        else:
+            raise NotImplementedError
         
         # dist = self._dist_from_goal[turn_idx]
         # step_alpha = self.monitor.current_alphas[turn_idx]

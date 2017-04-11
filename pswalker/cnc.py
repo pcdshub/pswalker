@@ -1,16 +1,16 @@
 # Command and Control Module for Skywalker
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import importlib
 import numpy as np
 
-from monitor import Monitor
-from walker import Walker
-from modelbuild import ModelBuilder
-
-from utils.exceptions import CNCException
+from .monitor import Monitor
+from .walker import Walker
+from .modelbuild import ModelBuilder
+from .utils.exceptions import CNCException
 
 class CNC(object):
     """
@@ -34,7 +34,7 @@ class CNC(object):
         Returns True if beam centroids are at the same positions as p1 and p2.
         Returns False otherwise.
         """
-        if self.monitor.current_centroids == np.array((self.p1, self.p2))
+        if self.monitor.current_centroids == np.array((self.p1, self.p2)):
             return True
         else:
             return False

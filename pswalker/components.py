@@ -3,12 +3,10 @@ Hardware components used by walker that *should* be implemented as ophyd
 devices.
 """
 
-import utils.exceptions as uexc
-
 from ophyd import Device, EpicsMotor # Or another ophyd motor implementation
-from beamDetector.detector import Detector
-from utils.cvUtils import to_uint8, plot_image
-from utils.exceptions import ComponentException
+from .beamDetector.detector import Detector
+from .utils.cvUtils import to_uint8, plot_image
+from .utils.exceptions import ComponentException
 
 ################################################################################
 #                                 Imager Class                                 #
@@ -110,8 +108,8 @@ class FlatMirror(Device):
         # As a first pass implementation, the x and alpha motors are just
         # epics motors and z is just a simple attribute to hold the z position
         # of the mirror.
-        self.mot_x       = EpicsMotor(kwargs.get("x", None),name="X Mot")
-        self.mot_alpha   = EpicsMotor(kwargs.get("alpha", None),name="Pitch Mot")
+        self.mot_x       = EpicsMotor(kwargs.get("x", ""),name="X Mot")
+        self.mot_alpha   = EpicsMotor(kwargs.get("alpha", ""),name="Pitch Mot")
         # self.z           = kwargs.get("z", None) # This is 
         # self.x_pv        = kwargs.get("x_pv", None)
         # self.alpha_pv    = kwargs.get("alpha_pv", None)
@@ -155,14 +153,14 @@ class FlatMirror(Device):
     @property
     def alpha(self):
         return self.mot_alpha.position
-        
+    
     @alpha.setter
     def alpha(self, alpha, **kwargs):
         self.mot_alpha.move(val, **kwargs)
         
 
 ################################################################################
-#                                 Source Class                                 #
+#                                 Linac Class                                  #
 ################################################################################
 
 class Linac(Device):
@@ -170,8 +168,8 @@ class Linac(Device):
         # I believe there is a Linac class somewhere in blinst but I don't know
         # how well it works or it is something we even want to use. It could be
         # too low level for what we trying to do.
-        self.mot_x = EpicsMotor(kwargs.get("x", None),name="X Mot")
-        self.mot_xp = EpicsMotor(kwargs.get("xp", None),name="X Pointing Mot")
+        self.mot_x = EpicsMotor(kwargs.get("x", ""),name="X Mot")
+        self.mot_xp = EpicsMotor(kwargs.get("xp", ""),name="X Pointing Mot")
         
     @property
     def x(self):

@@ -20,8 +20,8 @@ def get_model():
     m.imager_1.mppix = 0.008/500
     m.imager_2.image_xsz = 500
     m.imager_2.mppix = 0.008/500
-    m.p1 = None
-    m.p2 = None
+    m.p1 = 0
+    m.p2 = 0
     return m
 
 def test_CNC_instantiates_correctly():

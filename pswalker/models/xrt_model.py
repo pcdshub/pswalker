@@ -1,6 +1,8 @@
 # Model used for the XRT Ray tracing simulator
 
-from model_two_flat_tilted_mirrors_two_imagers import (
+from __future__ import absolute_import
+
+from .templates.model_two_flat_tilted_mirrors_two_imagers import (
 	TwoFlatTiltedMirrorsTwoImagers)
 
 def get_model():

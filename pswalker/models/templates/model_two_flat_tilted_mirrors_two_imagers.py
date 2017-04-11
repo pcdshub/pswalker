@@ -1,6 +1,6 @@
 # Template for two tilted flat mirrors
 
-from components import Imager, FlatMirror, Source
+from .components import Imager, FlatMirror, Source
 
 class TwoFlatTiltedMirrorsTwoImagers(object):
     def __init__(self, **kwargs):

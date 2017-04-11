@@ -1,9 +1,12 @@
 # Monitor and Logging Module for Skywalker
 
+from __future__ import absolute_import
+
 import pandas as pd
+import numpy as np
 
 # Using base monitor exceptions for now. Implement more detailed excs later
-from utils.exceptions import MonitorException
+from .utils.exceptions import MonitorException
 
 class Monitor(object):
     """
