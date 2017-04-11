@@ -1,6 +1,6 @@
 # Exceptions to be used throughout Walker sytem
 
-class PSWalkException(Exception):
+class PSWalkerException(Exception):
 	"""Base exception class for the whole module."""
 	pass
 
@@ -8,7 +8,7 @@ class PSWalkException(Exception):
 #                              Walker Exceptions                               #
 ################################################################################
 
-class WalkerException(PSWalkException):
+class WalkerException(PSWalkerException):
 	"""Base walker exception class."""
 	pass
 
@@ -21,10 +21,18 @@ class MirrorInputError(WalkerException):
 	pass
 
 ################################################################################
+#                              Component Exceptions                               #
+################################################################################
+
+class ComponentException(PSWalkerException):
+	"""Base component exception class."""
+	pass
+
+################################################################################
 #                             ModelWalk Exceptions                             #
 ################################################################################
 
-class ModelWalkException(PSWalkException):
+class ModelWalkException(PSWalkerException):
 	"""Base ModelWalk exception class."""
 	pass
 
@@ -33,7 +41,7 @@ class ModelWalkException(PSWalkException):
 #                              IterWalk Exceptions                             #
 ################################################################################
 
-class IterWalkException(PSWalkException):
+class IterWalkException(PSWalkerException):
 	"""Base IterWalk exception class."""
 	pass
 
@@ -41,7 +49,7 @@ class IterWalkException(PSWalkException):
 #                                CNC Exceptions                                #
 ################################################################################
 
-class CNCException(PSWalkException):
+class CNCException(PSWalkerException):
 	"""Base CNC exception class."""
 	pass
 
@@ -49,7 +57,7 @@ class CNCException(PSWalkException):
 #                             ModelBuild Exceptions                            #
 ################################################################################
 
-class ModelBuildException(PSWalkException):
+class ModelBuildException(PSWalkerException):
 	"""Base ModelBuild exception class."""
 	pass
 
@@ -57,7 +65,7 @@ class ModelBuildException(PSWalkException):
 #                               Monitor Exceptions                             #
 ################################################################################
 
-class MonitorException(PSWalkException):
+class MonitorException(PSWalkerException):
 	"""Base ModelBuild exception class."""
 	pass
 
