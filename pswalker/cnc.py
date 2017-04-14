@@ -21,7 +21,7 @@ class CNC(object):
     def __init__(self, **kwargs):
         self.monitor = kwargs.get("monitor", Monitor())
         self.walker = kwargs.get("walker", Walker(self.monitor))
-        self.model_builder = kwargs.get("model_builder", ModelBuilder())
+        self.model_builder = kwargs.get("model_builder", None)
         self.model = kwargs.get("model", None)
         self.iter_walker = kwargs.get("iter_walker", None)
         self.model_walker = kwargs.get("model_walker", None)
@@ -43,15 +43,35 @@ class CNC(object):
         """
         Runs the model building => modelwalk loop
         """
-        raise NotImplementedError
+        self.model_builder = kwargs.get("model_builder", self.model_builder)
+        
+        # Create a new model_builder instance if we havent
+        if self.model_builder is None:
+            self.model_builder = ModelBuilder(self.monitor)
 
+        # TODO: Build a model using some input parameters denoting what
+        # subsection of the data should be used
+        # Possible inputs:
+        # # Last n inputs for alpha1, alpha2, cent1, cent2
+        # # All alpha1, alpha2, cent1, cent2 for current alignment
+        # # All directly inputted alpha1, alpha2, cent1, cent2
+        # # All alpha1, alpha2, cent1, cent2 for previous alignment
+        self.model = self.model_builder.build()
+
+        # Create a new model walker instance if we havent already
+        if self.model_walker is None:
+            self.model_walker = ModelWalker(self.walker, self.model)
+        # Get new alphas from model_walker
+        self.model_walker.step(do_move=True, model=self.model)        
+        
     def _set_goal_points(self, model):
         model.p1 = self.p1
         model.p2 = self.p2
         return model
         
     def _load(self, saved_model):
-        model_module = importlib.import_module("pswalker.models.{0}".format(saved_model))
+        model_module = importlib.import_module("pswalker.models.{0}".format(
+            saved_model))
         model = model_module.get_model()
         model = self._set_goal_points(model)
         return model
@@ -59,10 +79,16 @@ class CNC(object):
     def _modelwalk(self):
         """
         Runs the modelwalk loop.
-        """        
+        """
+        self.model = kwargs.get("model", self.model)        
+        self.load_model = kwargs.get("load_model", self.load_model)
+        self.model_walker = kwargs.get("model_walker", self.model_walker)
+        
         if self.load_model:
             # Load the model from a saved module
-            self.model = self._load(load_model)
+            # # Add a check if model was inputted or exists and the user set
+            # load_model to be True
+            self.model = self._load(self.load_model)
         elif self.model is None:
             raise CNCException
 
@@ -76,6 +102,8 @@ class CNC(object):
         """
         Runs the iterwalk loop until convergence
         """
+        self.iter_walker = kwargs.get("iter_walker", self.iter_walker)
+
         if self.iter_walker is None:
             self.iter_walker = IterWalker(self.walker, self.monitor, 
                                           p1=self.p1, p2=self.p2)
@@ -89,11 +117,20 @@ class CNC(object):
         Top level method that will call each of the walking algorithms
         singularly or in sequences depending on the inputted walk mode.
         """
+        self.p1    = kwargs.get("p1", 0)
+        self.p2    = kwargs.get("p2", 0)
+        self.model = kwargs.get("model", self.model)
+        self.load_model    = kwargs.get("load_model", self.load_model)
+        self.iter_walker   = kwargs.get("iter_walker", self.iter_walker)
+        self.model_walker  = kwargs.get("model_walker", self.model_walker)
+        self.model_builder = kwargs.get("model_builder", self.model_builder)
 
         if mode == "iter":
             # Run iterwalk algorithm until completion or failure
             self._iterwalk()
         elif mode == "model":
+            self.load_model = kwargs.get("load_model", self.load_model)
+
             # Run a step of modelwalk. End walk execution after step.
             self._modelwalk()
         elif mode == "build":
@@ -112,5 +149,7 @@ class CNC(object):
             #	If midway through step enough data is collected to build a new
             #	model, run (2)
             #	If converges, end run
+            raise NotImplementedError            
+        else:
+            raise CNCException
             	
-            raise NotImplementedError
