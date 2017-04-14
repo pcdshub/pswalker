@@ -1,5 +1,8 @@
 # Iterwalk Module for Skywalker
 
+from __future__ import absolute_import
+from __future__ import division
+
 import numpy as np
 
 # Using base iterwalker exceptions for now. Implement more detailed excs later
@@ -72,9 +75,9 @@ class IterWalker(object):
 
         if self.mode is "jog":
             current_centroids = self.monitor.current_centroids
-            if mirror_1:
+            if mirror_1 is True:
                 self.walker.jog_alphas_to_pixels(self.p1, current_centroids[1])
-            elif mirror_2:
+            elif mirror_2 is True:
                 self.walker.jog_alphas_to_pixels(current_centroids[0], self.p2)
             else:
                 raise IterWalkerException

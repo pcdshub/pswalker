@@ -3,6 +3,9 @@ Hardware components used by walker that *should* be implemented as ophyd
 devices.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+
 from ophyd import Device, EpicsMotor # Or another ophyd motor implementation
 from .beamDetector.detector import Detector
 from .utils.cvUtils import to_uint8, plot_image

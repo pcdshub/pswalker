@@ -15,7 +15,8 @@ class ModelBuilder(object):
 	Class that builds beamline models to be used by ModelWalker.
 	"""
 	
-	def __init__(self, **kwargs):
+	def __init__(self, monitor, **kwargs):
+        self.monitor = monitor
 		self.move_data = pd.DataFrame()
 		self.p1 = kwargs.get("p1", None)
 		self.p2 = kwargs.get("p2", None)

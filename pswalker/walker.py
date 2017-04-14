@@ -15,6 +15,9 @@ from bluesky.plans import scan
 from ophyd import EpicsMotor
 from .components import Imager, FlatMirror, Linac
 
+MIRROR_1 = 0
+MIRROR_2 = 1
+
 ################################################################################
 #                                 Walker Class                                 #
 ################################################################################
@@ -63,15 +66,15 @@ class Walker(object):
     def move_alphas(self, new_alpha_1, new_alpha_2):
         """Moves mirrors 1 and 2 to the inputted pitches."""
         # TODO: (Try to) Use multiprocessing to perform the moves simultaneously
-        self._move_alpha(new_alpha_1, 0)
-        self._move_alpha(new_alpha_2, 1)
+        self._move_alpha(new_alpha_1, MIRROR_1)
+        self._move_alpha(new_alpha_2, MIRROR_2)
 
     def move_rel_alphas(self, rel_alpha_1, rel_alpha_2):
         """Moves mirrors 1 and 2 by the inputted pitches."""
         alphas = self.monitor.current_alphas
         # TODO: (Try to) Use multiprocessing to perform the moves simultaneously        
-        self._move_alpha(alphas[0] + rel_alpha_1, 0)
-        self._move_alpha(alphas[1] + rel_alpha_2, 1)
+        self._move_alpha(alphas[0] + rel_alpha_1, MIRROR_1)
+        self._move_alpha(alphas[1] + rel_alpha_2, MIRROR_2)
 
     def _jog_alpha_to_pixel(self, new_pixel, mirror):
         """
@@ -93,6 +96,6 @@ class Walker(object):
         the desired pixel.
         """
         # TODO: (Try to) Use multiprocessing to perform the moves simultaneously
-        self._jog_alpha_to_pixel(new_pixel_1, 0)
-        self._jog_alpha_to_pixel(new_pixel_2, 1)
+        self._jog_alpha_to_pixel(new_pixel_1, MIRROR_1)
+        self._jog_alpha_to_pixel(new_pixel_2, MIRROR_2)
 
