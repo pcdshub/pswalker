@@ -1,6 +1,6 @@
 # Testing Script for cnc
 
-from pswalker.cnc import CNC
+from pswalker.skywalker import Skywalker
 from pswalker.models.templates.model_two_flat_tilted_mirrors_two_imagers import (
     TwoFlatTiltedMirrorsTwoImagers)
 
@@ -24,13 +24,13 @@ def get_model():
     m.p2 = 0
     return m
 
-def test_CNC_instantiates_correctly():
-    assert CNC()
+def test_Skywalker_instantiates_correctly():
+    assert Skywalker()
 
 def test_correct_model_loaded():
     test_model = get_model()
-    cnc = CNC()
-    model = cnc._load("test_model")
+    sw = Skywalker()
+    model = sw._load("test_model")
 
     assert test_model.source.x == model.source.x
     assert test_model.source.xp == model.source.xp

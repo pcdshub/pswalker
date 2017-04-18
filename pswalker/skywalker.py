@@ -12,7 +12,7 @@ from .walker import Walker
 from .modelbuild import ModelBuilder
 from .utils.exceptions import CNCException
 
-class CNC(object):
+class Skywalker(object):
     """
     Command and control class that interacts with the user and performs the
     alignment.
