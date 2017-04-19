@@ -1,4 +1,4 @@
-
+import versioneer
 try:
     from setuptools import setup
 except ImportError:
@@ -10,7 +10,8 @@ config = {
     'url':               '',
     'download_url':      '',
     'author_email':      'apra@slac.stanford.edu',
-    'version':           '0.1',
+    'version':           versioneer.get_version(),
+    'cmdclass':          versioneer.get_cmdclass(),
     'install_requires':  ['nose'],
     'packages':          ['beamDetector'],
     'scripts':           [],
