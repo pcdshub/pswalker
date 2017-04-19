@@ -93,14 +93,20 @@ def walk_to_pixel(detector, motor, target,
         center   = yield from measure_centroid()
 
         next_pos = start
-        #Stop when motors have entered
+        #Stop when motors have entered acceptable region
         while not np.isclose(target, center, atol=tolerance):
+            #Set checkpoint for rewinding
             yield Msg('checkpoint')
+            #Move pitch
             yield from mv(motor, next_pos)
+            #Meausre centroid
             center   = yield from measure_centroid()
+            #Calculate next step
             next_pos += np.sign(target-center)*min_step
-            if 
-
+            #If we are looking at a reflected image, flip sign
+            if inverted:
+                next_pos = -next_pos
 
     return (yield from walk())
+
 
