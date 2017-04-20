@@ -12,6 +12,23 @@ from bluesky.examples import Mover, Reader
 # Module #
 ##########
 
+class OneMirrorSystem(object):
+    """
+    System of a source, mirror and an imager.
+    """
+    def __init__(self, **kwargs):
+        self.x0 = kwargs.get("x0", 0)
+        self.xp0 = kwargs.get("xp0", 0)
+        self.x1 = kwargs.get("x1", 0)
+        self.d1 = kwargs.get("d1", 90.510)
+        self.a1 = kwargs.get("a1", 0.0014)
+        self.x2 = kwargs.get("x2", 0.0317324)
+        self.d2 = kwargs.get("d2", 101.843)
+        
+        self.mirror_1 = Mirror
+
+ 
+
 class Mirror(Mover):
     """
     Simulation of the Flat Mirror Pitch
@@ -21,25 +38,43 @@ class Mirror(Mover):
     name : string
         Name of motor
 
-    initial_set : float
-        Initial position of motor in microradians
+    initial_position : float
+    	Initial x position of the motor in meters from nominal
 
-    noise_multiplier : float, optional
-        Scaler to multiply uniform noise 
+    initial_pitch : float
+        Initial pitch of motor in microradians
+
+    distance : float
+    	Distance of the mirror from the source in meters
+
+    noise_position : float, optional
+        Scaler to multiply uniform noise on position 
+
+    noise_pitch : float, optional
+        Scaler to multiply uniform noise on pitch
 
     fake_sleep, float, optional
         Simulate moving time
     """
-    def __init__(self, name, initial_set, noise_multiplier=None, fake_sleep=0):
+    def __init__(self, name, initial_position, initial_pitch, z,
+                 noise_position=None, noise_pitch=None, fake_sleep=0):
 
         def position(x):
-            if noise_multiplier:
-                x += np.random.uniform(-1, 1)*noise_multiplier
+            if noise_position:
+                x += np.random.uniform(-1, 1)*noise_position
             return x
+        
+        def pitch(alpha):
+            if noise_pitch:
+                alpha += np.random.uniform(-1, 1)*noise_pitch
+            return alpha
 
+        # What here goes into the ordereddict and what is just a regular dict?
         super().__init__(name, OrderedDict([('motor', position),
+                                            ('pitch', pitch),
                                             ('motor_setpoint', lambda x : x)]),
-                         {'x' : initial_set}, fake_sleep=fake_sleep)
+                         {'x' : initial_position, 'alpha', : initial_pitch, 
+                          'z' : z}, fake_sleep=fake_sleep)
 
 class YAG(Reader):
     """
