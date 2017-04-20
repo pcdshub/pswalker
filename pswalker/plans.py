@@ -4,7 +4,7 @@ Bluesky Plans for the Walker
 ############
 # Standard #
 ############
-
+import time
 ###############
 # Third Party #
 ###############
@@ -63,7 +63,7 @@ def measure_centroid(detector, average=None, md=None):
 def walk_to_pixel(detector, motor, target,
                   start, first_step=1e-3,
                   tolerance=20, average=None,
-                  md=None):
+                  timeout=None, md=None):
     """
     Step a motor until a specific threshold is reached on the detector
 
@@ -105,6 +105,7 @@ def walk_to_pixel(detector, motor, target,
     average : int, optional
         Number of images to average together for each step along the scan
 
+    timeout : timeout, optional
     md : dict, optional
         metadata
     """
@@ -117,24 +118,28 @@ def walk_to_pixel(detector, motor, target,
     ######################################
 
     #Assemble metadata
-    _md = {'detectors' : [det.name],
-           'motors'    : [motor.name],
-           'target'    : target,
-           'min_step'  : min_step,
-           'tolerance' : tolerance,
-           'plan_name' : 'walk_to_pixel'}
+    _md = {'detectors'   : [detector.name],
+           'motors'      : [motor.name],
+           'target'      : target,
+           'first_step'  : first_step,
+           'tolerance'   : tolerance,
+           'plan_name'   : 'walk_to_pixel'}
     _md.update(md or {})
 
     def walk():
         #Initial measurement
         yield from mv(motor, start)
-        center = yield from measure_centroid(detector, average=averaage)
-        #Store information as we scan
+        center   = yield from measure_centroid(detector, average=average)
         next_pos = start + first_step
-        centers, angles = [center], [angles]
-
+        #Store information as we scan
+        centers, angles = [center], [start]
+        start_time = time.time()
         #Stop when motors have entered acceptable region
         while not np.isclose(target, center, atol=tolerance):
+
+            #Timeout clause
+            if timeout and (time.time() - start_time) > timeout:
+                yield Msg('abort')
 
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
@@ -142,7 +147,7 @@ def walk_to_pixel(detector, motor, target,
             yield from mv(motor, next_pos)
             #Measure centroid
             center = yield from measure_centroid(detector, average=average)
-
+            print(center)
             #Store data point
             centers.append(center)
             angles.append(next_pos)
