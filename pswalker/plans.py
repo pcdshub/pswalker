@@ -144,7 +144,7 @@ def walk_to_pixel(detector, motor, target,
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
             #Move pitch
-            yield from mv(motor, next_pos)
+            yield from  mv(motor, next_pos)
             #Measure centroid
             center = yield from measure_centroid(detector, average=average)
             print(center)
@@ -153,7 +153,7 @@ def walk_to_pixel(detector, motor, target,
             angles.append(next_pos)
             #Calculate next step
             slope, intercept, r, p, err = linregress(angles, centers)
-            next_step = (target - intercept)/slope
+            next_pos = (target - intercept)/slope
 
     return (yield from walk())
 
