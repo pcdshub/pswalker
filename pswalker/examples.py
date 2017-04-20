@@ -24,8 +24,21 @@ class OneMirrorSystem(object):
         self.a1 = kwargs.get("a1", 0.0014)
         self.x2 = kwargs.get("x2", 0.0317324)
         self.d2 = kwargs.get("d2", 101.843)
+        self.noise_x0 = kwargs.get("noise_x0", 0)
+        self.noise_xp0 = kwargs.get("noise_xp0", 0)
+        self.noise_x1 = kwargs.get("noise_x1", 0)
+        self.noise_d1 = kwargs.get("noise_d1", 0)
+        self.noise_a1 = kwargs.get("noise_a1", 0)
+        self.noise_x2 = kwargs.get("noise_x2", 0)
+        self.noise_d2 = kwargs.get("noise_d2", 0)
+
+        self.fake_sleep_m1 = kwargs.get("fake_sleep_m1", 0)
         
-        self.mirror_1 = Mirror
+        self.mirror_1 = Mirror("Mirror 1", self.x1, self.a1, self.d1
+                               noise_position=self.noise_x1,
+                               noise_pitch=self.noise_a1,
+                               fake_sleep=self.fake_sleep_m1)
+        self.yag_1 = YAG()
 
  
 
