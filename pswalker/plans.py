@@ -41,17 +41,23 @@ def measure_centroid(detector, average=None, md=None):
     #Gather metadata
     nshots  = average or 1
     centers = np.zeros(nshots)
-    _md = {'detectors' : [det.name],
+    _md = {'detectors' : [detector.name],
            'nshots'    : nshots,
            'plan_name' : 'measure_centroid'}
     _md.update(md or {})
 
     #Gather shots
-    for i, shot in enumerate(nshots):
-        centers[i] = yield from trigger_and_read(detector)
+    for i in range(nshots):
+        #Trigger detector and wait for 
+        yield Msg('create', None)
+        yield Msg('trigger', detector, group='B')
+        yield Msg('wait', None, 'B')
+        cur_det = yield Msg('read', detector)
+        centers[i] = cur_det['centroid']['value']
+        yield Msg('save')
 
     #Return average
-    return np.mean(shot['centroid']['value'] for shot in centers)
+    return np.mean(centers)
 
 
 def walk_to_pixel(detector, motor, target,
