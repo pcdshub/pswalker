@@ -27,9 +27,9 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
     """
     prev_img_mot = str(uuid.uuid4())
     for i, mot in enumerate(img_motors):
-        if i < n and prev_out:
+        if i < n_mot and prev_out:
             yield from abs_set(mot, group=prev_img_mot, "OUT")
-        elif i == n:
+        elif i == n_mot:
             yield from abs_set(mot, group=prev_img_mot,  "IN")
         elif tail_in:
             yield from abs_set(mot, "IN")
