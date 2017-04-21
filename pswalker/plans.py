@@ -204,7 +204,7 @@ def walk_to_pixel(detector, motor, target,
         yield from mv(motor, start)
         #Take average of motor position and centroid
         (center, pos) = yield from measure_average([detector, motor],
-                                                    target_fields, 
+                                                    target_fields,
                                                     num=average, delay=delay)
         #Calculate next move if gradient is given
         if gradient:
@@ -213,7 +213,6 @@ def walk_to_pixel(detector, motor, target,
         #Otherwise go with first_step
         else:
             next_pos = start + first_step
-
         #Store information as we scan
         step = 0
         centers, angles = [center], [pos]
@@ -221,8 +220,7 @@ def walk_to_pixel(detector, motor, target,
         while not np.isclose(target, center, atol=tolerance):
             #Check we haven't exceed step limit
             if max_steps and step > max_steps:
-                yield Msg('abort')
-
+                break
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
             #Move pitch
@@ -230,15 +228,19 @@ def walk_to_pixel(detector, motor, target,
             #Measure centroid
             (center, pos) = yield from measure_average(
                                                     [detector, motor],
-                                                    target_fields, 
+                                                    target_fields,
                                                     num=average, delay=delay)
             #Store data point
             centers.append(center)
             angles.append(next_pos)
             #Calculate next step
             slope, intercept, r, p, err = linregress(angles, centers)
-            next_pos = (target - intercept)/slope
+            #Don't divide by zero
+            if slope:
+                next_pos = (target - intercept)/slope
             step += 1
+
+        return center
 
     return (yield from walk())
 
