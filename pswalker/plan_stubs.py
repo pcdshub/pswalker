@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from bluesky.plans import wait, abs_set
+from bluesky.plans import wait as plan_wait, abs_set
 
 
 def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
@@ -34,4 +34,4 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
         elif tail_in:
             yield from abs_set(mot, "IN")
 
-    yield from wait(group=prev_img_mot)
+    yield from plan_wait(group=prev_img_mot)
