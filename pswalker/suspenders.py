@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from bluesky.suspenders import SuspendFloor
+from ophyd.utils import ReadOnlyError
+from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolLow
+from pcdsdevices.signal import Signal
 from pcdsdevices.epics.signal import EpicsSignalRO
+
+from path import get_path, _controller
+
 
 class BeamEnergySuspender(SuspendFloor):
     """
@@ -25,3 +30,27 @@ class BeamRateSuspender(SuspendFloor):
         super().__init__(beam_rate, suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
                          pre_plan=pre_plan, post_plan=post_plan)
+
+
+class PathSignal(Signal):
+    def __init__(self, device, controller=_controller):
+        self.path = get_path(device, controller=controller)
+        self.path.subscribe(self.path_cb, event_type=path.SUB_PTH_CHNG)
+
+    def get(self, *args, **kwargs):
+        return len(self.path.blocking_devices)
+
+    def put(self, *args, **kwargs):
+        raise ReadOnlyError("Cannot put to PathSignal")
+
+    def path_cb(*args, **kwargs):
+        self._run_subs(sub_type=self.SUB_VALUE, value=self.get())
+
+
+class LightpathSuspender(SuspendBoolLow):
+    def __init__(self, device, sleep=0, pre_plan=None, post_plan=None,
+                 controller=_controller):
+        path = PathSignal(device, controller=controller)
+        super().__init__(path, sleep=sleep, pre_plan=pre_plan,
+                         post_plan=post_plan,
+                         tripped_message="Lightpath is blocked!")
