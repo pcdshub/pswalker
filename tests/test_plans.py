@@ -76,8 +76,14 @@ def test_walk_to_pixel(one_bounce_system):
     RE = RunEngine()
     RE.msg_hook = print
 
-    #Walk to the pixel
+    #Walk to the pixel using dumb first step
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1,
+                                     tolerance=10, average=None,
+                                     max_steps=3))
+    RE(plan)
+    assert np.isclose(det.read()['centroid']['value'], 200, atol=10)
+    #Walk to pixel using intial guess at gradient
+    plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, gradient=200,
                                      tolerance=10, average=None,
                                      max_steps=3))
     RE(plan)
