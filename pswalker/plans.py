@@ -5,6 +5,8 @@ Bluesky Plans for the Walker
 # Standard #
 ############
 import time
+import itertools
+from collections import Iterable
 ###############
 # Third Party #
 ###############
@@ -18,52 +20,121 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 # Module #
 ##########
 
-def measure_centroid(detector, average=None, md=None):
+#TODO Half assed generalization, should really use count but it has those pesky
+#     run/stage decorators
+
+def measure_average(detectors, target_fields, num=1, delay=None):
     """
-    Measure the centroid of the beam on a YAG screen
+    Gather a series of measurements from a list of detectors and return the
+    average over the number of shots
 
     Parameters
     ----------
-    detector : :class:`.BeamDetector`
+    detector : list
         YAG to make measure beam centroid
 
-    average : int, optional
+    target_fields : list
+        Fields to average for each detector
+
+    num : int, optional
         Number of images to average together for each step along the scan
 
-    md : dict, optional
-        metadata
+    delay : iterable or scalar, optional
+        Time delay between successive readings
 
     Returns
     -------
-    centroid : tuple
-        Position of the center, averaged over any number of shots
+    average : tuple
+        Tuple of the average over each event for each target_field
     """
-    #Gather metadata
-    nshots  = average or 1
-    centers = np.zeros(nshots)
-    _md = {'detectors' : [detector.name],
-           'nshots'    : nshots,
-           'plan_name' : 'measure_centroid'}
-    _md.update(md or {})
+    if len(detectors) != len(target_fields):
+        raise ValueError("Must specify a target_field for each detector")
+
+    #Data structure
+    measurements = np.zeros((num, len(detectors)))
+
+    #Handle delays
+    if not isinstance(delay, Iterable):
+        delay = itertools.repeat(delay)
+
+    else:
+        try:
+            num_delays = len(delay)
+
+        except TypeError:
+            raise ValueError("Supplied delay must be scalar or iterable")
+
+        else:
+            if num -1 > num_delays:
+                raise ValueError("num={:} but delays only provides {:} "
+                                 "entires".format(num, num_delays))
+        delay = iter(delay)
 
     #Gather shots
-    for i in range(nshots):
-        #Trigger detector and wait for 
-        yield Msg('create', None)
-        yield Msg('trigger', detector, group='B')
+    for i in range(num):
+        now = time.time()
+        #Trigger detector and wait for completion
+        yield Msg('create', None, name='primary')
+        for det in detectors:
+            yield Msg('trigger', det, group='B')
+        #Wait for completion
         yield Msg('wait', None, 'B')
-        cur_det = yield Msg('read', detector)
-        centers[i] = cur_det['centroid']['value']
+        #Read outputs
+        for j, det in enumerate(detectors):
+            cur_det = yield Msg('read', det)
+            measurements[i][j] = cur_det[target_fields[j]]['value']
+        #Emit events
         yield Msg('save')
+        #Delay before next reading 
+        try:
+            d = next(delay)
+        #Out of delays
+        except StopIteration:
+            #If our last measurement that is fine
+            if i +1 == num:
+                break
+            #Otherwise raise exception
+            else:
+                raise ValueError("num={:} but delays only provides {:} "
+                                 "entires".format(num, i))
+        #If we have a delay
+        if d is not None:
+            d = d - (time.time() - now)
+            if d > 0:
+                yield Msg('sleep', None, d)
 
     #Return average
-    return np.mean(centers)
+    return tuple(np.mean(measurements, axis=0))
+
+
+def measure_centroid(det, target_field='centroid',
+                     average=None, delay=None):
+    """
+    Measure the centroid of the beam over one or more images
+
+    Parameters
+    ----------
+    det : :class:`.BeamDetector`
+        `readable` object
+
+    target_field : str
+        Name of attribute associated with centroid position
+
+    average : int, optional
+        Number of shots to average centroid position over
+
+    delay : float, optional
+        Time to wait inbetween images
+    """
+    return measure_average([det],[target_field],
+                            num=average, delay=delay)
 
 
 def walk_to_pixel(detector, motor, target,
-                  start, first_step=1e-3,
-                  tolerance=20, average=None,
-                  timeout=None, md=None):
+                  start, gradient=None,
+                  target_fields=['centroid', 'motor'],
+                  first_step=1., tolerance=20,
+                  average=None, delay=None, max_steps=None):
     """
     Step a motor until a specific threshold is reached on the detector
 
@@ -72,14 +143,22 @@ def walk_to_pixel(detector, motor, target,
     don't know anything about the physical setup of the system, we can track
     the steps as they happen and use our prior attempts to inform future ones.
 
-    The first step of the plan takes a naive step out into the unknown
-    parameter space of the model. Using the two data points of the initial
-    centroid and the result of our first step we can form a coarse model by
-    simply drawing a line through each point. A new step is calculated based on
-    this rudimentary model, and the centroid is measured again now at a third
-    point. As we gather more data points on successive attempts at alignment
-    our linear fit improves. The iteration stops when the algorithm has
-    centered the beam within the specified tolerance
+    The first step of the plan makes a move out into the unknown parameter
+    space of the model. Using the two data points of the initial centroid and
+    the result of our first step we can form a coarse model by simply drawing a
+    line through each point. A new step is calculated based on this rudimentary
+    model, and the centroid is measured again now at a third point. As we
+    gather more data points on successive attempts at alignment our linear fit
+    improves. The iteration stops when the algorithm has centered the beam
+    within the specified tolerance.
+
+    There are ways to seed the walk with the known information to make the
+    first step the algorithm takes more fruitful. The most naive is to give it
+    a logical first step size that will keep the object you are trying to
+    center within the image. However, in some cases we may know enough to have
+    a reasonable first guess at the relationship between pitch and centroid. In
+    this case the algorithm accepts the :param:`.gradient` parameter that is
+    then used to calculate the optimal first step. 
 
     Parameters
     ----------
@@ -98,6 +177,10 @@ def walk_to_pixel(detector, motor, target,
     first_step : float, optional
         Initial step to attempt
 
+    gradient : float, optional
+        Assume an initial gradient for the relationship between pitch and beam
+        center
+
     tolerance : int, optional
         Number of pixels the final centroid position is allowed to differ from
         the target
@@ -105,9 +188,8 @@ def walk_to_pixel(detector, motor, target,
     average : int, optional
         Number of images to average together for each step along the scan
 
-    timeout : timeout, optional
-    md : dict, optional
-        metadata
+    max_steps : int, optional
+        Limit the number of steps the walk will take before exiting
     """
     ######################################
     #Error handling still needs to be done
@@ -116,29 +198,29 @@ def walk_to_pixel(detector, motor, target,
     #Too large initial step
     #No beam on PIM
     ######################################
-
-    #Assemble metadata
-    _md = {'detectors'   : [detector.name],
-           'motors'      : [motor.name],
-           'target'      : target,
-           'first_step'  : first_step,
-           'tolerance'   : tolerance,
-           'plan_name'   : 'walk_to_pixel'}
-    _md.update(md or {})
-
+    average = average or 1
     def walk():
         #Initial measurement
         yield from mv(motor, start)
-        center   = yield from measure_centroid(detector, average=average)
-        next_pos = start + first_step
+        #Take average of motor position and centroid
+        (center, pos) = yield from measure_average([detector, motor],
+                                                    target_fields, 
+                                                    num=average, delay=delay)
+        #Calculate next move if gradient is given
+        if gradient:
+            intercept = center - gradient*pos
+            next_pos = (target - intercept)/gradient
+        #Otherwise go with first_step
+        else:
+            next_pos = start + first_step
+
         #Store information as we scan
-        centers, angles = [center], [start]
-        start_time = time.time()
+        step = 0
+        centers, angles = [center], [pos]
         #Stop when motors have entered acceptable region
         while not np.isclose(target, center, atol=tolerance):
-
-            #Timeout clause
-            if timeout and (time.time() - start_time) > timeout:
+            #Check we haven't exceed step limit
+            if max_steps and step > max_steps:
                 yield Msg('abort')
 
             #Set checkpoint for rewinding
@@ -146,14 +228,17 @@ def walk_to_pixel(detector, motor, target,
             #Move pitch
             yield from  mv(motor, next_pos)
             #Measure centroid
-            center = yield from measure_centroid(detector, average=average)
-            print(center)
+            (center, pos) = yield from measure_average(
+                                                    [detector, motor],
+                                                    target_fields, 
+                                                    num=average, delay=delay)
             #Store data point
             centers.append(center)
             angles.append(next_pos)
             #Calculate next step
             slope, intercept, r, p, err = linregress(angles, centers)
             next_pos = (target - intercept)/slope
+            step += 1
 
     return (yield from walk())
 
