@@ -12,6 +12,7 @@ from bluesky.examples import Mover, Reader
 # Module #
 ##########
 
+
 class OneMirrorSystem(object):
     """
     System of a source, mirror and an imager.
@@ -31,8 +32,8 @@ class OneMirrorSystem(object):
         self._noise_a1 = kwargs.get("noise_a1", 0)
         self._noise_x2 = kwargs.get("noise_x2", 0)
         self._noise_d2 = kwargs.get("noise_d2", 0)
-        self._fake_sleep_s_x =  kwargs.get("fake_sleep_s_x", 0)
-        self._fake_sleep_s_xp =  kwargs.get("fake_sleep_s_xp", 0)
+        self._fake_sleep_s_x = kwargs.get("fake_sleep_s_x", 0)
+        self._fake_sleep_s_xp = kwargs.get("fake_sleep_s_xp", 0)
         self._fake_sleep_m1_x = kwargs.get("fake_sleep_m1_x", 0)
         self._fake_sleep_m1_z = kwargs.get("fake_sleep_m1_z", 0)
         self._fake_sleep_m1_alpha = kwargs.get("fake_sleep_m1_alpha", 0)
@@ -49,9 +50,10 @@ class OneMirrorSystem(object):
                              noise_x=self._noise_x0, noise_xp=self._noise_xp0,
                              fake_sleep_x=self._fake_sleep_s_x,
                              fake_sleep_xp=self._fake_sleep_s_xp)
-        
+
         self.mirror_1 = Mirror(self._name_m1, self._x1, self._d1, self._a1,
-                               noise_x=self._noise_x1, noise_alpha=self._noise_a1,
+                               noise_x=self._noise_x1,
+                               noise_alpha=self._noise_a1,
                                fake_sleep_x=self._fake_sleep_m1_x,
                                fake_sleep_z=self._fake_sleep_m1_z,
                                fake_sleep_alpha=self._fake_sleep_m1_alpha)
@@ -60,7 +62,7 @@ class OneMirrorSystem(object):
                          self._noise_d2, pix=self._pix_y1, size=self._size_y1,
                          fake_sleep_x=self._fake_sleep_y1_x,
                          fake_sleep_z=self._fake_sleep_y1_z)
-        
+
         def calc_cent_x():
             x = OneBounce(self.mirror_1.read()['alpha']['value'],
                           self.source.read()['x']['value'],
@@ -68,17 +70,20 @@ class OneMirrorSystem(object):
                           self.mirror_1.read()['x']['value'],
                           self.mirror_1.read()['z']['value'],
                           self.yag_1.read()['z']['value'])
-            return np.floor(self.yag_1.pix[0]/2) + (1 - 2*self._invert_y1)* \
+            return np.floor(self.yag_1.pix[0]/2) + (1 - 2*self._invert_y1) * \
                 (x - self.x2)*self.yag_1.pix[0]/self.yag_1.size[0]
 
         self.yag_1.cent_x = calc_cent_x
 
+
 def OneBounce(a1, x0, xp0, x1, d1, d2):
     return -2*a1*d1 + 2*a1*d2 - d2*xp0 + 2*x1 - x0
 
+
 def TwoBounce(alphas, x0, xp0, x1, d1, x2, d2, d3):
-    return 2*alphas[0]*d1 - 2*alphas[0]*d3 - 2*alphas[1]*d2 + 2*alphas[1]*d3 + \
-        d3*xp0 - 2*x1 + 2*x2 + x0
+    return 2*alphas[0]*d1 - 2*alphas[0]*d3 - 2*alphas[1]*d2 \
+        + 2*alphas[1]*d3 + d3*xp0 - 2*x1 + 2*x2 + x0
+
 
 class Source(object):
     """
@@ -92,13 +97,15 @@ class Source(object):
         self.fake_sleep_x = fake_sleep_x
         self.fake_sleep_xp = fake_sleep_xp
         self.x = Mover('X Motor', OrderedDict(
-                [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
+                [('x', lambda x: x + np.random.uniform(-1, 1)
+                  * self.noise_x),
                  ('x_setpoint', lambda x: x)]), {'x': x})
         self.xp = Mover('XP Motor', OrderedDict(
-                [('xp', lambda xp: xp + np.random.uniform(-1, 1)*self.noise_xp),
+                [('xp', lambda xp: xp + np.random.uniform(-1, 1)
+                  * self.noise_xp),
                  ('xp_setpoint', lambda xp: xp)]), {'xp': xp})
         self.motors = [self.x, self.xp]
-        
+
     def read(self):
         return dict(ChainMap(*[motor.read() for motor in self.motors]))
 
@@ -107,6 +114,7 @@ class Source(object):
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
+
 
 class Mirror(object):
     """
@@ -117,25 +125,34 @@ class Mirror(object):
     name : string
         Name of motor
 
-    initial_position : float
+    x: float
         Initial x position of the motor in meters from nominal
 
-    initial_pitch : float
-        Initial pitch of motor in microradians
-
-    distance : float
+    z: float
         Distance of the mirror from the source in meters
 
-    noise_position : float, optional
-        Scaler to multiply uniform noise on position 
+    alpha: float
+        Initial pitch of motor in microradians
 
-    noise_pitch : float, optional
-        Scaler to multiply uniform noise on pitch
+    noise_x: float, optional
+        Scaler to multiply uniform noise on x
 
-    fake_sleep, float, optional
-        Simulate moving time
+    noise_z: float, optional
+        Scaler to multiply uniform noise on z
+
+    noise_alpha: float, optional
+        Scaler to multiply uniform noise on alpha
+
+    fake_sleep_x: float, optional
+        Simulate moving time in x
+
+    fake_sleep_z: float, optional
+        Simulate moving time in z
+
+    fake_sleep_alpha: float, optional
+        Simulate moving time in alpha
     """
-    def __init__(self, name, x, z, alpha, noise_x=0, noise_z=0, 
+    def __init__(self, name, x, z, alpha, noise_x=0, noise_z=0,
                  noise_alpha=0, fake_sleep_x=0, fake_sleep_z=0,
                  fake_sleep_alpha=0):
         self.name = name
@@ -155,8 +172,8 @@ class Mirror(object):
                  ('z_setpoint', lambda z: z)]), {'z': z},
                        fake_sleep=self.fake_sleep_z)
         self.alpha = Mover('Alpha Motor', OrderedDict(
-                [('alpha', lambda alpha: alpha + \
-                      np.random.uniform(-1, 1)*self.noise_alpha),
+                [('alpha', lambda alpha: alpha +
+                  np.random.uniform(-1, 1)*self.noise_alpha),
                  ('alpha_setpoint', lambda alpha: alpha)]), {'alpha': alpha},
                            fake_sleep=self.fake_sleep_alpha)
         self.motors = [self.x, self.z, self.alpha]
@@ -169,35 +186,40 @@ class Mirror(object):
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
-        
+
+
 class YAG(Reader):
     """
-    Simulation of a single bounce YAG
-
-    The model makes the assumption that we have a single mirror and a
-    downstream YAG, whose edge is left edge is hit when the position of the
-    motor is zero.
+    Simulation of a YAG
 
     Parameters
     ----------
     name : str
         Alias of YAG
 
-    motor : Positioner
-        Simulated pitch of mirror
+    x: float
+        Initial x position of the motor in meters from nominal
 
-    motor_field : str
-        Name of motor_field to calculate centroid position. Value should be
-        expressed in microns
+    z: float
+        Distance of the mirror from the source in meters
 
-    distance : float
-        Distance from mirror to YAG in meters
+    noise_x: float, optional
+        Scaler to multiply uniform noise on x
 
-    inverted : bool, optional
-        Whether the image is reflected before being imaged by the camera
+    noise_z: float, optional
+        Scaler to multiply uniform noise on z
 
-    noise_multiplier : float, optional
-        Introduce unifrom random noise to the pixel location
+    fake_sleep_x: float, optional
+        Simulate moving time in x
+
+    fake_sleep_z: float, optional
+        Simulate moving time in z
+
+    **kwargs:
+        pix: (int, int)
+            Size of the image in pixels
+        size: (float, float)
+            Size of the image in meters
     """
     def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
                  fake_sleep_z=0, **kwargs):
@@ -205,7 +227,7 @@ class YAG(Reader):
         self.name = name
         self.noise_x = noise_x
         self.noise_z = noise_z
-        
+
         self.fake_sleep_x = fake_sleep_x
         self.fake_sleep_z = fake_sleep_z
 
@@ -221,19 +243,20 @@ class YAG(Reader):
 
         self.pix = kwargs.get("pix", (1392, 1040))
         self.size = kwargs.get("size", (0.0076, 0.0062))
-        
+
         def cent_x():
             return np.floor(self.pix[0]/2)
-        
+
         def cent_y():
             return np.floor(self.pix[1]/2)
 
         def cent():
             return (cent_x(), cent_y())
 
-        super().__init__(self.name, {'centroid_x' : cent_x,
-                                     'centroid_y' : cent_y,
-                                     'centroid' : cent})
+        super().__init__(self.name, {'centroid_x': cent_x,
+                                     'centroid_y': cent_y,
+                                     'centroid': cent})
+
     def read(self):
         # TODO: Roll the centroid data into this large dict, rather than it
         # just containing motor information
@@ -246,12 +269,12 @@ class YAG(Reader):
                     motor.set(kwargs[key])
 
 
-                                        
 if __name__ == "__main__":
     sys = OneMirrorSystem()
     m = sys.mirror_1
     print("x: ", m.read()['x']['value'])
     m.set(x=10)
     print("x: ", m.read()['x']['value'])
-    import IPython; IPython.embed()
+    import IPython
+    IPython.embed()
     # print("Centroid:", system.yag_1.read()['centroid_x']['value'])
