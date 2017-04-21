@@ -33,7 +33,7 @@ def get_path(device, exclude=None, path=None, controller=_controller):
 
     Parameters
     ----------
-    device: object with "name" attribute
+    device: object with "name" attribute and "remove" method.
         The device that the path ends in. It needs a name to be compared to the
         devices in lightpath, because there's no guarantee that lightpath's
         internal objects are the same as ours.
@@ -115,7 +115,8 @@ def clear_lightpath(device, exclude=None, wait=False, timeout=None,
     path: lightpath.BeamPath, optional
         If provided, we'll ignore the device and controller arguments and use
         this path instead. If it's a fake path, it needs to implement the
-        "clear" method and be a viable argument to get_path.
+        "clear" method and be a viable argument to get_path. Each of the
+        containing devices must include a "remove" method.
 
     controller: lightpath.LightController, optional
         If not provided, we'll initialize and/or use the global _controller
