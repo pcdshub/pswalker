@@ -34,10 +34,12 @@ def measure_average(detectors, target_fields, num=1, delay=None):
         YAG to make measure beam centroid
 
     target_fields : list
-        Fields to average for each detector
+        Fields to average for each detector. If a detector is not supplied
+        target_field, a meausurement is taken at each step, however, the
+        average won't be included in the final tuple
 
     num : int, optional
-        Number of images to average together for each step along the scan
+        Number of samples to average together for each step along the scan
 
     delay : iterable or scalar, optional
         Time delay between successive readings
@@ -47,11 +49,8 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     average : tuple
         Tuple of the average over each event for each target_field
     """
-    if len(detectors) != len(target_fields):
-        raise ValueError("Must specify a target_field for each detector")
-
     #Data structure
-    measurements = np.zeros((num, len(detectors)))
+    measurements = np.zeros((num, len(target_fields)))
 
     #Handle delays
     if not isinstance(delay, Iterable):
@@ -82,7 +81,11 @@ def measure_average(detectors, target_fields, num=1, delay=None):
         #Read outputs
         for j, det in enumerate(detectors):
             cur_det = yield Msg('read', det)
-            measurements[i][j] = cur_det[target_fields[j]]['value']
+            #Gather average measurements for supplied target_fields
+            try:
+                measurements[i][j] = cur_det[target_fields[j]]['value']
+            except IndexError:
+                break
         #Emit events
         yield Msg('save')
         #Delay before next reading 
@@ -133,7 +136,7 @@ def measure_centroid(det, target_field='centroid',
 def walk_to_pixel(detector, motor, target,
                   start, gradient=None,
                   target_fields=['centroid', 'motor'],
-                  first_step=1., tolerance=20,
+                  first_step=1., tolerance=20, system=None,
                   average=None, delay=None, max_steps=None):
     """
     Step a motor until a specific threshold is reached on the detector
@@ -181,6 +184,12 @@ def walk_to_pixel(detector, motor, target,
         Assume an initial gradient for the relationship between pitch and beam
         center
 
+    target_fields : iterable, optional
+        (detector, motor) fields to average and calculate line of best fit
+
+    system : list, optional
+        Extra detectors to include in the datastream as we measure the average
+
     tolerance : int, optional
         Number of pixels the final centroid position is allowed to differ from
         the target
@@ -199,11 +208,12 @@ def walk_to_pixel(detector, motor, target,
     #No beam on PIM
     ######################################
     average = average or 1
+    system  = system or []
     def walk():
         #Initial measurement
         yield from mv(motor, start)
         #Take average of motor position and centroid
-        (center, pos) = yield from measure_average([detector, motor],
+        (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
                                                     num=average, delay=delay)
         #Calculate next move if gradient is given
