@@ -44,7 +44,6 @@ class OneMirrorSystem(object):
         self.mirror_1 = Mirror(self._name_m1, self._x1, self._a1, self._d1,
                                noise_position=self._noise_x1,
                                noise_pitch=self._noise_a1,
-                               fake_sleep=self._fake_sleep_m1)
 
         self.yag_1 = YAG(self._name_y1, self._x2, self._d2, self._noise_x2,
                          self._noise_d2, pix=self._pix_y1, size=self._size_y1)
