@@ -7,13 +7,15 @@ import pytest
 from bluesky import RunEngine
 from bluesky.plans import sleep, checkpoint
 
+from pswalker.examples import YAG
 from pswalker.suspenders import (LightpathSuspender, BeamEnergySuspendFloor,
                                  BeamRateSuspendFloor)
 
 
 def ruin_my_path(path):
-    device = random.choice(path.devices)
-    device.insert()
+    choices = [d for d in path.devices if isinstance(d, YAG)]
+    device = random.choice(choices)
+    device.set("IN")
 
 
 def sleepy_scan(path):
@@ -21,7 +23,7 @@ def sleepy_scan(path):
     yield from sleep(0.2)
 
 
-pytest.mark.timeout(5)
+@pytest.mark.timeout(5)
 def test_lightpath_suspender(fake_path_two_bounce):
     path = fake_path_two_bounce
     path.clear(wait=True)
@@ -53,5 +55,5 @@ def test_beam_suspenders_sanity():
     """
     Just instantiate them to check for silly errors. It should work.
     """
-    energy = BeamEnergySuspendFloor(0.3)
-    rate = BeamRateSuspendFloor(0)
+    energy = BeamEnergySuspendFloor(0.3) # NOQA
+    rate = BeamRateSuspendFloor(0) # NOQA
