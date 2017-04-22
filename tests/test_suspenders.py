@@ -18,7 +18,7 @@ def ruin_my_path(path):
     device.set("IN")
 
 
-def sleepy_scan(path):
+def sleepy_scan():
     yield from checkpoint()
     yield from sleep(0.2)
 
@@ -33,7 +33,7 @@ def test_lightpath_suspender(fake_path_two_bounce):
     loop = RE._loop
 
     # Run once to make sure the test scan isn't bad
-    RE(sleepy_scan)
+    RE(sleepy_scan())
     assert RE.state == "idle"
 
     start = time.time()
@@ -42,7 +42,7 @@ def test_lightpath_suspender(fake_path_two_bounce):
     loop.call_later(0.5, path.clear)
 
     # Run again
-    RE(sleepy_scan)
+    RE(sleepy_scan())
     stop = time.time()
 
     delta = stop - start
