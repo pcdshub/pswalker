@@ -7,6 +7,7 @@ from collections import OrderedDict, ChainMap
 ###############
 import numpy as np
 from bluesky.examples import Mover, Reader
+from ophyd.ophydobj import OphydObject
 
 ##########
 # Module #
@@ -193,8 +194,11 @@ class Mirror(object):
     def blocking(self):
         return False
 
+    def subscribe(self, *args, **kwargs):
+        pass
 
-class YAG(Reader):
+
+class YAG(Reader, OphydObject):
     """
     Simulation of a YAG
 
@@ -230,6 +234,9 @@ class YAG(Reader):
         size: (float, float)
             Size of the image in meters
     """
+    SUB_VALUE = "value"
+    _default_sub = SUB_VALUE
+
     def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
                  fake_sleep_y=0, fake_sleep_z=0, **kwargs):
 
@@ -267,6 +274,7 @@ class YAG(Reader):
         super().__init__(self.name, {'centroid_x': cent_x,
                                      'centroid_y': cent_y,
                                      'centroid': cent})
+        OphydObject.__init__(self)  # Reader doesn't call super().__init__
 
     def read(self):
         # TODO: Roll the centroid data into this large dict, rather than it
@@ -278,6 +286,8 @@ class YAG(Reader):
             self.y_state = "OUT"
         elif cmd == "IN":
             self.y_state = "IN"
+        if cmd is not None:
+            self._run_subs(self.y_state, sub_type=self.SUB_VALUE)
 
         for key in kwargs.keys():
             for motor in self.motors:
