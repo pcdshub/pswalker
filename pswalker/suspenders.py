@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from ophyd.utils import ReadOnlyError
-from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolLow
+from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolHigh
 # from pcdsdevices.signal import Signal
 from ophyd.signal import Signal
 # from pcdsdevices.epics.signal import EpicsSignalRO
@@ -63,7 +63,7 @@ class PathSignal(Signal):
         self.path = get_path(device, exclude=exclude, path=path,
                              controller=controller)
         self.path.subscribe(self.path_cb, event_type=path.SUB_PTH_CHNG)
-        super().__init__()
+        super().__init__(name="lightpath_block_count")
 
     def get(self, *args, **kwargs):
         """
@@ -78,10 +78,10 @@ class PathSignal(Signal):
         """
         Update our subscribers with the new number of blocking devices.
         """
-        self._run_subs(sub_type=self.SUB_VALUE, value=self.get())
+        self._run_subs(sub_type=self._default_sub, value=self.get())
 
 
-class LightpathSuspender(SuspendBoolLow):
+class LightpathSuspender(SuspendBoolHigh):
     """
     Suspend the scan if lightpath reports a blockage.
     """
