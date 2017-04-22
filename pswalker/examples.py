@@ -181,11 +181,17 @@ class Mirror(object):
     def read(self):
         return dict(ChainMap(*[motor.read() for motor in self.motors]))
 
-    def set(self, **kwargs):
+    def set(self, cmd=None, **kwargs):
+        if cmd in ("IN", "OUT"):
+            pass  # If these were removable we'd implement it here
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
+
+    @property
+    def blocking(self):
+        return False
 
 
 class YAG(Reader):
@@ -212,6 +218,9 @@ class YAG(Reader):
     fake_sleep_x: float, optional
         Simulate moving time in x
 
+    fake_sleep_y: float, optional
+        Simulate moving time in y
+
     fake_sleep_z: float, optional
         Simulate moving time in z
 
@@ -222,7 +231,7 @@ class YAG(Reader):
             Size of the image in meters
     """
     def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
-                 fake_sleep_z=0, **kwargs):
+                 fake_sleep_y=0, fake_sleep_z=0, **kwargs):
 
         self.name = name
         self.noise_x = noise_x
@@ -244,6 +253,8 @@ class YAG(Reader):
         self.pix = kwargs.get("pix", (1392, 1040))
         self.size = kwargs.get("size", (0.0076, 0.0062))
 
+        self.y_state = "OUT"
+
         def cent_x():
             return np.floor(self.pix[0]/2)
 
@@ -262,11 +273,20 @@ class YAG(Reader):
         # just containing motor information
         return dict(ChainMap(*[motor.read() for motor in self.motors]))
 
-    def set(self, **kwargs):
+    def set(self, cmd=None, **kwargs):
+        if cmd == "OUT":
+            self.y_state = "OUT"
+        elif cmd == "IN":
+            self.y_state = "IN"
+
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
+
+    @property
+    def blocking(self):
+        return self.y_state == "IN"
 
 
 if __name__ == "__main__":
