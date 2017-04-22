@@ -6,6 +6,7 @@
 # Third Party #
 ###############
 import pytest
+from ophyd.ophydobj import OphydObject
 
 ##########
 # Module #
@@ -24,9 +25,15 @@ def one_bounce_system():
     return mv, yag
 
 
-class FakePath:
+class FakePath(OphydObject):
+    SUB_PTH_CHNG = "fake"
+    _default_sub = SUB_PTH_CHNG
+
     def __init__(self, *devices):
         self.devices = sorted(devices, key=lambda d: d.read()["z"]["value"])
+        super.__init__()
+        for dev in self.devices:
+            dev.subscribe(self._run_subs)
 
     def clear(self, *args, **kwargs):
         for device in self.devices:
