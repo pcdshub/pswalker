@@ -256,10 +256,11 @@ class YAG(Reader):
                        fake_sleep=self.fake_sleep_z)
         self.motors = [self.x, self.z]
 
-        self.pix = kwargs.get("pix", (1392, 1040))
-        self.size = kwargs.get("size", (0.0076, 0.0062))
+        self.pix = kwargs.pop("pix", (1392, 1040))
+        self.size = kwargs.pop("size", (0.0076, 0.0062))
 
         self.y_state = "OUT"
+        self._subs = []
 
         def cent_x():
             return np.floor(self.pix[0]/2)
@@ -272,7 +273,7 @@ class YAG(Reader):
 
         super().__init__(self.name, {'centroid_x': cent_x,
                                      'centroid_y': cent_y,
-                                     'centroid': cent})
+                                     'centroid': cent}, **kwargs)
 
     def read(self):
         # TODO: Roll the centroid data into this large dict, rather than it
@@ -284,6 +285,8 @@ class YAG(Reader):
             self.y_state = "OUT"
         elif cmd == "IN":
             self.y_state = "IN"
+        if cmd is not None:
+            self.run_subs()
 
         for key in kwargs.keys():
             for motor in self.motors:
@@ -293,6 +296,17 @@ class YAG(Reader):
     @property
     def blocking(self):
         return self.y_state == "IN"
+
+    def subscribe(self, function):
+        """
+        Get subs to run on demand
+        """
+        super().subscribe(function)
+        self._subs.append(function)
+
+    def run_subs(self):
+        for sub in self._subs:
+            sub()
 
 
 if __name__ == "__main__":
