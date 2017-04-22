@@ -7,6 +7,7 @@ from collections import OrderedDict, ChainMap
 ###############
 import numpy as np
 from bluesky.examples import Mover, Reader
+from ophyd.status import Status
 
 ##########
 # Module #
@@ -184,6 +185,9 @@ class Mirror(object):
     def set(self, cmd=None, **kwargs):
         if cmd in ("IN", "OUT"):
             pass  # If these were removable we'd implement it here
+        elif cmd is not None:
+            # Here is where we move the pitch motor if a value is set
+            return self.alpha.set(cmd)
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
@@ -195,6 +199,9 @@ class Mirror(object):
 
     def subscribe(self, *args, **kwargs):
         pass
+
+    def trigger(self, *args, **kwargs):
+        return Status(done=True, success=True)
 
 
 class YAG(Reader):
