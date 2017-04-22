@@ -26,19 +26,29 @@ def one_bounce_system():
 
 
 class FakePath(OphydObject):
-    SUB_PTH_CHNG = "fake"
+    SUB_VALUE = "value"
+    SUB_PTH_CHNG = SUB_VALUE
     _default_sub = SUB_PTH_CHNG
 
     def __init__(self, *devices):
         self.devices = sorted(devices, key=lambda d: d.read()["z"]["value"])
         super().__init__()
-        for dev in self.devices:
-            dev.subscribe(self._run_subs)
 
     def clear(self, *args, **kwargs):
         for device in self.devices:
             if device.blocking:
                 device.set("OUT")
+
+    # Looks dumb but I kind of need it because a Reader is subtly different
+    # than an OphydObject
+    def _run_subs(self, *args, sub_type=_default_sub, **kwargs):
+        super()._run_subs(*args, sub_type=sub_type, **kwargs)
+
+    def subscribe(self, *args, **kwargs):
+        # Potential danger if we subscribe multiple times in a test
+        for dev in self.devices:
+            dev.subscribe(self._run_subs)
+        super().subscribe(*args, **kwargs)
 
     @property
     def blocking_devices(self):
