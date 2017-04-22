@@ -60,7 +60,7 @@ class PathSignal(Signal):
         """
         See `LightPathSuspender` for argument documentation.
         """
-        self.path = get_path(device, exlude=exclude, path=path,
+        self.path = get_path(device, exclude=exclude, path=path,
                              controller=controller)
         self.path.subscribe(self.path_cb, event_type=path.SUB_PTH_CHNG)
 
