@@ -7,7 +7,7 @@ from ophyd.signal import Signal
 # from pcdsdevices.epics.signal import EpicsSignalRO
 from ophyd.signal import EpicsSignalRO
 
-from path import get_path, _controller
+from .path import get_path, _controller
 
 
 class PvSuspenderBase(SuspenderBase):
