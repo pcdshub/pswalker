@@ -11,7 +11,8 @@ def test_valid_fake_path(fake_path_two_bounce):
     """
     path = fake_path_two_bounce
     err = "Expected {}.{}"
-    for attr in ("devices", "clear", "blocking_devices", "subscribe"):
+    for attr in ("devices", "clear", "blocking_devices", "subscribe",
+                 "SUB_PTH_CHNG"):
         assert hasattr(path, attr), err.format(path, attr)
     assert isinstance(path.devices, list), "Expected path.devices to be a list"
     for device in path.devices:
