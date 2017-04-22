@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from ophyd.status import wait as status_wait
-from lightpath import LightController
+# from lightpath import LightController
+# TODO: When we test with a real lightpath, uncomment this and make sure
+# lightpath is in the environment
 
 _controller = None
 
