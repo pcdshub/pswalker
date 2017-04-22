@@ -21,7 +21,7 @@ def one_bounce_system():
     relationship with YAG centroid
     """
     mv = Mirror('mirror', 0, 0, 0)
-    yag = YAG('yag', mv, 'motor', 100.0)
+    yag = YAG('yag', 0, 100.0)
     return mv, yag
 
 
@@ -31,7 +31,7 @@ class FakePath(OphydObject):
 
     def __init__(self, *devices):
         self.devices = sorted(devices, key=lambda d: d.read()["z"]["value"])
-        super.__init__()
+        super().__init__()
         for dev in self.devices:
             dev.subscribe(self._run_subs)
 
