@@ -20,7 +20,7 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
         should be ordered by increasing distance to the source.
     prev_out: bool, optional
         If True, pull out imagers closer to the source than the one we need to
-        use. Default True. (True if imager blocks beam, False if you don't care)
+        use. Default True. (True if imager blocks beam)
     tail_in: bool, optional
         If True, put in imagers after this one, to be ready for later. If
         False, don't touch them. We won't wait for the tail motors to move in.
@@ -28,9 +28,9 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
     prev_img_mot = str(uuid.uuid4())
     for i, mot in enumerate(img_motors):
         if i < n_mot and prev_out:
-            yield from abs_set(mot, group=prev_img_mot, "OUT")
+            yield from abs_set(mot, "OUT", group=prev_img_mot)
         elif i == n_mot:
-            yield from abs_set(mot, group=prev_img_mot,  "IN")
+            yield from abs_set(mot, "IN", group=prev_img_mot)
         elif tail_in:
             yield from abs_set(mot, "IN")
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from ophyd.status import wait as status_wait
-from lightpath import LightController
+# from lightpath import LightController
+# TODO: When we test with a real lightpath, uncomment this and make sure
+# lightpath is in the environment
 
 _controller = None
 
@@ -33,7 +35,7 @@ def get_path(device, exclude=None, path=None, controller=_controller):
 
     Parameters
     ----------
-    device: object with "name" attribute
+    device: object with "name" attribute and "remove" method.
         The device that the path ends in. It needs a name to be compared to the
         devices in lightpath, because there's no guarantee that lightpath's
         internal objects are the same as ours.
@@ -85,6 +87,8 @@ def prune_path(path, exclude=None):
     """
     if exclude is None:
         exclude = []
+    if not isinstance(exclude, list):
+        exclude = [exclude]
     exclude = [x.name for x in exclude]
     devices = [d for d in path.devices if d.name not in exclude]
     return path.__class__(*devices)
@@ -115,7 +119,8 @@ def clear_lightpath(device, exclude=None, wait=False, timeout=None,
     path: lightpath.BeamPath, optional
         If provided, we'll ignore the device and controller arguments and use
         this path instead. If it's a fake path, it needs to implement the
-        "clear" method and be a viable argument to get_path.
+        "clear" method and be a viable argument to get_path. Each of the
+        containing devices must include a "remove" method.
 
     controller: lightpath.LightController, optional
         If not provided, we'll initialize and/or use the global _controller

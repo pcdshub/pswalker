@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from copy import copy
-
 from ophyd.utils import ReadOnlyError
-from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolLow
+from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolHigh
 # from pcdsdevices.signal import Signal
 from ophyd.signal import Signal
 # from pcdsdevices.epics.signal import EpicsSignalRO
 from ophyd.signal import EpicsSignalRO
 
-from path import get_path, _controller
+from .path import get_path, _controller
 
 
 class PvSuspenderBase(SuspenderBase):
@@ -34,8 +32,8 @@ class BeamEnergySuspendFloor(PvSuspendFloor):
     """
     Suspend the run if the beam energy falls below a set value.
     """
-    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0, pre_plan,
-                 post_plan):
+    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
+                 pre_plan=None, post_plan=None):
         super().__init__("SIOC:SYS0:ML00:AO627", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
                          pre_plan=pre_plan, post_plan=post_plan)
@@ -45,8 +43,8 @@ class BeamRateSuspendFloor(PvSuspendFloor):
     """
     Suspend the run if the beam rate falls below a set value.
     """
-    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0, pre_plan,
-                 post_plan):
+    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
+                 pre_plan=None, post_plan=None):
         super().__init__("EVNT:SYS0:1:LCLSBEAMRATE", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
                          pre_plan=pre_plan, post_plan=post_plan)
@@ -62,9 +60,10 @@ class PathSignal(Signal):
         """
         See `LightPathSuspender` for argument documentation.
         """
-        self.path = get_path(device, exlude=exclude, path=path,
+        self.path = get_path(device, exclude=exclude, path=path,
                              controller=controller)
         self.path.subscribe(self.path_cb, event_type=path.SUB_PTH_CHNG)
+        super().__init__(name="lightpath_block_count")
 
     def get(self, *args, **kwargs):
         """
@@ -75,14 +74,14 @@ class PathSignal(Signal):
     def put(self, *args, **kwargs):
         raise ReadOnlyError("Cannot put to PathSignal")
 
-    def path_cb(*args, **kwargs):
+    def path_cb(self, *args, **kwargs):
         """
         Update our subscribers with the new number of blocking devices.
         """
-        self._run_subs(sub_type=self.SUB_VALUE, value=self.get())
+        self._run_subs(sub_type=self._default_sub, value=self.get())
 
 
-class LightpathSuspender(SuspendBoolLow):
+class LightpathSuspender(SuspendBoolHigh):
     """
     Suspend the scan if lightpath reports a blockage.
     """
