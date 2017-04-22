@@ -58,5 +58,5 @@ def test_clear_lightpath(fake_path_two_bounce):
             exclude_device = device
             break
     clear_lightpath(None, exclude=exclude_device, path=path, wait=True)
-    assert len(path.blocking_devices == 1), \
+    assert len(path.blocking_devices) == 1, \
         "Only one device should be in! {}".format(path.blocking_devices)
