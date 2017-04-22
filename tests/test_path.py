@@ -48,7 +48,7 @@ def test_clear_lightpath(fake_path_two_bounce):
     for device in path.devices:
         device.set("IN")
     clear_lightpath(None, path=path, wait=True)
-    assert len(path.blocking_devices == 0), \
+    assert len(path.blocking_devices) == 0, \
         "Some devices not removed: {}".format(path.blocking_devices)
     for device in path.devices:
         device.set("IN")
