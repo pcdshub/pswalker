@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from pswalker.examples import YAG
-from pswalker.path import prune_path, get_path, clear_path
+from pswalker.path import prune_path, get_path, clear_lightpath
 
 
 def test_valid_fake_path(fake_path_two_bounce):
@@ -43,11 +43,11 @@ def test_get_path_sanity(fake_path_two_bounce):
         assert d1 == d2, "Path from new_path changes devices or their order"
 
 
-def test_clear_path(fake_path_two_bounce):
+def test_clear_lightpath(fake_path_two_bounce):
     path = fake_path_two_bounce
     for device in path.devices:
         device.set("IN")
-    clear_path(None, path=path, wait=True)
+    clear_lightpath(None, path=path, wait=True)
     assert len(path.blocking_devices == 0), \
         "Some devices not removed: {}".format(path.blocking_devices)
     for device in path.devices:
@@ -56,6 +56,6 @@ def test_clear_path(fake_path_two_bounce):
         if isinstance(device, YAG):
             exclude_device = device
             break
-    clear_path(None, exclude=exclude_device, path=path, wait=True)
+    clear_lightpath(None, exclude=exclude_device, path=path, wait=True)
     assert len(path.blocking_devices == 1), \
         "Only one device should be in! {}".format(path.blocking_devices)
