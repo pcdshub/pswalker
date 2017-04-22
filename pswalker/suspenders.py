@@ -63,6 +63,7 @@ class PathSignal(Signal):
         self.path = get_path(device, exclude=exclude, path=path,
                              controller=controller)
         self.path.subscribe(self.path_cb, event_type=path.SUB_PTH_CHNG)
+        super().__init__()
 
     def get(self, *args, **kwargs):
         """
