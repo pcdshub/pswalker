@@ -87,6 +87,8 @@ def prune_path(path, exclude=None):
     """
     if exclude is None:
         exclude = []
+    if not isinstance(exclude, list):
+        exclude = [exclude]
     exclude = [x.name for x in exclude]
     devices = [d for d in path.devices if d.name not in exclude]
     return path.__class__(*devices)
