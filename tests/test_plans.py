@@ -65,7 +65,8 @@ def test_measure_centroid(one_bounce_system):
     centroids = []
     col_c = collector('centroid_x', centroids)
     #Run plan
-    RE(run_wrapper(measure_centroid(det, average=5)),
+    # assert 0
+    RE(run_wrapper(measure_centroid(det, average=5, target_field='centroid_x')),
        subs={'event':[col_c]})
     #Check events
     assert centroids == [250.,250.,250.,250.,250.]
@@ -79,12 +80,14 @@ def test_walk_to_pixel(one_bounce_system):
     #Walk to the pixel using dumb first step
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1,
                                      tolerance=10, average=None,
+                                     target_fields=['centroid_x', 'alpha'],
                                      max_steps=3))
     RE(plan)
     assert np.isclose(det.read()['centroid_x']['value'], 200, atol=10)
     #Walk to pixel using intial guess at gradient
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, gradient=200,
                                      tolerance=10, average=None,
+                                     target_fields=['centroid_x', 'alpha'],
                                      max_steps=3))
     RE(plan)
     assert np.isclose(det.read()['centroid_x']['value'], 200, atol=10)

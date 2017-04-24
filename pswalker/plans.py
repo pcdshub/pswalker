@@ -110,7 +110,7 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     return tuple(np.mean(measurements, axis=0))
 
 
-def measure_centroid(det, target_field='centroid',
+def measure_centroid(det, target_field='centroid_x',
                      average=None, delay=None):
     """
     Measure the centroid of the beam over one or more images
@@ -135,7 +135,7 @@ def measure_centroid(det, target_field='centroid',
 
 def walk_to_pixel(detector, motor, target,
                   start, gradient=None,
-                  target_fields=['centroid', 'motor'],
+                  target_fields=['centroid_x', 'alpha'],
                   first_step=1., tolerance=20, system=None,
                   average=None, delay=None, max_steps=None):
     """
