@@ -2,6 +2,7 @@
 # Standard #
 ############
 from collections import OrderedDict, ChainMap
+from pprint import pprint
 ###############
 # Third Party #
 ###############
@@ -61,17 +62,19 @@ class OneMirrorSystem(object):
                          fake_sleep_x=self._fake_sleep_y1_x,
                          fake_sleep_z=self._fake_sleep_y1_z)
         
-        def calc_cent_x():
-            x = OneBounce(self.mirror_1.read()['alpha']['value'],
-                          self.source.read()['x']['value'],
-                          self.source.read()['xp']['value'],
-                          self.mirror_1.read()['x']['value'],
-                          self.mirror_1.read()['z']['value'],
-                          self.yag_1.read()['z']['value'])
-            return np.floor(self.yag_1.pix[0]/2) + (1 - 2*self._invert_y1)* \
-                (x - self.x2)*self.yag_1.pix[0]/self.yag_1.size[0]
+        self.yag_1._cent_x = self.calc_cent_x
 
-        self.yag_1.cent_x = calc_cent_x
+    def calc_cent_x(self):
+        x = OneBounce(self.mirror_1._alpha,
+                      self.source._x,
+                      self.source._xp,
+                      self.mirror_1._x,
+                      self.mirror_1._z,
+                      self.yag_1._z)
+        return np.round(np.floor(self.yag_1.pix[0]/2) + \
+                        (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
+                        self.yag_1.pix[0]/self.yag_1.size[0])
+
 
 def OneBounce(a1, x0, xp0, x1, d1, d2):
     return -2*a1*d1 + 2*a1*d2 - d2*xp0 + 2*x1 - x0
@@ -97,12 +100,16 @@ class Source(object):
         self.xp = Mover('XP Motor', OrderedDict(
                 [('xp', lambda xp: xp + np.random.uniform(-1, 1)*self.noise_xp),
                  ('xp_setpoint', lambda xp: xp)]), {'xp': xp})
-        self.motors = [self.x, self.xp]
+        self.motors = [self.x, self.xp]        
+        self._x = x
+        self._xp = xp
         
     def read(self):
         return dict(ChainMap(*[motor.read() for motor in self.motors]))
 
     def set(self, **kwargs):
+        self._x = kwargs.get('x', self._x)
+        self._xp = kwargs.get('xp', self._xp)        
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
@@ -145,7 +152,6 @@ class Mirror(object):
         self.fake_sleep_x = fake_sleep_x
         self.fake_sleep_z = fake_sleep_z
         self.fake_sleep_alpha = fake_sleep_alpha
-
         self.x = Mover('X Motor', OrderedDict(
                 [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
                  ('x_setpoint', lambda x: x)]), {'x': x},
@@ -160,17 +166,23 @@ class Mirror(object):
                  ('alpha_setpoint', lambda alpha: alpha)]), {'alpha': alpha},
                            fake_sleep=self.fake_sleep_alpha)
         self.motors = [self.x, self.z, self.alpha]
+        self._x = x
+        self._z = z
+        self._alpha = alpha        
 
     def read(self):
         return dict(ChainMap(*[motor.read() for motor in self.motors]))
 
     def set(self, **kwargs):
+        self._x = kwargs.get('x', self._x)
+        self._z = kwargs.get('z', self._z)
+        self._alpha = kwargs.get('alpha', self._alpha)
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
         
-class YAG(Reader):
+class YAG(object):
     """
     Simulation of a single bounce YAG
 
@@ -201,14 +213,11 @@ class YAG(Reader):
     """
     def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
                  fake_sleep_z=0, **kwargs):
-
         self.name = name
         self.noise_x = noise_x
         self.noise_z = noise_z
-        
         self.fake_sleep_x = fake_sleep_x
         self.fake_sleep_z = fake_sleep_z
-
         self.x = Mover('X Motor', OrderedDict(
                 [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
                  ('x_setpoint', lambda x: x)]), {'x': x},
@@ -217,41 +226,54 @@ class YAG(Reader):
                 [('z', lambda z: z + np.random.uniform(-1, 1)*self.noise_z),
                  ('z_setpoint', lambda z: z)]), {'z': z},
                        fake_sleep=self.fake_sleep_z)
-        self.motors = [self.x, self.z]
-
         self.pix = kwargs.get("pix", (1392, 1040))
-        self.size = kwargs.get("size", (0.0076, 0.0062))
-        
-        def cent_x():
-            return np.floor(self.pix[0]/2)
-        
-        def cent_y():
-            return np.floor(self.pix[1]/2)
+        self.size = kwargs.get("size", (0.0076, 0.0062))        
+        self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
+                                         'centroid_y' : self.cent_y,
+                                         'centroid' : self.cent})        
+        self.devices = [self.x, self.z, self.reader]
+        self._x = x
+        self._z = z
 
-        def cent():
-            return (cent_x(), cent_y())
+    def _cent_x(self):
+        return np.floor(self.pix[0]/2)
 
-        super().__init__(self.name, {'centroid_x' : cent_x,
-                                     'centroid_y' : cent_y,
-                                     'centroid' : cent})
+    def _cent_y(self):
+        return np.floor(self.pix[1]/2)
+
+    def cent_x(self):
+        return self._cent_x()
+    
+    def cent_y(self):
+        return self._cent_y()
+    
+    def cent(self):
+        return (self.cent_x(), self.cent_y())
+                             
     def read(self):
-        # TODO: Roll the centroid data into this large dict, rather than it
-        # just containing motor information
-        return dict(ChainMap(*[motor.read() for motor in self.motors]))
+        return dict(ChainMap(*[dev.read() for dev in self.devices]))
 
     def set(self, **kwargs):
+        self._x = kwargs.get('x', self._x)
+        self._z = kwargs.get('z', self._z)
         for key in kwargs.keys():
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
-
-
                                         
 if __name__ == "__main__":
     sys = OneMirrorSystem()
     m = sys.mirror_1
-    print("x: ", m.read()['x']['value'])
-    m.set(x=10)
-    print("x: ", m.read()['x']['value'])
-    import IPython; IPython.embed()
+    # print("x: ", m.read()['x']['value'])
+    # m.set(x=10)
+    # print("x: ", m.read()['x']['value'])
+
+    y = sys.yag_1
+    # import ipdb; ipdb.set_trace()
+    pprint(y.read()['centroid_x']['value'])
+
+    m.set(x=0.035)
+    pprint(y.read()['centroid_x']['value'])
+    
+    # import IPython; IPython.embed()
     # print("Centroid:", system.yag_1.read()['centroid_x']['value'])
