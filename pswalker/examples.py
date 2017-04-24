@@ -294,6 +294,7 @@ class YAG(Reader):
             self.y_state = "IN"
         if cmd is not None:
             self.run_subs()
+            return Status(done=True, success=True)
 
         for key in kwargs.keys():
             for motor in self.motors:
