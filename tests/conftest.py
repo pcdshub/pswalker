@@ -11,7 +11,8 @@ from ophyd.ophydobj import OphydObject
 ##########
 # Module #
 ##########
-from pswalker.examples import YAG, Mirror, OneMirrorSystem, TwoMirrorSystem
+from pswalker.examples import (YAG, Mirror, OneMirrorOneYagSystem,
+                               TwoMirrorTwoYagSystem, TwoMirrorNYagSystem)
 
 
 @pytest.fixture(scope='function')
@@ -20,10 +21,10 @@ def one_bounce_system():
     Generic single bounce system consisting one mirror with a linear
     relationship with YAG centroid
     """
-    system = OneMirrorSystem(name_m1='mirror', x1=0, z1=0, a1=0,
+    system = OneMirrorOneYagSystem(name_m1='mirror', x1=0, z1=0, a1=0,
                              name_y1='yag', x2=0, z2=100,
                              pix_y1=(500,500))
-    return system.mirror_1, system.yag_1
+    return system.mirror_1.alpha, system.yag_1
 
 
 class FakePath(OphydObject):
@@ -62,6 +63,9 @@ def fake_path_two_bounce():
     pswalker-compatible lightpath.BeamPath with fake objects. Pretends to be
     the HOMS system.
     """
+    # system = TwoMirrorSystem(
+
+    
     p1h = YAG("p1h", 0, 0)
     feem1 = Mirror("feem1", 0, 10, 0)
     p2h = YAG("p2h", 0, 20)
