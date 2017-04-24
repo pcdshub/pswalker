@@ -32,13 +32,13 @@ class OneMirrorSystem(object):
         self._noise_a1 = kwargs.get("noise_a1", 0)
         self._noise_x2 = kwargs.get("noise_x2", 0)
         self._noise_d2 = kwargs.get("noise_d2", 0)
-        self._fake_sleep_s_x =  kwargs.get("fake_sleep_s_x", 0)
-        self._fake_sleep_s_xp =  kwargs.get("fake_sleep_s_xp", 0)
-        self._fake_sleep_m1_x = kwargs.get("fake_sleep_m1_x", 0)
-        self._fake_sleep_m1_z = kwargs.get("fake_sleep_m1_z", 0)
-        self._fake_sleep_m1_alpha = kwargs.get("fake_sleep_m1_alpha", 0)
-        self._fake_sleep_y1_x = kwargs.get("fake_sleep_y1_x", 0)
-        self._fake_sleep_y1_z = kwargs.get("fake_sleep_y1_z", 0)
+        self._fake_sleep_x0 = kwargs.get("fake_sleep_x0", 0)
+        self._fake_sleep_xp0 = kwargs.get("fake_sleep_xp0", 0)
+        self._fake_sleep_x1 = kwargs.get("fake_sleep_x1", 0)
+        self._fake_sleep_d1 = kwargs.get("fake_sleep_d1", 0)
+        self._fake_sleep_a1 = kwargs.get("fake_sleep_a1", 0)
+        self._fake_sleep_x2 = kwargs.get("fake_sleep_x2", 0)
+        self._fake_sleep_d2 = kwargs.get("fake_sleep_d2", 0)
         self._name_s = kwargs.get("name_s", "Source")
         self._name_m1 = kwargs.get("name_m1", "Mirror 1")
         self._name_y1 = kwargs.get("name_y1", "YAG 1")
@@ -48,23 +48,21 @@ class OneMirrorSystem(object):
 
         self.source = Source(self._name_s, self._x0, self._xp0,
                              noise_x=self._noise_x0, noise_xp=self._noise_xp0,
-                             fake_sleep_x=self._fake_sleep_s_x,
-                             fake_sleep_xp=self._fake_sleep_s_xp)
-        
+                             fake_sleep_x=self._fake_sleep_x0,
+                             fake_sleep_xp=self._fake_sleep_xp0)        
         self.mirror_1 = Mirror(self._name_m1, self._x1, self._d1, self._a1,
                                noise_x=self._noise_x1, noise_alpha=self._noise_a1,
-                               fake_sleep_x=self._fake_sleep_m1_x,
-                               fake_sleep_z=self._fake_sleep_m1_z,
-                               fake_sleep_alpha=self._fake_sleep_m1_alpha)
-
+                               fake_sleep_x=self._fake_sleep_x1,
+                               fake_sleep_z=self._fake_sleep_d1,
+                               fake_sleep_alpha=self._fake_sleep_a1)
         self.yag_1 = YAG(self._name_y1, self._x2, self._d2, self._noise_x2,
                          self._noise_d2, pix=self._pix_y1, size=self._size_y1,
-                         fake_sleep_x=self._fake_sleep_y1_x,
-                         fake_sleep_z=self._fake_sleep_y1_z)
+                         fake_sleep_x=self._fake_sleep_x2,
+                         fake_sleep_z=self._fake_sleep_d2)
         
-        self.yag_1._cent_x = self.calc_cent_x
+        self.yag_1._cent_x = self._calc_cent_x
 
-    def calc_cent_x(self):
+    def _calc_cent_x(self):
         x = OneBounce(self.mirror_1._alpha,
                       self.source._x,
                       self.source._xp,
@@ -75,6 +73,116 @@ class OneMirrorSystem(object):
                         (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
                         self.yag_1.pix[0]/self.yag_1.size[0])
 
+class TwoMirrorSystem(object):
+    """
+    System of a source, mirror and an imager.
+    """
+    def __init__(self, **kwargs):
+        # Initial Positions
+        self._x0 = kwargs.get("x0", 0)
+        self._xp0 = kwargs.get("xp0", 0)
+        self._x1 = kwargs.get("x1", 0)
+        self._d1 = kwargs.get("d1", 90.510)
+        self._a1 = kwargs.get("a1", 0.0014)
+        self._x2 = kwargs.get("x2", 0.0317324)
+        self._d2 = kwargs.get("d2", 101.843)
+        self._a2 = kwargs.get("a2", 0.0014)
+        self._x3 = kwargs.get("x3", 0.0317324)
+        self._d3 = kwargs.get("d3", 103.660)
+        self._x4 = kwargs.get("x4", 0.0317324)
+        self._d4 = kwargs.get("d4", 375.000)
+        # Noise for positions
+        self._noise_x0 = kwargs.get("noise_x0", 0)
+        self._noise_xp0 = kwargs.get("noise_xp0", 0)
+        self._noise_x1 = kwargs.get("noise_x1", 0)
+        self._noise_d1 = kwargs.get("noise_d1", 0)
+        self._noise_a1 = kwargs.get("noise_a1", 0)
+        self._noise_x2 = kwargs.get("noise_x2", 0)
+        self._noise_d2 = kwargs.get("noise_d2", 0)
+        self._noise_a2 = kwargs.get("noise_a2", 0)
+        self._noise_x3 = kwargs.get("noise_x3", 0)
+        self._noise_d3 = kwargs.get("noise_d3", 0)
+        self._noise_x4 = kwargs.get("noise_x4", 0)
+        self._noise_d4 = kwargs.get("noise_d4", 0)
+        # Fake Sleep for motors
+        self._fake_sleep_x0 = kwargs.get("fake_sleep_x0", 0)
+        self._fake_sleep_xp0 = kwargs.get("fake_sleep_xp0", 0)
+        self._fake_sleep_x1 = kwargs.get("fake_sleep_x1", 0)
+        self._fake_sleep_d1 = kwargs.get("fake_sleep_d1", 0)
+        self._fake_sleep_a1 = kwargs.get("fake_sleep_a1", 0)
+        self._fake_sleep_x2 = kwargs.get("fake_sleep_x2", 0)
+        self._fake_sleep_d2 = kwargs.get("fake_sleep_d2", 0)
+        self._fake_sleep_a2 = kwargs.get("fake_sleep_a2", 0)
+        self._fake_sleep_x3 = kwargs.get("fake_sleep_x3", 0)
+        self._fake_sleep_d3 = kwargs.get("fake_sleep_d3", 0)
+        self._fake_sleep_x4 = kwargs.get("fake_sleep_x4", 0)
+        self._fake_sleep_d4 = kwargs.get("fake_sleep_d4", 0)
+        # Other
+        self._name_s = kwargs.get("name_s", "Source")
+        self._name_m1 = kwargs.get("name_m1", "Mirror 1")
+        self._name_m2 = kwargs.get("name_m2", "Mirror 2")
+        self._name_y1 = kwargs.get("name_y1", "YAG 1")
+        self._pix_y1 = kwargs.get("pix_y1", (1392, 1040))
+        self._size_y1 = kwargs.get("size_y1", (0.0076, 0.0062))
+        self._invert_y1 = kwargs.get("invert_y1", False)
+        self._name_y2 = kwargs.get("name_y2", "YAG 2")        
+        self._pix_y2 = kwargs.get("pix_y2", (1392, 1040))
+        self._size_y2 = kwargs.get("size_y2", (0.0076, 0.0062))
+        self._invert_y2 = kwargs.get("invert_y2", False)
+
+        self.source = Source(self._name_s, self._x0, self._xp0,
+                             noise_x=self._noise_x0, noise_xp=self._noise_xp0,
+                             fake_sleep_x=self._fake_sleep_x0,
+                             fake_sleep_xp=self._fake_sleep_xp0)        
+        self.mirror_1 = Mirror(self._name_m1, self._x1, self._d1, self._a1,
+                               noise_x=self._noise_x1,
+                               noise_alpha=self._noise_a1,
+                               fake_sleep_x=self._fake_sleep_x1,
+                               fake_sleep_z=self._fake_sleep_d1,
+                               fake_sleep_alpha=self._fake_sleep_a2)
+        self.mirror_2 = Mirror(self._name_m2, self._x2, self._d2, self._a2,
+                               noise_x=self._noise_x2,
+                               noise_alpha=self._noise_a2,
+                               fake_sleep_x=self._fake_sleep_x2,
+                               fake_sleep_z=self._fake_sleep_d2,
+                               fake_sleep_alpha=self._fake_sleep_a2)
+        self.yag_1 = YAG(self._name_y1, self._x3, self._d3, self._noise_x3,
+                         self._noise_d3, pix=self._pix_y1, size=self._size_y1,
+                         fake_sleep_x=self._fake_sleep_x3,
+                         fake_sleep_z=self._fake_sleep_d3)
+        self.yag_2 = YAG(self._name_y2, self._x4, self._d4, self._noise_x4,
+                         self._noise_d4, pix=self._pix_y2, size=self._size_y2,
+                         fake_sleep_x=self._fake_sleep_x4,
+                         fake_sleep_z=self._fake_sleep_d4)
+        
+        self.yag_1._cent_x = self._m1_calc_cent_x
+        self.yag_2._cent_x = self._m2_calc_cent_x
+
+    def _m1_calc_cent_x(self):
+        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
+                      self.source._x,
+                      self.source._xp,
+                      self.mirror_1._x,
+                      self.mirror_1._z,
+                      self.mirror_2._x,
+                      self.mirror_2._z,
+                      self.yag_1._z)        
+        return np.round(np.floor(self.yag_1.pix[0]/2) + \
+                        (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
+                        self.yag_1.pix[0]/self.yag_1.size[0])
+
+    def _m2_calc_cent_x(self):
+        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
+                      self.source._x,
+                      self.source._xp,
+                      self.mirror_1._x,
+                      self.mirror_1._z,
+                      self.mirror_2._x,
+                      self.mirror_2._z,
+                      self.yag_2._z)        
+        return np.round(np.floor(self.yag_2.pix[0]/2) + \
+                        (1 - 2*self._invert_y2)*(x - self.yag_2._x) * \
+                        self.yag_2.pix[0]/self.yag_2.size[0])
 
 def OneBounce(a1, x0, xp0, x1, d1, d2):
     return -2*a1*d1 + 2*a1*d2 - d2*xp0 + 2*x1 - x0
@@ -262,18 +370,24 @@ class YAG(object):
                     motor.set(kwargs[key])
                                         
 if __name__ == "__main__":
-    sys = OneMirrorSystem()
-    m = sys.mirror_1
+    sys = TwoMirrorSystem()
+    m1 = sys.mirror_1
+    m2 = sys.mirror_2
+    y1 = sys.yag_1
+    y2 = sys.yag_2
     # print("x: ", m.read()['x']['value'])
     # m.set(x=10)
     # print("x: ", m.read()['x']['value'])
 
-    y = sys.yag_1
     # import ipdb; ipdb.set_trace()
-    pprint(y.read()['centroid_x']['value'])
+    pprint(y1.read()['centroid_x']['value'])
+    pprint(y2.read()['centroid_x']['value'])
 
-    m.set(x=0.035)
-    pprint(y.read()['centroid_x']['value'])
+    m1.set(alpha=0.0013644716418)
+    m2.set(alpha=0.0013674199723)
+    
+    pprint(y1.read()['centroid_x']['value'])
+    pprint(y2.read()['centroid_x']['value'])    
     
     # import IPython; IPython.embed()
     # print("Centroid:", system.yag_1.read()['centroid_x']['value'])
