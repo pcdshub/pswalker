@@ -102,3 +102,6 @@ ENV/
 *#
 .#*
 #*
+
+# vim swap files
+*.swp
