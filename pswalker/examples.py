@@ -526,6 +526,7 @@ class Source(object):
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
+        return Status(done=True, success=True)
 
 
 class Mirror(object):
@@ -608,6 +609,20 @@ class Mirror(object):
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
+        return Status(done=True, success=True)
+
+    def describe(self, *args, **kwargs):
+        return dict(ChainMap(*[motor.describe(*args, **kwargs)
+                               for motor in self.motors]))
+
+    def describe_configuration(self, *args, **kwargs):
+        return dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+                               for motor in self.motors]))
+
+    def read_configuration(self, *args, **kwargs):
+        return dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+                               for motor in self.motors]))
+    
     @property
     def blocking(self):
         return False
@@ -698,8 +713,9 @@ class YAG(object):
     def cent(self):
         return (self.cent_x(), self.cent_y())
                              
-    def read(self):
-        return dict(ChainMap(*[dev.read() for dev in self.devices]))
+    def read(self, *args, **kwargs):
+        return dict(ChainMap(*[dev.read(*args, **kwargs)
+                               for dev in self.devices]))
 
     def set(self, cmd=None, **kwargs):
         if cmd == "OUT":
@@ -715,7 +731,27 @@ class YAG(object):
             for motor in self.motors:
                 if key in motor.read():
                     motor.set(kwargs[key])
-                    
+        return Status(done=True, success=True)
+
+    def trigger(self, *args, **kwargs):
+        return self.reader.trigger(*args, **kwargs)    
+
+    def describe(self, *args, **kwargs):
+        return self.reader.describe(*args, **kwargs)
+        # return dict(ChainMap(*[dev.describe(*args, **kwargs)
+        #                        for dev in self.devices]))
+
+    def describe_configuration(self, *args, **kwargs):
+        return self.reader.describe_configuration(*args, **kwargs)
+        
+        # return dict(ChainMap(*[dev.describe_configuration(*args, **kwargs)
+        #                        for dev in self.devices]))
+
+    def read_configuration(self, *args, **kwargs):
+        return self.reader.read_configuration(*args, **kwargs)
+        # return dict(ChainMap(*[dev.read_configuration(*args, **kwargs)
+        #                        for dev in self.devices]))
+    
     @property
     def blocking(self):
         return self.y_state == "IN"
@@ -742,11 +778,14 @@ if __name__ == "__main__":
     # print("x: ", m.read()['x']['value'])
 
     # import ipdb; ipdb.set_trace()
-    pprint(y1.read()['centroid_x']['value'])
-    pprint(y2.read()['centroid_x']['value'])
+    # pprint(y1.read()['centroid_x']['value'])
+    # pprint(y2.read()['centroid_x']['value'])
 
     m1.set(alpha=0.0013644716418)
     m2.set(alpha=0.0013674199723)
     
     pprint(y1.read()['centroid_x']['value'])
     pprint(y2.read()['centroid_x']['value'])    
+
+
+    pprint(y1.describe_configuration())
