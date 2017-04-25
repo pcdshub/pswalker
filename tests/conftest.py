@@ -63,8 +63,6 @@ def fake_path_two_bounce():
     pswalker-compatible lightpath.BeamPath with fake objects. Pretends to be
     the HOMS system.
     """
-    # system = TwoMirrorSystem(
-
     
     p1h = YAG("p1h", 0, 0)
     feem1 = Mirror("feem1", 0, 10, 0)
@@ -74,5 +72,11 @@ def fake_path_two_bounce():
     hx2_pim = YAG("hx2_pim", 0, 50)
     um6_pim = YAG("um6_pim", 0, 60)
     dg3_pim = YAG("dg3_pim", 0, 70)
+
+    yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
+    system = TwoMirrorNYagSystem(name_m1='feem1', name_m2='feem2',
+                                 x1=0, z1=10, x2=0, z2=30)
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = system.patch_yags(yags)
+    
     path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
     return path

@@ -444,6 +444,11 @@ class TwoMirrorTwoYagSystem(object):
         self.yag_1._cent_x = self._m1_calc_cent_x
         self.yag_2._cent_x = self._m2_calc_cent_x
 
+    def _x_to_pixel(self, yag):
+        return np.round(np.floor(yag_1.pix[0]/2) + \
+                        (1 - 2*self._invert_y1)*(x - yag_1._x) * \
+                        yag_1.pix[0]/yag_1.size[0])                
+
     def _m1_calc_cent_x(self):
         x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
                       self.source._x,
@@ -452,10 +457,8 @@ class TwoMirrorTwoYagSystem(object):
                       self.mirror_1._z,
                       self.mirror_2._x,
                       self.mirror_2._z,
-                      self.yag_1._z)        
-        return np.round(np.floor(self.yag_1.pix[0]/2) + \
-                        (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
-                        self.yag_1.pix[0]/self.yag_1.size[0])
+                      self.yag_1._z)
+        return self._x_to_pixel(self.yag_1)
 
     def _m2_calc_cent_x(self):
         x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
@@ -465,10 +468,8 @@ class TwoMirrorTwoYagSystem(object):
                       self.mirror_1._z,
                       self.mirror_2._x,
                       self.mirror_2._z,
-                      self.yag_2._z)        
-        return np.round(np.floor(self.yag_2.pix[0]/2) + \
-                        (1 - 2*self._invert_y2)*(x - self.yag_2._x) * \
-                        self.yag_2.pix[0]/self.yag_2.size[0])
+                      self.yag_2._z)
+        return self._x_to_pixel(self.yag_2)
 
     def get_components(self):
         return self.source, self.mirror_1, self.mirror_2, self.yag_1, self.yag_2
@@ -563,8 +564,8 @@ class TwoMirrorNYagSystem(object):
     fake_sleep_a2 : float, optional
     	Amount of time to wait after moving second mirror alpha-motor
     """
-    def __init__(self, yags, **kwargs):
-        self.yags = yags
+    def __init__(self, **kwargs):
+        self.yags = kwargs.get("yags", None)
         self._name_s = kwargs.get("name_s", "Source")
         self._name_m1 = kwargs.get("name_m1", "Mirror 1")
         self._name_m2 = kwargs.get("name_m2", "Mirror 2")
@@ -612,11 +613,28 @@ class TwoMirrorNYagSystem(object):
                                fake_sleep_x=self._fake_sleep_x2,
                                fake_sleep_z=self._fake_sleep_z2,
                                fake_sleep_alpha=self._fake_sleep_a2)
-        
-        self.yag_1._cent_x = self._m1_calc_cent_x
-        self.yag_2._cent_x = self._m2_calc_cent_x
+        if self.yags:
+            self.yags = self.patch_yags(self.yags)
 
-    def _m1_calc_cent_x(self):
+    def _x_to_pixel(self, x, yag):
+        return np.round(np.floor(yag.pix[0]/2) + \
+                        (1 - 2*yag.invert)*(x - yag._x) * \
+                        yag.pix[0]/yag.size[0])         
+
+    def _cal_cent_x(self, yag):
+        x = self.source._x + self.source._xp*yag._z
+        return self._x_to_pixel(x, yag)
+
+    def _m1_calc_cent_x(self, yag):
+        x = OneBounce(self.mirror_1._alpha,
+                      self.source._x,
+                      self.source._xp,
+                      self.mirror_1._x,
+                      self.mirror_1._z,
+                      yag._z)
+        return self._x_to_pixel(x, yag)
+            
+    def _m1_m2_calc_cent_x(self, yag):
         x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
                       self.source._x,
                       self.source._xp,
@@ -624,24 +642,19 @@ class TwoMirrorNYagSystem(object):
                       self.mirror_1._z,
                       self.mirror_2._x,
                       self.mirror_2._z,
-                      self.yag_1._z)        
-        return np.round(np.floor(self.yag_1.pix[0]/2) + \
-                        (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
-                        self.yag_1.pix[0]/self.yag_1.size[0])
+                      yag._z)
+        return self._x_to_pixel(x, yag)
 
-    def _m2_calc_cent_x(self):
-        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      self.mirror_2._x,
-                      self.mirror_2._z,
-                      self.yag_2._z)        
-        return np.round(np.floor(self.yag_2.pix[0]/2) + \
-                        (1 - 2*self._invert_y2)*(x - self.yag_2._x) * \
-                        self.yag_2.pix[0]/self.yag_2.size[0])
-    
+    def patch_yags(self, yags):
+        for yag in yags:
+            if yag._z <= self.mirror_1._z:
+                yag._cent_x = lambda : self._cal_cent_x(yag)
+            elif self.mirror_1._z < yag._z <= self.mirror_2._z:
+                yag._cent_x = lambda : self._m1_calc_cent_x(yag)
+            elif self.mirror_2._z < yag._z:
+                yag._cent_x = lambda : self._m1_m2_calc_cent_x(yag)
+        return yags
+
 class Source(object):
     """
     Simulation of the photon source (simplified undulator).
@@ -809,7 +822,6 @@ class Mirror(object):
 class YAG(object):
     """
     Simulation of a yag imager and the assorted motors.
->>>>>>> sim
 
     Parameters
     ----------
@@ -862,7 +874,8 @@ class YAG(object):
         self.y_state = "OUT"
         self._subs = []
         self.pix = kwargs.get("pix", (1392, 1040))
-        self.size = kwargs.get("size", (0.0076, 0.0062))        
+        self.size = kwargs.get("size", (0.0076, 0.0062))
+        self.invert = kwargs.get("invert", False)
         self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
                                          'centroid_y' : self.cent_y,
                                          'centroid' : self.cent})        
@@ -910,19 +923,12 @@ class YAG(object):
 
     def describe(self, *args, **kwargs):
         return self.reader.describe(*args, **kwargs)
-        # return dict(ChainMap(*[dev.describe(*args, **kwargs)
-        #                        for dev in self.devices]))
 
     def describe_configuration(self, *args, **kwargs):
         return self.reader.describe_configuration(*args, **kwargs)
-        
-        # return dict(ChainMap(*[dev.describe_configuration(*args, **kwargs)
-        #                        for dev in self.devices]))
 
     def read_configuration(self, *args, **kwargs):
         return self.reader.read_configuration(*args, **kwargs)
-        # return dict(ChainMap(*[dev.read_configuration(*args, **kwargs)
-        #                        for dev in self.devices]))
     
     @property
     def blocking(self):
