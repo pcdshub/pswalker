@@ -78,7 +78,7 @@ def test_walk_to_pixel(one_bounce_system):
     RE.msg_hook = print
 
     #Walk to the pixel using dumb first step
-    plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1,
+    plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1e-6,
                                      tolerance=10, average=None,
                                      target_fields=['centroid_x', 'alpha'],
                                      max_steps=3))

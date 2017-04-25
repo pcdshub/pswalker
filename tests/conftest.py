@@ -21,10 +21,10 @@ def one_bounce_system():
     Generic single bounce system consisting one mirror with a linear
     relationship with YAG centroid
     """
-    system = OneMirrorOneYagSystem(name_m1='mirror', x1=0, z1=0, a1=0,
-                             name_y1='yag', x2=0, z2=100,
+    system = OneMirrorOneYagSystem(name_m1='mirror', x1=0, z1=50, a1=0,
+                             name_y1='yag', x2=0, z2=60,
                              pix_y1=(500,500))
-    return system.mirror_1.alpha, system.yag_1
+    return system.mirror_1, system.yag_1
 
 
 class FakePath(OphydObject):
