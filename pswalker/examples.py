@@ -626,7 +626,7 @@ class TwoMirrorNYagSystem(object):
         return self._x_to_pixel(x, yag)
 
     def _m1_calc_cent_x(self, yag):
-        x = OneBounce(self.mirror_1._alpha,
+        x = OneBounce(self.mirror_1.read()['alpha']['value'],
                       self.source._x,
                       self.source._xp,
                       self.mirror_1._x,
@@ -795,6 +795,7 @@ class Mirror(object):
             pass  # If these were removable we'd implement it here
         elif cmd is not None:
             # Here is where we move the pitch motor if a value is set
+            self._alpha = cmd
             return self.alpha.set(cmd)
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
