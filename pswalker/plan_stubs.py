@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import time
 import threading
 import uuid
 
-from bluesky.plans import (wait as plan_wait, abs_set, rel_set, create, read,
-                           save, checkpoint)
+from bluesky.plans import wait as plan_wait, abs_set
 
 from .plans import measure_average
 
@@ -130,67 +128,6 @@ def verify_all(detectors, target_fields, target_values, tolerances,
         return all(ok)
     else:
         return ok
-
-
-def step_recover(detector, detector_field, threshold, mover,
-                 step_size, change_direction=None, timeout=300):
-    """
-    Plan to be run when we have no signal on our detector because our mover is
-    in a bad state. Step n times in one direction, then do the same in the
-    other direction, then try the first direction again, etc.
-
-    Parameters
-    ----------
-    detector: Device
-        Something that we can read
-
-    detector_field: str
-        The field to use from our detector
-
-    threshold: number
-        We consider ourselves recovered if our reading is above the threshold.
-
-    mover: Device
-        Something we can set and read. Should have a position property.
-
-    step_size: number
-        The size and direction of our steps.
-
-    change_direction: int, optional
-        How many steps to take before changing directions.
-
-    timeout: number, optional
-        Abort the recovery after this amount of time.
-    """
-    def next_step():
-        direction = 1
-        i = 0
-        n_swap = 0
-        yield step_size
-        while True:
-            i += 1
-            if change_direction and not i % change_direction:
-                direction *= -1
-                n_swap += 1
-                yield step_size * direction * (change_direction * n_swap + 1)
-            else:
-                yield step_size * direction
-
-    ok = False
-    step_gen = next_step()
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        yield from checkpoint()
-        step = next(step_gen)
-        yield from rel_set(mover, step, wait=True)
-        yield from create()
-        yield from read(mover)
-        reading = yield from read(detector)
-        yield from save()
-        if reading >= threshold:
-            ok = True
-            break
-    return ok
 
 
 def match_condition(signal, condition, mover, setpoint, timeout=None,
