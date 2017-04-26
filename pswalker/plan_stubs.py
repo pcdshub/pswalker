@@ -3,7 +3,8 @@
 import threading
 import uuid
 
-from bluesky.plans import wait as plan_wait, abs_set
+from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
+                           save)
 
 from .plans import measure_average
 
@@ -133,27 +134,24 @@ def verify_all(detectors, target_fields, target_values, tolerances,
 def match_condition(signal, condition, mover, setpoint, timeout=None,
                     sub_type=None):
     """
-    Adjust mover until condition() returns True.
+    Plan to adjust mover until condition() returns True. Read and save both the
+    signal and the mover after the move.
 
     Parameters
     ----------
     signal: Signal
-        Object that has a subscribe() method that lets us set callbacks to run
-        when a value changes, passing keyword "value" to the callback function.
-
-        Signals that subclass ophyd.Signal should have these properties.
+        Object that implements the Bluesky "readable" interface, including the
+        optional subscribe function, sending at least the keyword "value" as in
+        ophyd.Signal.
 
     condition: function
         Function that accepts a single argument, "value", and returns
         True or False.
 
     mover: Device
-        Object that can be moved by calling set(position, moved_cb=cb) where
-        set doesn't block and kwarg moved_cb causes cb(*args, **kwargs) to be
-        called after motion and stopped by calling stop().
-
-        Devices that subclass ophyd.positioner.PositionerBase should have these
-        properties.
+        Object that implements both the Bluesky "readable" and "movable"
+        interfaces, accepting "moved_cb" as a keyword argument as in
+        ophyd.positioner.PositionerBase.
 
     setpoint: any
         We will call mover.set(setpoint). Pick a good value (the limit switch?)
@@ -176,7 +174,6 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     def condition_cb(*args, value, **kwargs):
         if condition(value):
             success.set()
-            mover.stop()
             done.set()
 
     def dmov_cb(*args, **kwargs):
@@ -187,7 +184,12 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     else:
         signal.subscribe(condition_cb)
 
-    mover.set(setpoint, moved_cb=dmov_cb)
+    yield from abs_set(mover, setpoint, moved_cb=dmov_cb)
     done.wait(float(timeout))
+    yield from stop(mover)
+    yield from create()
+    yield from read(mover)
+    yield from read(signal)
+    yield from save()
 
     return success.is_set()
