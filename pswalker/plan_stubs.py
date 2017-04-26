@@ -228,7 +228,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
         fails.
 
     ceil: bool, optional
-        If True, we're good on signal >= threshold (default).
+        If True, we're look for signal >= threshold (default).
         If False, look for signal <= threshold instead.
     """
     if dir_initial > 0:
