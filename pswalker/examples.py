@@ -9,7 +9,7 @@ from pprint import pprint
 import numpy as np
 from bluesky.examples import Mover, Reader
 from ophyd.status import Status
-
+from .utils.pyUtils import isiterable
 ##########
 # Module #
 ##########
@@ -682,8 +682,8 @@ class Source(object):
     fake_sleep_xp : float, optional
     	Amount of time to wait after moving xp-motor    
     """
-    def __init__(self, name, x, xp, noise_x, noise_xp, fake_sleep_x=0,
-                 fake_sleep_xp=0):
+    def __init__(self, name='Source', x=0, xp=0, noise_x=0, noise_xp=0,
+                 fake_sleep_x=0, fake_sleep_xp=0, **kwargs):
         self.name = name
         self.noise_x = noise_x
         self.noise_xp = noise_xp
@@ -910,7 +910,8 @@ class YAG(object):
         return (self.cent_x(), self.cent_y())
 
     def cent_x_abs(self):
-        return (self._x + (1 - 2*self.invert)*(self.cent_x()-np.floor(self.pix[0]/2))* 
+        return (self._x + (1 - 2*self.invert) * \
+                (self.cent_x() - np.floor(self.pix[0]/2)) * \
                 self.size[0]/self.pix[0])
                                      
     def read(self, *args, **kwargs):
@@ -959,7 +960,64 @@ class YAG(object):
     def run_subs(self):
         for sub in self._subs:
             sub()
-                    
+
+
+def _x_to_pixel(x, yag):
+    return np.round(np.floor(yag.pix[0]/2) + \
+                    (1 - 2*yag.invert)*(x - yag._x) * \
+                    yag.pix[0]/yag.size[0])         
+
+def _cal_cent_x(source, yag):
+    x = source._x + source._xp*yag._z
+    return _x_to_pixel(x, yag)
+
+def _m1_calc_cent_x(source, mirror_1, yag):
+    x = OneBounce(mirror_1._alpha,
+                  source._x,
+                  source._xp,
+                  mirror_1._x,
+                  mirror_1._z,
+                  yag._z)
+    return _x_to_pixel(x, yag)
+
+def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
+    x = TwoBounce((mirror_1._alpha, mirror_2._alpha),
+                  source._x,
+                  source._xp,
+                  mirror_1._x,
+                  mirror_1._z,
+                  mirror_2._x,
+                  mirror_2._z,
+                  yag._z)
+    return _x_to_pixel(x, yag)
+
+def patch_yags(mirrors, yags, source=Source()):
+    if not isiterable(mirrors):
+        mirrors = [mirrors]
+    if not isiterable(yags):
+        yags = [yags]
+    for yag in yags:
+        if yag._z <= mirrors[0]._z:
+            yag._cent_x = lambda : _cal_cent_x(source,
+                                               yag)
+        elif mirrors[0]._z < yag._z:
+            if len(mirrors) == 1:
+                yag._cent_x = lambda : _m1_calc_cent_x(source,
+                                                       mirrors[0],
+                                                       yag)
+            elif yag._z <= mirrors[1]._z:
+                yag._cent_x = lambda : _m1_calc_cent_x(source,
+                                                       mirrors[0],
+                                                       yag)
+            elif mirrors[1]._z < yag._z:
+                yag._cent_x = lambda : _m1_m2_calc_cent_x(source,
+                                                          mirrors[0],
+                                                          mirrors[1],
+                                                          yag)
+    if len(yags) == 1:
+        return yags[0]
+    return yags
+            
 if __name__ == "__main__":
     sys = TwoMirrorSystem()
     m1 = sys.mirror_1

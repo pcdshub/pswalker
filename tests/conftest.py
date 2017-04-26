@@ -11,8 +11,7 @@ from ophyd.ophydobj import OphydObject
 ##########
 # Module #
 ##########
-from pswalker.examples import (YAG, Mirror, OneMirrorOneYagSystem,
-                               TwoMirrorTwoYagSystem, TwoMirrorNYagSystem)
+from pswalker.examples import YAG, Mirror, patch_yags
 
 
 @pytest.fixture(scope='function')
@@ -21,10 +20,10 @@ def one_bounce_system():
     Generic single bounce system consisting one mirror with a linear
     relationship with YAG centroid
     """
-    system = OneMirrorOneYagSystem(name_m1='mirror', x1=0, z1=50, a1=0,
-                             name_y1='yag', x2=0, z2=60,
-                             pix_y1=(500,500))
-    return system.mirror_1, system.yag_1
+    mot = Mirror('mirror', 0, 50, 0)
+    det = YAG('yag', 0, 60, pix=(500,500))
+    det = patch_yags(mot, det)
+    return mot, det
 
 
 class FakePath(OphydObject):
@@ -74,9 +73,7 @@ def fake_path_two_bounce():
     dg3_pim = YAG("dg3_pim", 0, 70)
 
     yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
-    system = TwoMirrorNYagSystem(name_m1='feem1', name_m2='feem2',
-                                 x1=0, z1=10, x2=0, z2=30)
-    p1h, p2h, hx2_pim, um6_pim, dg3_pim = system.patch_yags(yags)
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags([feem1, feem2], yags)
     
     path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
     return path
