@@ -193,3 +193,63 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     yield from save()
 
     return success.is_set()
+
+
+def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
+                      try_reverse=True, ceil=True):
+    """
+    Plan to move motor towards each limit switch until the signal is above a
+    threshold value.
+
+    Parameters
+    ----------
+    signal: Signal
+        Object that implements the Bluesky "readable" interface, including the
+        optional subscribe function, sending at least the keyword "value" as in
+        ophyd.Signal.
+
+    threshold: number
+        When signal is equal to or greater than this value, we've recovered.
+
+    motor: Motor
+        Object that implements the "readable" and "movable" interfaces, accepts
+        "moved_cb" as a keyword argument, and has signals at attributes
+        high_limit_switch and low_limit_switch
+
+    dir_initial: int
+        1 if we're going to the positive limit switch, -1 otherwise.
+
+    dir_timeout: float, optional
+        If we don't reach the threshold in this many seconds, try the other
+        direction.
+
+    try_reverse: bool, optional
+        If True, switch and try the other limit switch if the first direction
+        fails.
+
+    ceil: bool, optional
+        If True, we're good on signal >= threshold (default).
+        If False, look for signal <= threshold instead.
+    """
+    if dir_initial > 0:
+        setpoint = motor.high_limit_switch.get() - 0.001
+    else:
+        setpoint = motor.low_limit_switch.get() + 0.001
+
+    def condition(x):
+        if ceil:
+            return x >= threshold
+        else:
+            return x <= threshold
+    ok = yield from match_condition(signal, condition, motor, setpoint,
+                                    timeout=dir_timeout)
+    if ok:
+        return True
+    else:
+        if try_reverse:
+            return (yield from recover_threshold(signal, threshold, motor,
+                                                 -dir_initial,
+                                                 dir_timeout=2*dir_timeout,
+                                                 try_reverse=False))
+        else:
+            return False
