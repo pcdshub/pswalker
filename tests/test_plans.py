@@ -27,15 +27,15 @@ def test_measure_average(one_bounce_system):
     #Fake event storage 
     centroids = []
     readbacks = []
-    col_c = collector('centroid', centroids)
-    col_r = collector('motor',    readbacks)
+    col_c = collector('centroid_x', centroids)
+    col_r = collector('alpha',    readbacks)
     #Run plan
     RE(run_wrapper(measure_average([det, mot],
-                                   ['centroid','motor'],
+                                   ['centroid_x','alpha'],
                                    delay=0.1, num=5)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [0.,0.,0.,0.,0.]
+    assert centroids == [250.,250.,250.,250.,250.]
     assert readbacks == [0.,0.,0.,0.,0.]
 
     #Clear from last test
@@ -43,17 +43,17 @@ def test_measure_average(one_bounce_system):
     readbacks.clear()
     #Run with array of delays
     RE(run_wrapper(measure_average([det, mot],
-                                   ['centroid','motor'],
+                                   ['centroid_x','alpha'],
                                    delay=[0.1], num=2)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [0., 0.]
+    assert centroids == [250., 250.]
     assert readbacks == [0., 0.]
 
     #Invalid delay settings
     with pytest.raises(ValueError):
         RE(run_wrapper(measure_average([det, mot],
-                                       ['centroid','motor'],
+                                       ['centroid_x','alpha'],
                                        delay=[0.1], num=3)))
 
 def test_measure_centroid(one_bounce_system):
@@ -63,12 +63,13 @@ def test_measure_centroid(one_bounce_system):
     RE   = RunEngine()
     #Fake event storage 
     centroids = []
-    col_c = collector('centroid', centroids)
+    col_c = collector('centroid_x', centroids)
     #Run plan
-    RE(run_wrapper(measure_centroid(det, average=5)),
+    # assert 0
+    RE(run_wrapper(measure_centroid(det, average=5, target_field='centroid_x')),
        subs={'event':[col_c]})
     #Check events
-    assert centroids == [0.,0.,0.,0.,0.]
+    assert centroids == [250.,250.,250.,250.,250.]
 
 def test_walk_to_pixel(one_bounce_system):
     mot, det = one_bounce_system
@@ -77,14 +78,16 @@ def test_walk_to_pixel(one_bounce_system):
     RE.msg_hook = print
 
     #Walk to the pixel using dumb first step
-    plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1,
+    plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1e-6,
                                      tolerance=10, average=None,
+                                     target_fields=['centroid_x', 'alpha'],
                                      max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()['centroid']['value'], 200, atol=10)
+    assert np.isclose(det.read()['centroid_x']['value'], 200, atol=10)
     #Walk to pixel using intial guess at gradient
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, gradient=200,
                                      tolerance=10, average=None,
+                                     target_fields=['centroid_x', 'alpha'],
                                      max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()['centroid']['value'], 200, atol=10)
+    assert np.isclose(det.read()['centroid_x']['value'], 200, atol=10)
