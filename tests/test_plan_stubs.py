@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 from bluesky import RunEngine
 
-from pswalker.plan_stubs import prep_img_motors
+from pswalker.plan_stubs import (prep_img_motors, ensure_list, verify_all,
+                                 match_condition, recover_threshold)
 from pswalker.examples import YAG
 
 
@@ -25,3 +26,25 @@ def test_prep_img_motors(fake_path_two_bounce):
                     for j in range(i + 1, len(yags)):
                         assert yags[j].blocking, "Yags after desired yag " + \
                                 "not moved in with tail_in=True."
+
+
+def test_ensure_list():
+    assert ensure_list(None) == []
+    assert ensure_list(5) == [5]
+    assert ensure_list([1, 2, 3]) == [1, 2, 3]
+    assert ensure_list((1, 2, 3)) == [1, 2, 3]
+
+
+def test_verify_all():
+    verify_all
+    pass  # idk yet
+
+
+def test_match_condition():
+    match_condition
+    pass  # idk yet
+
+
+def test_recover_threshold():
+    recover_threshold
+    pass  # idk yet
