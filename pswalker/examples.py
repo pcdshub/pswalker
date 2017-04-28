@@ -991,7 +991,8 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
                   yag._z)
     return _x_to_pixel(x, yag)
 
-def patch_yags(mirrors, yags, source=Source()):
+def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
+               source=Source('Zero Source', 0, 0)):
     if not isiterable(mirrors):
         mirrors = [mirrors]
     if not isiterable(yags):

@@ -22,7 +22,7 @@ def one_bounce_system():
     """
     mot = Mirror('mirror', 0, 50, 0)
     det = YAG('yag', 0, 60, pix=(500,500))
-    det = patch_yags(mot, det)
+    det = patch_yags(det, mot)
     return mot, det
 
 
@@ -73,7 +73,7 @@ def fake_path_two_bounce():
     dg3_pim = YAG("dg3_pim", 0, 70)
 
     yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
-    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags([feem1, feem2], yags)
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags(yags, [feem1, feem2])
     
     path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
     return path
