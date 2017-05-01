@@ -18,7 +18,7 @@ from pswalker.plans import measure_average, measure_centroid, walk_to_pixel
 
 def test_measure_average(one_bounce_system):
     #Load motor and yag
-    mot, det = one_bounce_system
+    _, mot, det = one_bounce_system
 
     #Create test RunEngine
     RE   = RunEngine()
@@ -58,7 +58,7 @@ def test_measure_average(one_bounce_system):
 
 def test_measure_centroid(one_bounce_system):
     #Load motor and yag
-    mot, det = one_bounce_system
+    _, mot, det = one_bounce_system
     #Create test RunEngine
     RE   = RunEngine()
     #Fake event storage 
@@ -72,7 +72,7 @@ def test_measure_centroid(one_bounce_system):
     assert centroids == [250.,250.,250.,250.,250.]
 
 def test_walk_to_pixel(one_bounce_system):
-    mot, det = one_bounce_system
+    _, mot, det = one_bounce_system
     #Create test RunEngine
     RE = RunEngine()
     RE.msg_hook = print

@@ -35,12 +35,31 @@ def test_patch_yags_with_one_bounce_func(simple_two_bounce_system):
     yag_2 = patch_yags(yag_2, m1)
     assert yag_2._cent_x() == _m1_calc_cent_x(s, m1, yag_2)
 
-
 def test_patch_yags_with_two_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
     yag_1 = [YAG('test_yag', 0, 25)]
     
     yag_1 = patch_yags(yag_1, [m1,m2])
     assert yag_1._cent_x() == _m1_m2_calc_cent_x(s, m1, m2, yag_1)
+
+def test_mirror_set_and_read():
+    mot = Mirror('mirror', 0, 50, 0)
+    set_x = 100
+    set_z = 10
+    set_a = 5
+    mot.set(x=set_x, z=set_z, alpha=set_a)
+    assert mot.read()['x']['value'] == set_x
+    assert mot.read()['z']['value'] == set_z
+    assert mot.read()['alpha']['value'] == set_a
+
+def test_yag_set_and_read(one_bounce_system):
+    s, mot, yag = one_bounce_system
+    set_x = 100
+    set_z = 10
+    yag.set(x=set_x, z=set_z)    
+    yag = patch_yags(yag, [mot])    
+    assert yag.read()['x']['value'] == set_x
+    assert yag.read()['z']['value'] == set_z
+    assert yag.read()['centroid_x']['value'] == _m1_calc_cent_x(s, mot, yag)
     
 

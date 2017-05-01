@@ -929,9 +929,9 @@ class YAG(object):
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
         for key in kwargs.keys():
-            for motor in self.motors:
-                if key in motor.read():
-                    motor.set(kwargs[key])
+            for dev in self.devices:
+                if key in dev.read():
+                    dev.set(kwargs[key])
         return Status(done=True, success=True)
 
     def trigger(self, *args, **kwargs):
