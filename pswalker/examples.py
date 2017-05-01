@@ -967,7 +967,7 @@ def _x_to_pixel(x, yag):
                     (1 - 2*yag.invert)*(x - yag._x) * \
                     yag.pix[0]/yag.size[0])         
 
-def _cal_cent_x(source, yag):
+def _calc_cent_x(source, yag):
     x = source._x + source._xp*yag._z
     return _x_to_pixel(x, yag)
 
@@ -999,7 +999,7 @@ def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
         yags = [yags]
     for yag in yags:
         if yag._z <= mirrors[0]._z:
-            yag._cent_x = lambda : _cal_cent_x(source,
+            yag._cent_x = lambda : _calc_cent_x(source,
                                                yag)
         elif mirrors[0]._z < yag._z:
             if len(mirrors) == 1:

@@ -11,8 +11,17 @@ from ophyd.ophydobj import OphydObject
 ##########
 # Module #
 ##########
-from pswalker.examples import YAG, Mirror, patch_yags
+from pswalker.examples import YAG, Mirror, Source, patch_yags
 
+@pytest.fixture(scope='function')
+def simple_two_bounce_system():
+    """
+    Simple system that consists of a source and two mirrors.
+    """
+    s = Source('test_source', 0, 0)
+    m1 = Mirror('test_mirror_1', 0, 10, 0)
+    m2 = Mirror('test_mirror_2', 5, 20, 0)
+    return s, m1, m2
 
 @pytest.fixture(scope='function')
 def one_bounce_system():
