@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from enum import Enum
+
 from ophyd.utils import ReadOnlyError
-from bluesky.suspenders import SuspenderBase, SuspendFloor, SuspendBoolHigh
+from bluesky.suspenders import (SuspenderBase, SuspendCeil, SuspendFloor,
+                                SuspendBoolHigh)
 # from pcdsdevices.signal import Signal
 from ophyd.signal import Signal
 # from pcdsdevices.epics.signal import EpicsSignalRO
@@ -15,10 +18,24 @@ class PvSuspenderBase(SuspenderBase):
     Base class for a suspender that expects a pvname instead of a signal.
     """
     def __init__(self, pvname, sleep=0, pre_plan=None, post_plan=None,
-                 tripped_message=""):
+                 tripped_message="", **kwargs):
         sig = EpicsSignalRO(pvname)
         super().__init__(sig, sleep=sleep, pre_plan=pre_plan,
-                         post_plan=post_plan, tripped_message=tripped_message)
+                         post_plan=post_plan, tripped_message=tripped_message,
+                         **kwargs)
+
+
+class EnumSuspenderBase(SuspenderBase):
+    """
+    Base class for interpreting an enum signal by the enumerated names.
+    """
+    enum = None
+
+    def get_enum(self, enum_state):
+        """
+        Given an enumerated state string, return the associated enum number.
+        """
+        return self.enum[enum_state].value
 
 
 class PvSuspendFloor(SuspendFloor, PvSuspenderBase):
@@ -28,15 +45,22 @@ class PvSuspendFloor(SuspendFloor, PvSuspenderBase):
     pass
 
 
+class PvSuspendCeil(SuspendCeil, PvSuspenderBase):
+    """
+    Suspend the run if a pv rises above a set value.
+    """
+    pass
+
+
 class BeamEnergySuspendFloor(PvSuspendFloor):
     """
     Suspend the run if the beam energy falls below a set value.
     """
     def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
-                 pre_plan=None, post_plan=None):
+                 pre_plan=None, post_plan=None, **kwargs):
         super().__init__("SIOC:SYS0:ML00:AO627", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
-                         pre_plan=pre_plan, post_plan=post_plan)
+                         pre_plan=pre_plan, post_plan=post_plan, **kwargs)
 
 
 class BeamRateSuspendFloor(PvSuspendFloor):
@@ -44,10 +68,10 @@ class BeamRateSuspendFloor(PvSuspendFloor):
     Suspend the run if the beam rate falls below a set value.
     """
     def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
-                 pre_plan=None, post_plan=None):
+                 pre_plan=None, post_plan=None, **kwargs):
         super().__init__("EVNT:SYS0:1:LCLSBEAMRATE", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
-                         pre_plan=pre_plan, post_plan=post_plan)
+                         pre_plan=pre_plan, post_plan=post_plan, **kwargs)
 
 
 class PathSignal(Signal):
@@ -122,3 +146,25 @@ class LightpathSuspender(SuspendBoolHigh):
         super().__init__(path, sleep=sleep, pre_plan=pre_plan,
                          post_plan=post_plan,
                          tripped_message="Lightpath is blocked!")
+
+
+class PvAlarmSuspend(PvSuspendCeil, PvSuspenderBase, EnumSuspenderBase):
+    """
+    Suspend if .SEVR field reaches or exceeds a chosen alarm state.
+    """
+    enum = Enum("SevrEnum", "NO_ALARM MINOR MAJOR INVALID")
+
+    def __init__(self, pvname, suspend_enum, sleep=0, pre_plan=None,
+                 post_plan=None, **kwargs):
+        """
+        suspend enum one of MINOR, MAJOR, INVALID.
+        """
+        if ".SEVR" not in pvname:
+            pvname += ".SEVR"
+        if suspend_enum == "NO_ALARM":
+            raise TypeError("suspend_enum=NO_ALARM would always supsend.")
+        if suspend_enum not in ("MINOR", "MAJOR", "INVALID"):
+            raise TypeError("suspend enum must be MINOR, MAJOR, or INVALID")
+        thresh = self.get_enum(suspend_enum) - 1
+        super().__init__(pvname, thresh, sleep=sleep,
+                         pre_plan=pre_plan, post_plan=post_plan, **kwargs)

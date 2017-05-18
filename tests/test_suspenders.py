@@ -9,7 +9,7 @@ from bluesky.plans import sleep, checkpoint
 
 from pswalker.examples import YAG
 from pswalker.suspenders import (LightpathSuspender, BeamEnergySuspendFloor,
-                                 BeamRateSuspendFloor)
+                                 BeamRateSuspendFloor, PvAlarmSuspend)
 
 
 def ruin_my_path(path):
@@ -57,3 +57,13 @@ def test_beam_suspenders_sanity():
     """
     energy = BeamEnergySuspendFloor(0.3) # NOQA
     rate = BeamRateSuspendFloor(0) # NOQA
+
+
+def test_pv_alarm_suspend_sanity():
+    minor = PvAlarmSuspend("txt", "MINOR") # NOQA
+    major = PvAlarmSuspend("txt", "MAJOR") # NOQA
+    inval = PvAlarmSuspend("txt", "INVALID") # NOQA
+    with pytest.raises(TypeError):
+        noalarm = PvAlarmSuspend("txt", "NO_ALARM") # NOQA
+    with pytest.raises(TypeError):
+        adsfsdf = PvAlarmSuspend("txt", "adsfsdf") # NOQA
