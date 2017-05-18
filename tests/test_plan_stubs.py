@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from queue import Queue
 
+from ophyd import Signal
+from ophyd.positioner import SoftPositioner
 from bluesky import RunEngine
 
 from pswalker.plan_stubs import (prep_img_motors, ensure_list, verify_all,
@@ -78,7 +80,14 @@ def test_verify_all(fake_path_two_bounce):
         assert ok_list[i] is True, "Wrong element bool i={}".format(i)
 
 
+class SlowSoftPositioner(SoftPositioner):
+    pass
+
+
 def test_match_condition():
+    sig = Signal()
+    mov = SoftPositioner()
+    
     match_condition
     pass  # idk yet
 
