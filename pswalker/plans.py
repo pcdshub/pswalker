@@ -212,7 +212,7 @@ def walk_to_pixel(detector, motor, target,
     def walk():
         #Initial measurement
         if start is None:
-            start = motor.read()[target_fields[1]]
+            start = motor.position
         else:
             yield from mv(motor, start)
         #Take average of motor position and centroid
