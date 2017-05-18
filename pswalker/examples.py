@@ -1,6 +1,7 @@
 ############
 # Standard #
 ############
+import logging
 from collections import OrderedDict, ChainMap
 from pprint import pprint
 ###############
@@ -14,7 +15,10 @@ from .utils.pyUtils import isiterable
 # Module #
 ##########
 
-def OneBounce(a1, x0, xp0, x1, z1, z2):
+logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+
+def one_bounce(a1, x0, xp0, x1, z1, z2):
     """
     Calculates the x position of the beam after bouncing off one flat mirror.
 
@@ -38,9 +42,13 @@ def OneBounce(a1, x0, xp0, x1, z1, z2):
     z2 : float
     	z position of the imager    
     """
-    return -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
+    result = -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
+    logger.debug("Calculated one_bounce x position using: \na1={0}, x0={1}, \
+xp0={2}, x1={3}, z1={4}, z2={5}. \nResult: {6}".format(
+            a1, x0, xp0, x1, z1, z2, result))
+    return result
 
-def TwoBounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
+def two_bounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     """
     Calculates the x position of the beam after bouncing off two flat mirrors.
     
@@ -70,8 +78,12 @@ def TwoBounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     z3 : float
     	z position of imager
     """
-    return 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + 2*alphas[1]*z3 + \
-        z3*xp0 - 2*x1 + 2*x2 + x0
+    result = 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + \
+        2*alphas[1]*z3 + z3*xp0 - 2*x1 + 2*x2 + x0
+    logger.debug("Calculated two_bounce x position using: \nalphas={0}, x0={1}, \
+xp0={2}, x1={3}, z1={4}, x2={5}, z2={6}, z3={7}. \nResult: {8}".format(
+            alphas, x0, xp0, x1, z1, x2, z2, z3, result))
+    return result
 
 class Source(object):
     """
@@ -118,19 +130,55 @@ class Source(object):
         self.motors = [self.x, self.xp]        
         self._x = x
         self._xp = xp
+        self.log_pref = "{0} (Source) - ".format(self.name)
+        logger.info('Created new Source object. Name: {0}'.format(self.name))
         
     def read(self):
-        return dict(ChainMap(*[motor.read() for motor in self.motors]))
+        logger.info("{0}Reading Attributes.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read() for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def set(self, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: {1}".format(self.log_pref, kwargs))
         self._x = kwargs.get('x', self._x)
         self._xp = kwargs.get('xp', self._xp)        
-        for key in kwargs.keys():
-            for motor in self.motors:
-                if key in motor.read():
+        for motor in self.motors:
+            motor_params = motor.read()
+            for key in kwargs.keys():    
+                if key in motor_params:
                     motor.set(kwargs[key])
         return Status(done=True, success=True)
 
+    def describe(self, *args, **kwargs):
+        logger.debug("{0}Describing object.".format(self.log_pref))        
+        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))        
+        return result
+    
+    def describe_configuration(self, *args, **kwargs):
+        logger.debug("{0}Describing configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
+        return result
+    
+    def read_configuration(self, *args, **kwargs):
+        logger.debug("{0}Reading configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
+    def subscribe(self, *args, **kwargs):
+        logger.debug("{0}Running subscribe (currently empty).".format(self.log_pref))
+        pass
+
+    def trigger(self, *args, **kwargs):
+        logger.debug("{0}Running trigger.".format(self.log_pref))
+        return Status(done=True, success=True)
 
 class Mirror(object):
     """
@@ -194,9 +242,12 @@ class Mirror(object):
         self.motors = [self.x, self.z, self.alpha]
         self._x = x
         self._z = z
-        self._alpha = alpha        
+        self._alpha = alpha
+        self.log_pref = "{0} (Mirror) - ".format(self.name)
+        logger.info('Created new Mirror object. Name: {0}'.format(self.name))
 
     def read(self):
+        logger.info("{0}Reading Attributes.".format(self.log_pref))
         read_dict = dict(ChainMap(*[motor.read() for motor in self.motors]))
         if (read_dict['x']['value'] != self._x or
             read_dict['z']['value'] != self._z or
@@ -204,11 +255,14 @@ class Mirror(object):
             self._x = read_dict['x']['value']
             self._z = read_dict['z']['value']
             self._alpha = read_dict['alpha']['value']
-            return self.read()            
+            read_dict = self.read()
+        logger.debug("{0}Result: {1}".format(self.log_pref, read_dict))
         return read_dict
         
 
     def set(self, cmd=None, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
         if cmd in ("IN", "OUT"):
             pass  # If these were removable we'd implement it here
         elif cmd is not None:
@@ -218,34 +272,46 @@ class Mirror(object):
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
         self._alpha = kwargs.get('alpha', self._alpha)
-        for key in kwargs.keys():
-            for motor in self.motors:
-                if key in motor.read():
+        for motor in self.motors:
+            motor_params = motor.read()            
+            for key in kwargs.keys():
+                if key in motor_params:
                     motor.set(kwargs[key])
         return Status(done=True, success=True)
 
     def describe(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.describe(*args, **kwargs)
-                               for motor in self.motors]))
-
+        logger.debug("{0}Describing object.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def describe_configuration(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
-                               for motor in self.motors]))
-
+        logger.debug("{0}Describing configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
+        return result
+    
     def read_configuration(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
-                               for motor in self.motors]))
+        logger.debug("{0}Reading configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
     
     @property
     def blocking(self):
+        logger.debug("{0}Check for blockng.".format(self.log_pref))
         return False
 
     def subscribe(self, *args, **kwargs):
+        logger.debug("{0}Subscribing (currently empty).".format(self.log_pref))
         pass
 
     def trigger(self, *args, **kwargs):
+        logger.debug("{0}Running trigger (default status).".format(self.log_pref))
         return Status(done=True, success=True)
-
 
 class YAG(object):
     """
@@ -307,10 +373,12 @@ class YAG(object):
         self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
                                          'centroid_y' : self.cent_y,
                                          'centroid' : self.cent,
-                                         'centroid_x_abs' : self.cent_x_abs})        
+                                         'centroid_x_abs' : self.cent_x_abs})
         self.devices = [self.x, self.z, self.reader]
         self._x = x
         self._z = z
+        self.log_pref = "{0} (YAG) - ".format(self.name)
+        logger.info('Created new YAG object. Name: {0}'.format(self.name))
 
     def _cent_x(self):
         return np.floor(self.pix[0]/2)
@@ -333,10 +401,15 @@ class YAG(object):
                 self.size[0]/self.pix[0])
                                      
     def read(self, *args, **kwargs):
-        return dict(ChainMap(*[dev.read(*args, **kwargs)
-                               for dev in self.devices]))
-
+        logger.info("{0}Reading Attributes.".format(self.log_pref))        
+        result = dict(ChainMap(*[dev.read(*args, **kwargs)
+                                 for dev in self.devices]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def set(self, cmd=None, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
         if cmd == "OUT":
             self.y_state = "OUT"
         elif cmd == "IN":
@@ -346,67 +419,95 @@ class YAG(object):
             return Status(done=True, success=True)
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
-        for key in kwargs.keys():
-            for dev in self.devices:
-                if key in dev.read():
+        for dev in self.devices:
+            dev_params = dev.read()            
+            for key in kwargs.keys():
+                if key in dev_params:
                     dev.set(kwargs[key])
         return Status(done=True, success=True)
-
+    
     def trigger(self, *args, **kwargs):
-        return self.reader.trigger(*args, **kwargs)    
+        logger.debug("{0}Getting trigger.".format(self.log_pref))
+        result = self.reader.trigger(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def describe(self, *args, **kwargs):
-        return self.reader.describe(*args, **kwargs)
-
+        logger.debug("{0}Describing reader.".format(self.log_pref))        
+        result = self.reader.describe(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def describe_configuration(self, *args, **kwargs):
-        return self.reader.describe_configuration(*args, **kwargs)
-
+        logger.debug("{0}Describing reader configuration.".format(self.log_pref))        
+        result = self.reader.describe_configuration(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def read_configuration(self, *args, **kwargs):
-        return self.reader.read_configuration(*args, **kwargs)
+        logger.debug("{0}Reading reader configuration.".format(self.log_pref))        
+        result = self.reader.read_configuration(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
     
     @property
     def blocking(self):
-        return self.y_state == "IN"
+        logger.debug("{0}Check for blockng.".format(self.log_pref))        
+        result = self.y_state == "IN"
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def subscribe(self, function):
         """
         Get subs to run on demand
         """
-        super().subscribe(function)
+        logger.debug("{0}Subscribing to function.".format(self.log_pref))        
+        self.reader.subscribe(function)
         self._subs.append(function)
+        logger.debug("{0}Function: {1}".format(self.log_pref, function))
 
     def run_subs(self):
+        logger.debug("{0}Running subscribed functions".format(self.log_pref))
         for sub in self._subs:
             sub()
 
 
 def _x_to_pixel(x, yag):
-    return np.round(np.floor(yag.pix[0]/2) + \
+    logger.debug("Converting x position to pixel on yag '{0}'.".format(yag.name))
+    result = np.round(np.floor(yag.pix[0]/2) + \
                     (1 - 2*yag.invert)*(x - yag._x) * \
-                    yag.pix[0]/yag.size[0])         
+                    yag.pix[0]/yag.size[0])
+    logger.debug("Result: {0}".format(result))
+    return result
 
 def _calc_cent_x(source, yag):
+    logger.debug("Calculating no bounce beam position on '{0}' yag. ".format(
+            yag.name))    
     x = source._x + source._xp*yag._z
     return _x_to_pixel(x, yag)
 
 def _m1_calc_cent_x(source, mirror_1, yag):
-    x = OneBounce(mirror_1._alpha,
-                  source._x,
-                  source._xp,
-                  mirror_1._x,
-                  mirror_1._z,
-                  yag._z)
+    logger.debug("Calculating one bounce beam position on '{0}' yag. ".format(
+            yag.name))        
+    x = one_bounce(mirror_1._alpha,
+                   source._x,
+                   source._xp,
+                   mirror_1._x,
+                   mirror_1._z,
+                   yag._z)
     return _x_to_pixel(x, yag)
 
 def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
-    x = TwoBounce((mirror_1._alpha, mirror_2._alpha),
-                  source._x,
-                  source._xp,
-                  mirror_1._x,
-                  mirror_1._z,
-                  mirror_2._x,
-                  mirror_2._z,
-                  yag._z)
+    logger.debug("Calculating two bounce beam position on '{0}' yag. ".format(
+            yag.name))            
+    x = two_bounce((mirror_1._alpha, mirror_2._alpha),
+                   source._x,
+                   source._xp,
+                   mirror_1._x,
+                   mirror_1._z,
+                   mirror_2._x,
+                   mirror_2._z,
+                   yag._z)
     return _x_to_pixel(x, yag)
 
 def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
@@ -415,47 +516,58 @@ def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
         mirrors = [mirrors]
     if not isiterable(yags):
         yags = [yags]
+    logger.info("Patching {0} yag(s)".format(len(yags)))            
     for yag in yags:
         if yag._z <= mirrors[0]._z:
-            yag._cent_x = lambda : _calc_cent_x(source,
-                                               yag)
+            logger.debug("Patching '{0}' with no bounce equation.".format(
+                    yag.name))
+            yag._cent_x = lambda : _calc_cent_x(
+                source, yag)
         elif mirrors[0]._z < yag._z:
             if len(mirrors) == 1:
-                yag._cent_x = lambda : _m1_calc_cent_x(source,
-                                                       mirrors[0],
-                                                       yag)
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_calc_cent_x(
+                    source, mirrors[0], yag)
             elif yag._z <= mirrors[1]._z:
-                yag._cent_x = lambda : _m1_calc_cent_x(source,
-                                                       mirrors[0],
-                                                       yag)
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_calc_cent_x(
+                    source, mirrors[0], yag)
             elif mirrors[1]._z < yag._z:
-                yag._cent_x = lambda : _m1_m2_calc_cent_x(source,
-                                                          mirrors[0],
-                                                          mirrors[1],
-                                                          yag)
+                logger.debug("Patching '{0}' with two bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_m2_calc_cent_x(
+                    source, mirrors[0], mirrors[1], yag)
     if len(yags) == 1:
         return yags[0]
     return yags
             
 if __name__ == "__main__":
-    sys = TwoMirrorSystem()
-    m1 = sys.mirror_1
-    m2 = sys.mirror_2
-    y1 = sys.yag_1
-    y2 = sys.yag_2
-    # print("x: ", m.read()['x']['value'])
-    # m.set(x=10)
-    # print("x: ", m.read()['x']['value'])
+    p1h = YAG("p1h", 0, 0)
+    feem1 = Mirror("feem1", 0, 90.510, 0)
+    p2h = YAG("p2h", 0.015000, 95.000)
+    feem2 = Mirror("feem2", 0.0317324, 101.843, 0)
+    p3h = YAG("p3h", 0.0317324, 103.6600)
+    hx2_pim = YAG("hx2_pim", 0.0317324, 150.0000)
+    um6_pim = YAG("um6_pim", 0.0317324, 200.0000)
+    dg3_pim = YAG("dg3_pim", 0.0317324, 375.0000)
 
-    # import ipdb; ipdb.set_trace()
-    # pprint(y1.read()['centroid_x']['value'])
-    # pprint(y2.read()['centroid_x']['value'])
 
-    m1.set(alpha=0.0013644716418)
-    m2.set(alpha=0.0013674199723)
+    yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags(yags, [feem1, feem2])
+
+    # print(p3h.cent_x())
     
-    pprint(y1.read()['centroid_x']['value'])
-    pprint(y2.read()['centroid_x']['value'])    
+    feem1.set(alpha=0.0013644716418)
 
+    # print(p3h.cent_x())
+    
+    feem2.set(alpha=0.0013674199723)
+    
+    # print(p3h.cent_x())
 
-    pprint(y1.describe_configuration())
+    
+    pprint(p3h.read()['centroid_x']['value'])
+    # import ipdb; ipdb.set_trace()
+    pprint(dg3_pim.read()['centroid_x']['value'])
