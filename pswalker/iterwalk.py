@@ -15,7 +15,88 @@ logger = logging.getLogger(__name__)
 def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
              motor_fields='alpha', tolerances=20, system=None, averages=None,
-             overshoot=0, max_walks=None, timeout=None, sort="z"):
+             overshoot=0, max_walks=None, timeout=None):
+    """
+    Iteratively adjust a system of detectors and motors where each motor
+    primarily affects the reading of a single detector but also affects the
+    other axes parasitically.
+
+    This is a Bluesky plan, but it does not have start run or end run
+    decorators so it can be included inside of other plans. It yields a
+    checkpoint message before adjusting the detector positions and before
+    executing a walk substep.
+
+    All list arguments that expect one entry per detector must be the same
+    length as the detectors list. If any optional list arguments are provided
+    as single values instead of as iterables, iterwalk will interpret it as
+    "use this value for every detector".
+
+    Parameters
+    ----------
+    detectors: list of objects
+        These are your axes of motion, which must implement both the Bluesky
+        reader interface and the setter interface. The set method must accept
+        the "IN" and "OUT" arguments to move the device in and out. It is
+        assumed that detectors earlier in the list block detectors later in the
+        list.
+
+    motors: list of objects
+        These are your axes of motion, which must implement both the Bluesky
+        reader interface and the setter interface.
+
+    goals: list of numbers
+        These are the scalar readbacks expected from the detectors at the
+        desired positions.
+
+    starts: list of numbers, optional
+        If provided, these are the nominal positions to move the motors to
+        before starting to align.
+
+    first_steps: list of numbers, optional.
+        This is how far the motors will be moved in an initial probe step as we
+        gauge the detector's response. This argument is ignored if 'gradients'
+        is provided.
+
+    gradients: list of numbers, optional
+        If provided, this is a guess at the ratio between motor move and change
+        in detector readback. This will be used to make a very good first guess
+        at the first step towards the goal pixel. This should be in units of
+        detector/motor
+
+    detector_fields: list of strings, optional
+        For each detector, this is the field we're walking to.
+
+    motor_fields: list of strings, optional
+        For each motor, this is the field we're using along with the
+        detector_field to build our linear regression. This should be the
+        readback with nominally the same value as the position field.
+
+    tolerances: list of numbers, optional
+        If our detector readbacks are within these tolerances of the goal
+        positions, we'll treat the goal as reached.
+
+    system: list of readable objects, optional
+        Other system parameters that we'd like to read during the walk.
+
+    averages: list of numbers, optional
+        For each detector, this is the number of shots to average before
+        settling on a reading.
+
+    overshoot: number, optional
+        The percent to overshoot at each goal step. For these parasitic
+        systems, over or undershooting can allow convergence to occur faster.
+        An overshoot of 0 is no overshoot, an overshoot of 0.1 is a 10%
+        overshoot, an overshoot of -0.2 is a 20% undershoot, etc.
+
+    max_walks: int, optional
+        The number of sets of walks to try before giving up on the alignment.
+        E.g. if max_walks is 3, we'll move each motor/detector pair 3 times in
+        series before giving up.
+
+    timeout: number, optional
+        The maximum time to allow for the alignment before aborting. The
+        timeout is checked after each walk step.
+    """
     num = len(detectors)
 
     # Listify most optional arguments
