@@ -68,13 +68,15 @@ def measure_average(detectors, target_fields, num=1, delay=None):
         try:
             num_delays = len(delay)
         except TypeError as err:
-            logger.error("Error with inputted delay:")
+            logger.error("Supplied delay must be scalar or iterable")
             raise ValueError("Supplied delay must be scalar or iterable") from err
 
         else:
             if num -1 > num_delays:
-                raise ValueError("num={:} but delays only provides {:} "
-                                 "entires".format(num, num_delays))
+                err_str = "num={:} but delays only provides {:} entires".format(
+                    num, num_delays)
+                logger.error(err_str, stack_info=True)                
+                raise ValueError(err_str)
         delay = iter(delay)
 
     #Gather shots
@@ -110,8 +112,9 @@ def measure_average(detectors, target_fields, num=1, delay=None):
                 break
             #Otherwise raise exception
             else:
-                raise ValueError("num={:} but delays only provides {:} "
-                                 "entires".format(num, i))
+                err_str = "num={:} but delays only provides {:} entires".format(num, i)
+                logger.error(err_str, stack_info=True)                
+                raise ValueError(err_str)
         #If we have a delay
         if d is not None:
             d = d - (time.time() - now)
@@ -252,6 +255,7 @@ def walk_to_pixel(detector, motor, target,
             #Check we haven't exceed step limit
             if max_steps and step > max_steps:
                 break
+            logger.debug("Running step {0}...".format(step))
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
             #Move pitch
