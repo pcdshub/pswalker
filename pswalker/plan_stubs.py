@@ -141,7 +141,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
     other_fields = as_list(other_fields)
 
     # Build the ok list using our plans
-    ok = []
+    ok_list = []
     for i, (det, fld, val, tol) in enumerate(zip(detectors, target_fields,
                                                  target_values, tolerances)):
         ok = yield from prep_img_motors(i, detectors, timeout=15)
@@ -156,10 +156,10 @@ def verify_all(detectors, target_fields, target_values, tolerances,
             avg = avgs[0]
         except:
             avg = avgs
-        ok.append(abs(avg - val) < tol)
+        ok_list.append(abs(avg - val) < tol)
 
     # Output for yield from
-    output = all(ok)
+    output = all(ok_list)
     if output:
         logger.debug("verify complete, all ok")
     else:
@@ -168,7 +168,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
     if summary:
         return output
     else:
-        return ok
+        return ok_list
 
 
 def match_condition(signal, condition, mover, setpoint, timeout=None,
