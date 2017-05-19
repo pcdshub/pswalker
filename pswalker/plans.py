@@ -6,6 +6,7 @@ Bluesky Plans for the Walker
 ############
 import time
 import itertools
+import logging
 from collections import Iterable
 ###############
 # Third Party #
@@ -19,6 +20,9 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 ##########
 # Module #
 ##########
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.WARN)
 
 #TODO Half assed generalization, should really use count but it has those pesky
 #     run/stage decorators
@@ -49,6 +53,10 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     average : tuple
         Tuple of the average over each event for each target_field
     """
+    logger.debug("Running measure_average.")
+    logger.debug("Arguments passed: \ndetectors: {0} \ntarget_fields: {1} \nnum: {2} \
+\ndelay: {3}".format([d.name for d in detectors], target_fields, num, delay))
+    
     #Data structure
     measurements = np.zeros((num, len(target_fields)))
 
@@ -59,9 +67,9 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     else:
         try:
             num_delays = len(delay)
-
-        except TypeError:
-            raise ValueError("Supplied delay must be scalar or iterable")
+        except TypeError as err:
+            logger.error("Error with inputted delay:")
+            raise ValueError("Supplied delay must be scalar or iterable") from err
 
         else:
             if num -1 > num_delays:
@@ -70,6 +78,7 @@ def measure_average(detectors, target_fields, num=1, delay=None):
         delay = iter(delay)
 
     #Gather shots
+    logger.debug("Gathering shots..")
     for i in range(num):
         now = time.time()
         #Trigger detector and wait for completion
@@ -84,11 +93,14 @@ def measure_average(detectors, target_fields, num=1, delay=None):
             #Gather average measurements for supplied target_fields
             try:
                 measurements[i][j] = cur_det[target_fields[j]]['value']
-            except IndexError:
+                logger.debug("Saved measurement {0} for index {1}, {2}".format(
+                        measurements[i][j], i, j))
+            except IndexError:                                 
                 break
         #Emit events
         yield Msg('save')
-        #Delay before next reading 
+        #Delay before next reading
+        
         try:
             d = next(delay)
         #Out of delays
@@ -107,8 +119,9 @@ def measure_average(detectors, target_fields, num=1, delay=None):
                 yield Msg('sleep', None, d)
 
     #Return average
-    return tuple(np.mean(measurements, axis=0))
-
+    result = tuple(np.mean(measurements, axis=0))
+    logger.debug("Result: {0}".format(result))
+    return result
 
 def measure_centroid(det, target_field='centroid_x',
                      average=None, delay=None):
@@ -129,6 +142,7 @@ def measure_centroid(det, target_field='centroid_x',
     delay : float, optional
         Time to wait inbetween images
     """
+    logger.debug("Running measure_centroid.")    
     return measure_average([det],[target_field],
                             num=average, delay=delay)
 
@@ -207,6 +221,13 @@ def walk_to_pixel(detector, motor, target,
     #Too large initial step
     #No beam on PIM
     ######################################
+    logger.debug("Running walk_to_pixel.")
+    logger.debug("Arguments passed: \ndetector: {0} \nmotor: {1} \ntarget: {2} \
+\nstart: {3} \ngradient: {4} \ntarget_fields: {5} \nfirst_step: {6} \ntolerance: \
+{7} \nsystem: {8} \naverage: {9} \ndelay: {10} \nmax_steps:{11}".format(
+            detector.name, motor.name, target, start, gradient, target_fields,
+            first_step, tolerance, system, average, delay, max_steps))
+    
     average = average or 1
     system  = system or []
     def walk():
@@ -249,7 +270,7 @@ def walk_to_pixel(detector, motor, target,
             if slope:
                 next_pos = (target - intercept)/slope
             step += 1
-
+        logger.debug("Result: {0}".format(center))
         return center
 
     return (yield from walk())
