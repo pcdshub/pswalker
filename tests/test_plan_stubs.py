@@ -40,6 +40,7 @@ def test_as_list():
     assert as_list(5) == [5]
     assert as_list([1, 2, 3]) == [1, 2, 3]
     assert as_list((1, 2, 3)) == [1, 2, 3]
+    assert as_list("apples") == ["apples"]
 
 
 def test_verify_all(fake_path_two_bounce):
