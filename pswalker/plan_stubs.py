@@ -209,7 +209,6 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
     def condition_cb(*args, value, **kwargs):
         if condition(value):
-            logger.debug("condition met in match_condition")
             success.set()
             done.set()
 
@@ -231,7 +230,14 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     yield from save()
     signal.unsubscribe(condition_cb)
 
-    return success.is_set()
+    ok = success.is_set()
+    if ok:
+        logger.debug("condition met in match_condition, mover=%s setpt=%s",
+                     mover.name, setpoint)
+    else:
+        logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
+                     mover.name, setpoint)
+    return ok
 
 
 def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
