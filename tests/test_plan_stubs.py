@@ -14,9 +14,19 @@ from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
 from pswalker.examples import YAG
 
 
-def test_prep_img_motors(fake_path_two_bounce):
+@pytest.fixture(scope='function')
+def fake_yags(fake_path_two_bounce):
     path = fake_path_two_bounce
     yags = [d for d in path.devices if isinstance(d, YAG)]
+
+    # Pretend that the correct values are the current values
+    ans = [y.read()['centroid_x']['value'] for y in yags]
+
+    return yags, ans
+
+
+def test_prep_img_motors(fake_yags):
+    yags = fake_yags[0]
     RE = RunEngine({})
     for i in range(len(yags)):
         for prev_out in (True, False):
@@ -43,43 +53,64 @@ def test_as_list():
     assert as_list("apples") == ["apples"]
 
 
-def test_verify_all(fake_path_two_bounce):
-    path = fake_path_two_bounce
-    yags = [d for d in path.devices if isinstance(d, YAG)]
+def verify_and_stash(ok_queue, *args, **kwargs):
+    ok = yield from verify_all(*args, **kwargs)
+    ok_queue.put(ok)
+
+
+def test_verify_all_answers(fake_yags):
+    yags, ans = fake_yags
     RE = RunEngine({})
     ok_queue = Queue()
 
-    def verify_and_stash(*args, **kwargs):
-        ok = yield from verify_all(*args, **kwargs)
-        ok_queue.put(ok)
-
-    # Pretend that the correct values are the current values
-    ans = [y.read()['centroid_x']['value'] for y in yags]
-
     # Check that all correct returns True, near correct returns True, and
     # completely wrong returns False.
-    RE(run_wrapper(verify_and_stash(yags, 'centroid_x', ans, 1)))
-    RE(run_wrapper(verify_and_stash(yags, 'centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x', ans, 1)))
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x',
                                     [a + 5 for a in ans], 6)))
-    RE(run_wrapper(verify_and_stash(yags, 'centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x',
                                     [a + 5 for a in ans], 1)))
     assert ok_queue.get() is True, "Exactly correct rejected!"
     assert ok_queue.get() is True, "Within tolerance rejected!"
     assert ok_queue.get() is False, "Outside of tolerance accepted!"
 
-    # Now let's check that other_readers are included
+
+def make_store_events(dest, message_type):
+    def store_events(event_type, event):
+        if message_type == "all" or event_type == message_type:
+            dest.append(event)
+    return store_events
+
+
+def test_verify_all_readers(fake_yags):
+    yags, ans = fake_yags
     ok = False
-    for msg in verify_all(yags, 'centroid_x', ans, 5, other_readers="cow",
-                          other_fields="milk"):
-        if msg.command == "read" and "cow" in msg.args:
+    RE = RunEngine({})
+
+    msgs = []
+    store_events = make_store_events(msgs, 'read')
+    RE(run_wrapper(verify_all(yags[1:], 'centroid_x', ans, 5,
+                              other_readers=yags[0],
+                              other_fields='y')), store_events)
+    for msg in msgs:
+        # if 'centroid_y' in msg.args:
+        if 'centroid_y' in msg:
             ok = True
             break
-    assert ok, "We didn't find our extra reader in the read messages..."
+    assert ok, ("We didn't find our extra reader in the read messages... " +
+                "{}".format(msgs))
+
+
+def test_verify_all_array(fake_yags):
+    yags, ans = fake_yags
+    RE = RunEngine({})
+    ok_queue = Queue()
 
     # Last let's make sure we can get a list of bools that correspond correctly
     # to the yag that was wrong
     ans[0] = ans[0] + 25
-    RE(verify_and_stash(yags, 'centroid_x', ans, 5, summary=False))
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x', ans, 5,
+                                    summary=False)))
     ok_list = ok_queue.get()
     assert ok_list[0] is False, "Wrong element bool i=0"
     for i in range(1, len(ans)):
