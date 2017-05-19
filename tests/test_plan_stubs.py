@@ -50,7 +50,7 @@ def test_verify_all(fake_path_two_bounce):
     ok_queue = Queue()
 
     def verify_and_stash(*args, **kwargs):
-        ok = yield from run_wrapper(verify_all(*args, **kwargs))
+        ok = yield from verify_all(*args, **kwargs)
         ok_queue.put(ok)
 
     # Pretend that the correct values are the current values
@@ -58,9 +58,11 @@ def test_verify_all(fake_path_two_bounce):
 
     # Check that all correct returns True, near correct returns True, and
     # completely wrong returns False.
-    RE(verify_and_stash(yags, 'centroid_x', ans, 1))
-    RE(verify_and_stash(yags, 'centroid_x', [a + 5 for a in ans], 6))
-    RE(verify_and_stash(yags, 'centroid_x', [a + 5 for a in ans], 1))
+    RE(run_wrapper(verify_and_stash(yags, 'centroid_x', ans, 1)))
+    RE(run_wrapper(verify_and_stash(yags, 'centroid_x',
+                                    [a + 5 for a in ans], 6)))
+    RE(run_wrapper(verify_and_stash(yags, 'centroid_x',
+                                    [a + 5 for a in ans], 1)))
     assert ok_queue.get() is True, "Exactly correct rejected!"
     assert ok_queue.get() is True, "Within tolerance rejected!"
     assert ok_queue.get() is False, "Outside of tolerance accepted!"
@@ -69,7 +71,7 @@ def test_verify_all(fake_path_two_bounce):
     ok = False
     for msg in verify_all(yags, 'centroid_x', ans, 5, other_readers="cow",
                           other_fields="milk"):
-        if msg.command == "read" and msg.args[0] == "cow":
+        if msg.command == "read" and "cow" in msg.args:
             ok = True
             break
     assert ok, "We didn't find our extra reader in the read messages..."
@@ -136,10 +138,6 @@ def mot_and_sig():
     return mot, sig
 
 
-match_condition = run_wrapper(match_condition)
-recover_threashold = run_wrapper(recover_threshold)
-
-
 def test_match_condition_fixture(mot_and_sig):
     mot, sig = mot_and_sig
     mot.move(5)
@@ -152,7 +150,7 @@ def test_match_condition_fixture(mot_and_sig):
 def test_match_condition_success(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(match_condition(sig, lambda x: x > 10, mot, 20))
+    RE(run_wrapper(match_condition(sig, lambda x: x > 10, mot, 20)))
     assert mot.position < 11
     # If the motor stopped shortly after 10, we matched the condition and
     # stopped
@@ -161,7 +159,7 @@ def test_match_condition_success(mot_and_sig):
 def test_match_condition_fail(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(match_condition(sig, lambda x: x > 50, mot, 40))
+    RE(run_wrapper(match_condition(sig, lambda x: x > 50, mot, 40)))
     assert mot.position == 40
     # If the motor did not stop and reached 40, we didn't erroneously match the
     # condition
@@ -170,7 +168,7 @@ def test_match_condition_fail(mot_and_sig):
 def test_match_condition_timeout(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(match_condition(sig, lambda x: x > 50, mot, 5, timeout=0.3))
+    RE(run_wrapper(match_condition(sig, lambda x: x > 9, mot, 5, timeout=0.3)))
     assert mot.position < 5
     # If the motor did not reach 5, we timed out
 
@@ -178,7 +176,7 @@ def test_match_condition_timeout(mot_and_sig):
 def test_recover_threshold_success(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(recover_threshold(sig, 20, mot, +1))
+    RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
     assert mot.position < 21
     # If we stopped right after 20, we recovered
 
@@ -186,7 +184,7 @@ def test_recover_threshold_success(mot_and_sig):
 def test_recover_threshold_success_reverse(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(recover_threshold(sig, -1, mot, +1))
+    RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
     assert mot.position > -2
     # If we stopped right after -1, we recovered
 
@@ -194,7 +192,7 @@ def test_recover_threshold_success_reverse(mot_and_sig):
 def test_recover_threshold_failure(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(recover_threshold(sig, 101, mot, +1))
+    RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
     assert mot.position == -100
     # We got to the end of the negative direction, we failed
 
@@ -202,6 +200,6 @@ def test_recover_threshold_failure(mot_and_sig):
 def test_recover_threshold_timeout_failure(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
-    RE(recover_threshold(sig, 50, mot, +1, timeout=0.2))
+    RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
     assert mot.position not in (50, 100, -100)
     # If we didn't reach the goal or either end, we timed out
