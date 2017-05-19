@@ -7,7 +7,6 @@ from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
                            save)
 
 from .plans import measure_average
-from .utils.argutils import as_list
 
 
 def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
@@ -40,6 +39,15 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
             yield from abs_set(mot, "IN")
 
     yield from plan_wait(group=prev_img_mot)
+
+
+def ensure_list(obj):
+    if obj is None:
+        return []
+    try:
+        return list(obj)
+    except:
+        return [obj]
 
 
 def verify_all(detectors, target_fields, target_values, tolerances,
@@ -95,12 +103,12 @@ def verify_all(detectors, target_fields, target_values, tolerances,
         False, we'll get a list of booleans, one for each detector.
     """
     # Allow variable inputs
-    detectors = as_list(detectors)
-    target_fields = as_list(target_fields)
-    target_values = as_list(target_values)
-    tolerances = as_list(tolerances)
-    other_readers = as_list(other_readers)
-    other_fields = as_list(other_fields)
+    detectors = ensure_list(detectors)
+    target_fields = ensure_list(target_fields)
+    target_values = ensure_list(target_values)
+    tolerances = ensure_list(tolerances)
+    other_readers = ensure_list(other_readers)
+    other_fields = ensure_list(other_fields)
 
     # Build the ok list using our plans
     ok = []
