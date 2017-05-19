@@ -68,7 +68,11 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
             yield from abs_set(mot, "IN")
     yield from plan_wait(group=prev_img_mot)
 
-    ok = time.time() - start_time < timeout
+    if timeout is None:
+        ok = True
+    else:
+        ok = time.time() - start_time < timeout
+
     if ok:
         logger.debug("prep_img_motors completed successfully")
     else:
