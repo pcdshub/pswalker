@@ -7,6 +7,7 @@ from queue import Queue
 from ophyd import Signal
 from ophyd.positioner import SoftPositioner
 from bluesky import RunEngine
+from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
@@ -48,7 +49,7 @@ def test_verify_all(fake_path_two_bounce):
     ok_queue = Queue()
 
     def verify_and_stash(*args, **kwargs):
-        ok = yield from verify_all(*args, **kwargs)
+        ok = yield from run_wrapper(verify_all(*args, **kwargs))
         ok_queue.put(ok)
 
     # Pretend that the correct values are the current values
@@ -132,6 +133,10 @@ def mot_and_sig():
                              name='test_mot', limits=(-100, 100))
     sig = MotorSignal(mot, name='test_sig')
     return mot, sig
+
+
+match_condition = run_wrapper(match_condition)
+recover_threashold = run_wrapper(recover_threshold)
 
 
 def test_match_condition_fixture(mot_and_sig):
