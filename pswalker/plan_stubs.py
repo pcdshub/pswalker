@@ -163,7 +163,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
     if output:
         logger.debug("verify complete, all ok")
     else:
-        logger.debug("verify failed! bool is %s", ok)
+        logger.debug("verify failed! bool is %s", ok_list)
 
     if summary:
         return output
