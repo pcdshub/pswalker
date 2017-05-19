@@ -961,6 +961,12 @@ class YAG(object):
         for sub in self._subs:
             sub()
 
+    def __repr__(self):
+        if self.name:
+            return self.name
+        else:
+            super().__repr__()
+
 
 def _x_to_pixel(x, yag):
     return np.round(np.floor(yag.pix[0]/2) + \
