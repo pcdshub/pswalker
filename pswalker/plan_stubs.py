@@ -81,7 +81,7 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
 
 
 def verify_all(detectors, target_fields, target_values, tolerances,
-               other_readers=None, other_fields=None, average=None, delay=None,
+               other_readers=None, other_fields=None, average=1, delay=None,
                summary=True):
     """
     Plan to double-check the values on each of our imagers. Manipulates the

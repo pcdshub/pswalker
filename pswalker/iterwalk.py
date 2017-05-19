@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
-             motor_fields='alpha', tolerances=20, system=None, averages=None,
+             motor_fields='alpha', tolerances=20, system=None, averages=1,
              overshoot=0, max_walks=None, timeout=None):
     """
     Iteratively adjust a system of detectors and motors where each motor
