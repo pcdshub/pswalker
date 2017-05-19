@@ -8,7 +8,7 @@ from ophyd import Signal
 from ophyd.positioner import SoftPositioner
 from bluesky import RunEngine
 
-from pswalker.plan_stubs import (prep_img_motors, ensure_list, verify_all,
+from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
 from pswalker.examples import YAG
 
@@ -34,11 +34,11 @@ def test_prep_img_motors(fake_path_two_bounce):
                                 "not moved in with tail_in=True."
 
 
-def test_ensure_list():
-    assert ensure_list(None) == []
-    assert ensure_list(5) == [5]
-    assert ensure_list([1, 2, 3]) == [1, 2, 3]
-    assert ensure_list((1, 2, 3)) == [1, 2, 3]
+def test_as_list():
+    assert as_list(None) == []
+    assert as_list(5) == [5]
+    assert as_list([1, 2, 3]) == [1, 2, 3]
+    assert as_list((1, 2, 3)) == [1, 2, 3]
 
 
 def test_verify_all(fake_path_two_bounce):
