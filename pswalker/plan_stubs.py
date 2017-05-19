@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import time
 import threading
 import uuid
+import logging
 
 from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
                            save)
@@ -9,8 +11,11 @@ from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
 from .plans import measure_average
 from .utils.argutils import as_list
 
+logger = logging.getLogger(__name__)
 
-def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
+
+def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
+                    timeout=None):
     """
     Plan to prepare image motors for taking data. Moves the correct imagers in
     and waits for them to be ready.
@@ -19,27 +24,56 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
     ----------
     n_mot: int
         Index of the motor in img_motors that we need to take data with.
+
     img_motors: list of OphydObject
         OphydObjects to move in or out. These objects need to have .set methods
-        that accept the strings "IN" and "OUT", reacting appropriately. These
-        should be ordered by increasing distance to the source.
+        that accept the strings "IN" and "OUT", reacting appropriately, and
+        need to accept a "timeout" kwarg that allows their status to be set as
+        done after a timeout. These should be ordered by increasing distance
+        to the source.
+
     prev_out: bool, optional
         If True, pull out imagers closer to the source than the one we need to
         use. Default True. (True if imager blocks beam)
+
     tail_in: bool, optional
         If True, put in imagers after this one, to be ready for later. If
         False, don't touch them. We won't wait for the tail motors to move in.
+
+    timeout: number, optional
+        Only wait for this many seconds before moving on.
+
+    Returns
+    -------
+    ok: bool
+        True if the wait succeeded, False otherwise.
     """
+    start_time = time.time()
+
     prev_img_mot = str(uuid.uuid4())
     for i, mot in enumerate(img_motors):
         if i < n_mot and prev_out:
-            yield from abs_set(mot, "OUT", group=prev_img_mot)
+            if timeout is None:
+                yield from abs_set(mot, "OUT", group=prev_img_mot)
+            else:
+                yield from abs_set(mot, "OUT", group=prev_img_mot,
+                                   timeout=timeout)
         elif i == n_mot:
-            yield from abs_set(mot, "IN", group=prev_img_mot)
+            if timeout is None:
+                yield from abs_set(mot, "IN", group=prev_img_mot)
+            else:
+                yield from abs_set(mot, "IN", group=prev_img_mot,
+                                   timeout=timeout)
         elif tail_in:
             yield from abs_set(mot, "IN")
-
     yield from plan_wait(group=prev_img_mot)
+
+    ok = time.time() - start_time < timeout
+    if ok:
+        logger.debug("prep_img_motors completed successfully")
+    else:
+        logger.debug("prep_img_motors exitted with timeout")
+    return ok
 
 
 def verify_all(detectors, target_fields, target_values, tolerances,
@@ -106,7 +140,11 @@ def verify_all(detectors, target_fields, target_values, tolerances,
     ok = []
     for i, (det, fld, val, tol) in enumerate(zip(detectors, target_fields,
                                                  target_values, tolerances)):
-        yield from prep_img_motors(i, detectors)
+        ok = yield from prep_img_motors(i, detectors, timeout=15)
+        if not ok:
+            err = "Detector motion timed out!"
+            logger.error(err)
+            raise RuntimeError(err)
         avgs = yield from measure_average([det] + other_readers,
                                           [fld] + other_fields,
                                           num=average, delay=delay)
@@ -117,8 +155,14 @@ def verify_all(detectors, target_fields, target_values, tolerances,
         ok.append(abs(avg - val) < tol)
 
     # Output for yield from
+    output = all(ok)
+    if output:
+        logger.debug("verify complete, all ok")
+    else:
+        logger.debug("verify failed! bool is %s", ok)
+
     if summary:
-        return all(ok)
+        return output
     else:
         return ok
 
@@ -165,10 +209,12 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
     def condition_cb(*args, value, **kwargs):
         if condition(value):
+            logger.debug("condition met in match_condition")
             success.set()
             done.set()
 
     def dmov_cb(*args, **kwargs):
+        logger.debug("motor stopped moving in match_condition")
         done.set()
 
     if sub_type is not None:
@@ -183,6 +229,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     yield from read(mover)
     yield from read(signal)
     yield from save()
+    signal.unsubscribe(condition_cb)
 
     return success.is_set()
 
@@ -224,8 +271,10 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
         If False, look for signal <= threshold instead.
     """
     if dir_initial > 0:
+        logger.debug("Recovering towards the high limit switch")
         setpoint = motor.high_limit_switch.get() - 0.001
     else:
+        logger.debug("Recovering towards the low limit switch")
         setpoint = motor.low_limit_switch.get() + 0.001
 
     def condition(x):
@@ -236,12 +285,15 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
     ok = yield from match_condition(signal, condition, motor, setpoint,
                                     timeout=dir_timeout)
     if ok:
+        logger.debug("Recovery was successful")
         return True
     else:
         if try_reverse:
+            logger.debug("First direction failed, trying reverse...")
             return (yield from recover_threshold(signal, threshold, motor,
                                                  -dir_initial,
                                                  dir_timeout=2*dir_timeout,
                                                  try_reverse=False))
         else:
+            logger.debug("Recovery failed")
             return False
