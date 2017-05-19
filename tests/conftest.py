@@ -87,3 +87,15 @@ def fake_path_two_bounce():
     
     path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
     return path
+
+@pytest.fixture(scope='function')
+def lcls_two_bounce_system():
+    """
+    Simple system that consists of a source, two mirrors, and two imagers.
+    """
+    s = Source('test_undulator', 0, 0)
+    m1 = Mirror('test_m1h', 0, 90.510, 0.0014)
+    m2 = Mirror('test_m2h', 0.0317324, 101.843, 0.0014)
+    y1 = YAG('test_p3h', 0.0317324, 103.660)
+    y2 = YAG('test_dg3', 0.0317324, 375.000)    
+    return s, m1, m2, y1, y2

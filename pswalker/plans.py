@@ -22,7 +22,6 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 ##########
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.WARN)
 
 #TODO Half assed generalization, should really use count but it has those pesky
 #     run/stage decorators
@@ -73,10 +72,10 @@ def measure_average(detectors, target_fields, num=1, delay=None):
 
         else:
             if num -1 > num_delays:
-                err_str = "num={:} but delays only provides {:} entires".format(
+                err = "num={:} but delays only provides {:} entires".format(
                     num, num_delays)
-                logger.error(err_str, stack_info=True)                
-                raise ValueError(err_str)
+                logger.error(err, stack_info=True)                
+                raise ValueError(err)
         delay = iter(delay)
 
     #Gather shots
@@ -112,9 +111,9 @@ def measure_average(detectors, target_fields, num=1, delay=None):
                 break
             #Otherwise raise exception
             else:
-                err_str = "num={:} but delays only provides {:} entires".format(num, i)
-                logger.error(err_str, stack_info=True)                
-                raise ValueError(err_str)
+                err = "num={:} but delays only provides {:} entires".format(num, i)
+                logger.error(err, stack_info=True)                
+                raise ValueError(err)
         #If we have a delay
         if d is not None:
             d = d - (time.time() - now)
