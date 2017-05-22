@@ -114,9 +114,9 @@ def test_verify_all_array(fake_yags):
     RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x', ans, 5,
                                     summary=False)))
     ok_list = ok_queue.get()
-    assert ok_list[0] is False, "Wrong element bool i=0"
+    assert not ok_list[0], "Wrong element bool i=0"
     for i in range(1, len(ans)):
-        assert ok_list[i] is True, "Wrong element bool i={}".format(i)
+        assert ok_list[i], "Wrong element bool i={}".format(i)
 
 
 class SlowSoftPositioner(SoftPositioner):
