@@ -3,6 +3,7 @@
 import pytest
 import time
 from queue import Queue
+import logging
 
 from ophyd import Signal
 from ophyd.positioner import SoftPositioner
@@ -12,6 +13,8 @@ from bluesky.plans import run_wrapper
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
 from pswalker.examples import YAG
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope='function')
@@ -75,11 +78,11 @@ def test_verify_all_answers(fake_yags):
     assert ok_queue.get() is False, "Outside of tolerance accepted!"
 
 
-def make_store_events(dest, message_type):
-    def store_events(event_type, event):
-        if message_type == "all" or event_type == message_type:
-            dest.append(event)
-    return store_events
+def make_store_doc(dest, filter_doc_type='all'):
+    def store_doc(doc_type, doc):
+        if filter_doc_type == 'all' or doc_type == filter_doc_type:
+            dest.append(doc)
+    return store_doc
 
 
 def test_verify_all_readers(fake_yags):
@@ -87,18 +90,17 @@ def test_verify_all_readers(fake_yags):
     ok = False
     RE = RunEngine({})
 
-    msgs = []
-    store_events = make_store_events(msgs, 'read')
+    descr = []
+    store_doc = make_store_doc(descr, 'descriptor')
+
     RE(run_wrapper(verify_all(yags[1:], 'centroid_x', ans, 5,
                               other_readers=yags[0],
-                              other_fields='y')), store_events)
-    for msg in msgs:
-        # if 'centroid_y' in msg.args:
-        if 'centroid_y' in msg:
+                              other_fields='centroid_y')), store_doc)
+    for desc in descr:
+        if yags[0].name in desc['object_keys'].keys():
             ok = True
             break
-    assert ok, ("We didn't find our extra reader in the read messages... " +
-                "{}".format(msgs))
+    assert ok, ("We didn't find our extra reader in the descriptor docs")
 
 
 def test_verify_all_array(fake_yags):
