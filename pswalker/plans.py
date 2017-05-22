@@ -73,21 +73,20 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     for i in range(num):
         now = time.time()
         #Trigger detector and wait for completion
-        yield Msg('create', None, name='primary')
         for det in detectors:
             yield Msg('trigger', det, group='B')
         #Wait for completion
         yield Msg('wait', None, 'B')
         #Read outputs
         for j, det in enumerate(detectors):
+            yield Msg('create', None, name='primary')
             cur_det = yield Msg('read', det)
+            yield Msg('save')
             #Gather average measurements for supplied target_fields
             try:
                 measurements[i][j] = cur_det[target_fields[j]]['value']
             except IndexError:
                 break
-        #Emit events
-        yield Msg('save')
         #Delay before next reading 
         try:
             d = next(delay)
