@@ -3,6 +3,7 @@
 import pytest
 import time
 from queue import Queue
+import threading
 import logging
 
 from ophyd import Signal
@@ -141,14 +142,28 @@ class SlowSoftPositioner(SoftPositioner):
         pos_list = [self.position + n * delta for n in range(1, self.n_steps)]
         pos_list.append(position)
 
-        for p in pos_list:
-            if not self._stopped:
-                time.sleep(self.delay)
-                self._set_position(p)
-        self._done_moving()
+        thread = threading.Thread(target=self._move_thread,
+                                  args=(pos_list, status))
+        logger.debug("test motor start moving")
+        thread.start()
 
     def stop(self, *, success=False):
         self._stopped = True
+        logger.debug("stop test motor")
+
+    def _move_thread(self, pos_list, status):
+        ok = True
+        for p in pos_list:
+            if self._stopped:
+                ok = False
+                break
+            if not self._stopped:
+                time.sleep(self.delay)
+                self._set_position(p)
+        status.success = ok
+        status.done = True
+        self._done_moving()
+        logger.debug("test motor done moving")
 
 
 class MotorSignal(Signal):
@@ -171,16 +186,19 @@ def mot_and_sig():
     return mot, sig
 
 
+@pytest.mark.timeout(5)
 def test_match_condition_fixture(mot_and_sig):
     mot, sig = mot_and_sig
     mot.move(5)
     assert sig.value == 5
-    mot.move(20)
+    mot.move(20, wait=False)
     mot.stop()
     assert mot.position < 20
 
 
+@pytest.mark.timeout(5)
 def test_match_condition_success(mot_and_sig):
+    logger.debug("test_match_condition_success")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 10, mot, 20)))
@@ -189,7 +207,9 @@ def test_match_condition_success(mot_and_sig):
     # stopped
 
 
+@pytest.mark.timeout(5)
 def test_match_condition_fail(mot_and_sig):
+    logger.debug("test_match_condition_fail")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 50, mot, 40)))
@@ -198,6 +218,7 @@ def test_match_condition_fail(mot_and_sig):
     # condition
 
 
+@pytest.mark.timeout(5)
 def test_match_condition_timeout(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
@@ -206,6 +227,7 @@ def test_match_condition_timeout(mot_and_sig):
     # If the motor did not reach 5, we timed out
 
 
+@pytest.mark.timeout(5)
 def test_recover_threshold_success(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
@@ -214,6 +236,7 @@ def test_recover_threshold_success(mot_and_sig):
     # If we stopped right after 20, we recovered
 
 
+@pytest.mark.timeout(5)
 def test_recover_threshold_success_reverse(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
@@ -222,6 +245,7 @@ def test_recover_threshold_success_reverse(mot_and_sig):
     # If we stopped right after -1, we recovered
 
 
+@pytest.mark.timeout(5)
 def test_recover_threshold_failure(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
@@ -230,6 +254,7 @@ def test_recover_threshold_failure(mot_and_sig):
     # We got to the end of the negative direction, we failed
 
 
+@pytest.mark.timeout(5)
 def test_recover_threshold_timeout_failure(mot_and_sig):
     mot, sig = mot_and_sig
     RE = RunEngine({})
