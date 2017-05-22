@@ -14,19 +14,18 @@ def as_list(obj, length=None, tp=None):
         return [None] * length
     # Otherwise, attempt to cast to a list in case we have some iterable
     # Unless obj is a string, which casts to a list incorrectly
-    if isinstance(obj, str):
-        obj = [obj]
-    else:
+    is_list = isinstance(obj, list)
+    if not is_list and not isinstance(obj, str):
         try:
             obj = list(obj)
-        # If this fails, we have a single object.
+            is_list = True
         except:
-            # With no length specified, just stash into a list.
-            if length is None:
-                obj = [obj]
-            # With length specified, extend to the specified length
-            else:
-                obj = [obj] * length
+            pass
+    if not is_list:
+        if length is None:
+            obj = [obj]
+        else:
+            obj = [obj] * length
     # We definitely have a list now. Cast to the type.
     # Let exceptions here bubble up to the top.
     if tp is not None:
