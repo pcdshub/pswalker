@@ -134,9 +134,10 @@ def verify_all(detectors, target_fields, target_values, tolerances,
     """
     # Allow variable inputs
     detectors = as_list(detectors)
-    target_fields = as_list(target_fields)
-    target_values = as_list(target_values)
-    tolerances = as_list(tolerances)
+    num = len(detectors)
+    target_fields = as_list(target_fields, length=num)
+    target_values = as_list(target_values, length=num)
+    tolerances = as_list(tolerances, length=num)
     other_readers = as_list(other_readers)
     other_fields = as_list(other_fields)
 
@@ -160,10 +161,11 @@ def verify_all(detectors, target_fields, target_values, tolerances,
 
     # Output for yield from
     output = all(ok_list)
+    logger.debug("verify all complete for %s", detectors)
     if output:
-        logger.debug("verify complete, all ok")
+        logger.debug("verify success")
     else:
-        logger.debug("verify failed! bool is %s", ok_list)
+        logger.debug("verify failed, bool is %s", ok_list)
 
     if summary:
         return output
