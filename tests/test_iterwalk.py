@@ -110,6 +110,7 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
+    goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
     def bad_set(yag, cmd=None, **kwargs):
@@ -151,6 +152,7 @@ def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_sy
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
+    goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
     def bad_set(mirror, cmd=None, **kwargs):
