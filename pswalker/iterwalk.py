@@ -150,7 +150,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 finished = [False] * num
 
             # Modify goal to use overshoot
-            goal = (goals[i] - pos) * (1 + overshoot[i]) + pos
+            goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
             yield from checkpoint()
