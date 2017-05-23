@@ -1,6 +1,7 @@
 ############
 # Standard #
 ############
+import logging
 from collections import OrderedDict, ChainMap
 from pprint import pprint
 ###############
@@ -14,7 +15,10 @@ from .utils.pyUtils import isiterable
 # Module #
 ##########
 
-def OneBounce(a1, x0, xp0, x1, z1, z2):
+logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+
+def one_bounce(a1, x0, xp0, x1, z1, z2):
     """
     Calculates the x position of the beam after bouncing off one flat mirror.
 
@@ -38,9 +42,13 @@ def OneBounce(a1, x0, xp0, x1, z1, z2):
     z2 : float
     	z position of the imager    
     """
-    return -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
+    result = -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
+    logger.debug("Calculated one_bounce x position using: \na1={0}, x0={1}, \
+xp0={2}, x1={3}, z1={4}, z2={5}. \nResult: {6}".format(
+            a1, x0, xp0, x1, z1, z2, result))
+    return result
 
-def TwoBounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
+def two_bounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     """
     Calculates the x position of the beam after bouncing off two flat mirrors.
     
@@ -70,590 +78,12 @@ def TwoBounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     z3 : float
     	z position of imager
     """
-    return 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + 2*alphas[1]*z3 + \
-        z3*xp0 - 2*x1 + 2*x2 + x0
-
-class OneMirrorOneYagSystem(object):
-    """
-    System of a source, mirror and an imager.
-
-    Parameters
-    ----------
-    name_s : str, optional
-    	Alias for Source
-
-    name_m1 : str, optional
-    	Alias for Mirror
-
-    name_y1 : str, optional
-    	Alias for Yag
-    
-    x0 : float, optional
-        Initial x position of source
-
-    xp0 : float, optional
-        Initial pointing of source
-    
-    x1 : float, optional
-        Initial x position of mirror
-
-    d1 : float, optional
-        Initial z position of mirror
-
-    a1 : float, optional
-        Initial pitch of mirror
-
-    x2 : float, optional
-        Initial x position of yag
-
-    d2 : float, optional
-        Initial z position of yag
-
-    noise_x0 : float, optional
-        Multiplicative noise factor added to source x-motor readback
-
-    noise_xp0 : float, optional
-        Multiplicative noise factor added to source xp-motor readback
-
-    noise_x1 : float, optional
-        Multiplicative noise factor added to mirror x-motor readback
-
-    noise_z1 : float, optional
-        Multiplicative noise factor added to mirror z-motor readback
-
-    noise_a1 : float, optional
-        Multiplicative noise factor added to mirror alpha-motor readback
-
-    noise_x2 : float, optional
-        Multiplicative noise factor added to yag x-motor readback
-
-    noise_z2 : float, optional
-        Multiplicative noise factor added to yag z-motor readback
-    
-    fake_sleep_x0 : float, optional
-    	Amount of time to wait after moving source x-motor
-
-    fake_sleep_xp0 : float, optional
-    	Amount of time to wait after moving source xp-motor
-
-    fake_sleep_x1 : float, optional
-    	Amount of time to wait after moving mirror x-motor
-
-    fake_sleep_z1 : float, optional
-    	Amount of time to wait after moving mirror z-motor
-
-    fake_sleep_a1 : float, optional
-    	Amount of time to wait after moving mirror alpha-motor
-
-    fake_sleep_x2 : float, optional
-    	Amount of time to wait after moving yag x-motor
-
-    fake_sleep_z2 : float, optional
-    	Amount of time to wait after moving yag z-motor
-
-    pix_y1 : tuple, optional
-    	Dimensions of yag in pixels
-
-    size_y1 : tuple, optional
-    	Dimensions of yag in meters
-
-    invert_y1 : bool, optional
-    	Invert the resulting beam displacement from center of yag
-    """
-    def __init__(self, **kwargs):
-        self._name_s = kwargs.get("name_s", "Source")
-        self._name_m1 = kwargs.get("name_m1", "Mirror 1")
-        self._name_y1 = kwargs.get("name_y1", "YAG 1")        
-        self._x0 = kwargs.get("x0", 0)
-        self._xp0 = kwargs.get("xp0", 0)
-        self._x1 = kwargs.get("x1", 0)
-        self._z1 = kwargs.get("z1", 90.510)
-        self._a1 = kwargs.get("a1", 0.0014)
-        self._x2 = kwargs.get("x2", 0.0317324)
-        self._z2 = kwargs.get("z2", 101.843)
-        self._noise_x0 = kwargs.get("noise_x0", 0)
-        self._noise_xp0 = kwargs.get("noise_xp0", 0)
-        self._noise_x1 = kwargs.get("noise_x1", 0)
-        self._noise_z1 = kwargs.get("noise_z1", 0)
-        self._noise_a1 = kwargs.get("noise_a1", 0)
-        self._noise_x2 = kwargs.get("noise_x2", 0)
-        self._noise_z2 = kwargs.get("noise_z2", 0)
-        self._fake_sleep_x0 = kwargs.get("fake_sleep_x0", 0)
-        self._fake_sleep_xp0 = kwargs.get("fake_sleep_xp0", 0)
-        self._fake_sleep_x1 = kwargs.get("fake_sleep_x1", 0)
-        self._fake_sleep_z1 = kwargs.get("fake_sleep_z1", 0)
-        self._fake_sleep_a1 = kwargs.get("fake_sleep_a1", 0)
-        self._fake_sleep_x2 = kwargs.get("fake_sleep_x2", 0)
-        self._fake_sleep_z2 = kwargs.get("fake_sleep_z2", 0)
-        self._pix_y1 = kwargs.get("pix_y1", (1392, 1040))
-        self._size_y1 = kwargs.get("size_y1", (0.0076, 0.0062))
-        self._invert_y1 = kwargs.get("invert_y1", False)
-
-        self.source = Source(self._name_s, self._x0, self._xp0,
-                             noise_x=self._noise_x0, noise_xp=self._noise_xp0,
-                             fake_sleep_x=self._fake_sleep_x0,
-                             fake_sleep_xp=self._fake_sleep_xp0)        
-        self.mirror_1 = Mirror(self._name_m1, self._x1, self._z1, self._a1,
-                               noise_x=self._noise_x1, noise_alpha=self._noise_a1,
-                               fake_sleep_x=self._fake_sleep_x1,
-                               fake_sleep_z=self._fake_sleep_z1,
-                               fake_sleep_alpha=self._fake_sleep_a1)
-        self.yag_1 = YAG(self._name_y1, self._x2, self._z2, self._noise_x2,
-                         self._noise_z2, pix=self._pix_y1, size=self._size_y1,
-                         fake_sleep_x=self._fake_sleep_x2,
-                         fake_sleep_z=self._fake_sleep_z2)
-        
-        self.yag_1._cent_x = self._calc_cent_x
-
-    def _calc_cent_x(self):
-        x = OneBounce(self.mirror_1._alpha,
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      self.yag_1._z)
-        return np.round(np.floor(self.yag_1.pix[0]/2) + \
-                        (1 - 2*self._invert_y1)*(x - self.yag_1._x) * \
-                        self.yag_1.pix[0]/self.yag_1.size[0])
-
-class TwoMirrorTwoYagSystem(object):
-    """
-    System of a source, mirror and an imager.
-
-    Parameters
-    ----------
-    name_s : str, optional
-    	Alias for Source
-
-    name_m1 : str, optional
-    	Alias for first mirror
-
-    name_m2 : str, optional
-    	Alias for second mirror
-    
-    name_y1 : str, optional
-    	Alias for first yag
-    
-    name_y2 : str, optional
-    	Alias for second yag
-    
-    x0 : float, optional
-        Initial x position of source
-
-    xp0 : float, optional
-        Initial pointing of source
-    
-    x1 : float, optional
-        Initial x position of first mirror
-
-    d1 : float, optional
-        Initial z position of first mirror
-
-    a1 : float, optional
-        Initial pitch of first mirror
-
-    x2 : float, optional
-        Initial x position of second mirror
-
-    d2 : float, optional
-        Initial z position of second mirror
-
-    a2 : float, optional
-        Initial pitch of second mirror
-    
-    x3 : float, optional
-        Initial x position of first yag
-
-    d3 : float, optional
-        Initial z position of first yag
-
-    x4 : float, optional
-        Initial x position of second yag
-
-    d4 : float, optional
-        Initial z position of second yag
-    
-    noise_x0 : float, optional
-        Multiplicative noise factor added to source x-motor readback
-
-    noise_xp0 : float, optional
-        Multiplicative noise factor added to source xp-motor readback
-
-    noise_x1 : float, optional
-        Multiplicative noise factor added to first mirror x-motor readback
-
-    noise_z1 : float, optional
-        Multiplicative noise factor added to first mirror z-motor readback
-
-    noise_a1 : float, optional
-        Multiplicative noise factor added to first mirror alpha-motor readback
-
-    noise_x2 : float, optional
-        Multiplicative noise factor added to second mirror x-motor readback
-
-    noise_z2 : float, optional
-        Multiplicative noise factor added to second mirror z-motor readback
-
-    noise_a2 : float, optional
-        Multiplicative noise factor added to second mirror alpha-motor readback
-    
-    noise_x3 : float, optional
-        Multiplicative noise factor added to first yag x-motor readback
-
-    noise_z3 : float, optional
-        Multiplicative noise factor added to first yag z-motor readback
-    
-    noise_x4 : float, optional
-        Multiplicative noise factor added to second yag x-motor readback
-
-    noise_z4 : float, optional
-        Multiplicative noise factor added to second yag z-motor readback
-    
-    fake_sleep_x0 : float, optional
-    	Amount of time to wait after moving source x-motor
-
-    fake_sleep_xp0 : float, optional
-    	Amount of time to wait after moving source xp-motor
-
-    fake_sleep_x1 : float, optional
-    	Amount of time to wait after moving first mirror x-motor
-
-    fake_sleep_z1 : float, optional
-    	Amount of time to wait after moving first mirror z-motor
-
-    fake_sleep_a1 : float, optional
-    	Amount of time to wait after moving first mirror alpha-motor
-
-    fake_sleep_x2 : float, optional
-    	Amount of time to wait after moving second mirror x-motor
-
-    fake_sleep_z2 : float, optional
-    	Amount of time to wait after moving second mirror z-motor
-
-    fake_sleep_a2 : float, optional
-    	Amount of time to wait after moving second mirror alpha-motor
-    
-    fake_sleep_x3 : float, optional
-    	Amount of time to wait after moving first yag x-motor
-
-    fake_sleep_z3 : float, optional
-    	Amount of time to wait after moving first yag z-motor
-
-    fake_sleep_x4 : float, optional
-    	Amount of time to wait after moving second yag x-motor
-
-    fake_sleep_z4 : float, optional
-    	Amount of time to wait after moving second yag z-motor
-    
-    pix_y1 : tuple, optional
-    	Dimensions of first yag in pixels
-
-    size_y1 : tuple, optional
-    	Dimensions of first yag in meters
-
-    invert_y1 : bool, optional
-    	Invert the resulting beam displacement from center of first yag
-
-    pix_y2 : tuple, optional
-    	Dimensions of second yag in pixels
-
-    size_y2 : tuple, optional
-    	Dimensions of second yag in meters
-
-    invert_y2 : bool, optional
-    	Invert the resulting beam displacement from center of second yag    
-    """
-    def __init__(self, **kwargs):
-        self._name_s = kwargs.get("name_s", "Source")
-        self._name_m1 = kwargs.get("name_m1", "Mirror 1")
-        self._name_m2 = kwargs.get("name_m2", "Mirror 2")
-        self._name_y1 = kwargs.get("name_y1", "YAG 1")
-        self._name_y2 = kwargs.get("name_y2", "YAG 2")                
-        # Initial Positions
-        self._x0 = kwargs.get("x0", 0)
-        self._xp0 = kwargs.get("xp0", 0)
-        self._x1 = kwargs.get("x1", 0)
-        self._z1 = kwargs.get("z1", 90.510)
-        self._a1 = kwargs.get("a1", 0.0014)
-        self._x2 = kwargs.get("x2", 0.0317324)
-        self._z2 = kwargs.get("z2", 101.843)
-        self._a2 = kwargs.get("a2", 0.0014)
-        self._x3 = kwargs.get("x3", 0.0317324)
-        self._z3 = kwargs.get("z3", 103.660)
-        self._x4 = kwargs.get("x4", 0.0317324)
-        self._z4 = kwargs.get("z4", 375.000)
-        # Noise for positions
-        self._noise_x0 = kwargs.get("noise_x0", 0)
-        self._noise_xp0 = kwargs.get("noise_xp0", 0)
-        self._noise_x1 = kwargs.get("noise_x1", 0)
-        self._noise_z1 = kwargs.get("noise_z1", 0)
-        self._noise_a1 = kwargs.get("noise_a1", 0)
-        self._noise_x2 = kwargs.get("noise_x2", 0)
-        self._noise_z2 = kwargs.get("noise_z2", 0)
-        self._noise_a2 = kwargs.get("noise_a2", 0)
-        self._noise_x3 = kwargs.get("noise_x3", 0)
-        self._noise_z3 = kwargs.get("noise_z3", 0)
-        self._noise_x4 = kwargs.get("noise_x4", 0)
-        self._noise_z4 = kwargs.get("noise_z4", 0)
-        # Fake Sleep for motors
-        self._fake_sleep_x0 = kwargs.get("fake_sleep_x0", 0)
-        self._fake_sleep_xp0 = kwargs.get("fake_sleep_xp0", 0)
-        self._fake_sleep_x1 = kwargs.get("fake_sleep_x1", 0)
-        self._fake_sleep_z1 = kwargs.get("fake_sleep_z1", 0)
-        self._fake_sleep_a1 = kwargs.get("fake_sleep_a1", 0)
-        self._fake_sleep_x2 = kwargs.get("fake_sleep_x2", 0)
-        self._fake_sleep_z2 = kwargs.get("fake_sleep_z2", 0)
-        self._fake_sleep_a2 = kwargs.get("fake_sleep_a2", 0)
-        self._fake_sleep_x3 = kwargs.get("fake_sleep_x3", 0)
-        self._fake_sleep_z3 = kwargs.get("fake_sleep_z3", 0)
-        self._fake_sleep_x4 = kwargs.get("fake_sleep_x4", 0)
-        self._fake_sleep_z4 = kwargs.get("fake_sleep_z4", 0)
-        # Other
-        self._pix_y1 = kwargs.get("pix_y1", (1392, 1040))
-        self._size_y1 = kwargs.get("size_y1", (0.0076, 0.0062))
-        self._invert_y1 = kwargs.get("invert_y1", False)
-        self._pix_y2 = kwargs.get("pix_y2", (1392, 1040))
-        self._size_y2 = kwargs.get("size_y2", (0.0076, 0.0062))
-        self._invert_y2 = kwargs.get("invert_y2", False)
-
-        self.source = Source(self._name_s, self._x0, self._xp0,
-                             noise_x=self._noise_x0, noise_xp=self._noise_xp0,
-                             fake_sleep_x=self._fake_sleep_x0,
-                             fake_sleep_xp=self._fake_sleep_xp0)        
-        self.mirror_1 = Mirror(self._name_m1, self._x1, self._z1, self._a1,
-                               noise_x=self._noise_x1,
-                               noise_alpha=self._noise_a1,
-                               fake_sleep_x=self._fake_sleep_x1,
-                               fake_sleep_z=self._fake_sleep_z1,
-                               fake_sleep_alpha=self._fake_sleep_a2)
-        self.mirror_2 = Mirror(self._name_m2, self._x2, self._z2, self._a2,
-                               noise_x=self._noise_x2,
-                               noise_alpha=self._noise_a2,
-                               fake_sleep_x=self._fake_sleep_x2,
-                               fake_sleep_z=self._fake_sleep_z2,
-                               fake_sleep_alpha=self._fake_sleep_a2)
-        self.yag_1 = YAG(self._name_y1, self._x3, self._z3, self._noise_x3,
-                         self._noise_z3, pix=self._pix_y1, size=self._size_y1,
-                         fake_sleep_x=self._fake_sleep_x3,
-                         fake_sleep_z=self._fake_sleep_z3)
-        self.yag_2 = YAG(self._name_y2, self._x4, self._z4, self._noise_x4,
-                         self._noise_z4, pix=self._pix_y2, size=self._size_y2,
-                         fake_sleep_x=self._fake_sleep_x4,
-                         fake_sleep_z=self._fake_sleep_z4)
-        
-        self.yag_1._cent_x = self._m1_calc_cent_x
-        self.yag_2._cent_x = self._m2_calc_cent_x
-
-    def _x_to_pixel(self, yag):
-        return np.round(np.floor(yag_1.pix[0]/2) + \
-                        (1 - 2*self._invert_y1)*(x - yag_1._x) * \
-                        yag_1.pix[0]/yag_1.size[0])                
-
-    def _m1_calc_cent_x(self):
-        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      self.mirror_2._x,
-                      self.mirror_2._z,
-                      self.yag_1._z)
-        return self._x_to_pixel(self.yag_1)
-
-    def _m2_calc_cent_x(self):
-        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      self.mirror_2._x,
-                      self.mirror_2._z,
-                      self.yag_2._z)
-        return self._x_to_pixel(self.yag_2)
-
-    def get_components(self):
-        return self.source, self.mirror_1, self.mirror_2, self.yag_1, self.yag_2
-
-class TwoMirrorNYagSystem(object):
-    """
-    System of a source, mirror and an imager.
-
-    Parameters
-    ----------
-    yags : list
-    	List of already initialized yag objects.
-    
-    name_s : str, optional
-    	Alias for Source
-
-    name_m1 : str, optional
-    	Alias for first mirror
-
-    name_m2 : str, optional
-    	Alias for second mirror
-    
-    x0 : float, optional
-        Initial x position of source
-
-    xp0 : float, optional
-        Initial pointing of source
-    
-    x1 : float, optional
-        Initial x position of first mirror
-
-    d1 : float, optional
-        Initial z position of first mirror
-
-    a1 : float, optional
-        Initial pitch of first mirror
-
-    x2 : float, optional
-        Initial x position of second mirror
-
-    d2 : float, optional
-        Initial z position of second mirror
-
-    a2 : float, optional
-        Initial pitch of second mirror
-    
-    noise_x0 : float, optional
-        Multiplicative noise factor added to source x-motor readback
-
-    noise_xp0 : float, optional
-        Multiplicative noise factor added to source xp-motor readback
-
-    noise_x1 : float, optional
-        Multiplicative noise factor added to first mirror x-motor readback
-
-    noise_z1 : float, optional
-        Multiplicative noise factor added to first mirror z-motor readback
-
-    noise_a1 : float, optional
-        Multiplicative noise factor added to first mirror alpha-motor readback
-
-    noise_x2 : float, optional
-        Multiplicative noise factor added to second mirror x-motor readback
-
-    noise_z2 : float, optional
-        Multiplicative noise factor added to second mirror z-motor readback
-
-    noise_a2 : float, optional
-        Multiplicative noise factor added to second mirror alpha-motor readback
-    
-    fake_sleep_x0 : float, optional
-    	Amount of time to wait after moving source x-motor
-
-    fake_sleep_xp0 : float, optional
-    	Amount of time to wait after moving source xp-motor
-
-    fake_sleep_x1 : float, optional
-    	Amount of time to wait after moving first mirror x-motor
-
-    fake_sleep_z1 : float, optional
-    	Amount of time to wait after moving first mirror z-motor
-
-    fake_sleep_a1 : float, optional
-    	Amount of time to wait after moving first mirror alpha-motor
-
-    fake_sleep_x2 : float, optional
-    	Amount of time to wait after moving second mirror x-motor
-
-    fake_sleep_z2 : float, optional
-    	Amount of time to wait after moving second mirror z-motor
-
-    fake_sleep_a2 : float, optional
-    	Amount of time to wait after moving second mirror alpha-motor
-    """
-    def __init__(self, **kwargs):
-        self.yags = kwargs.get("yags", None)
-        self._name_s = kwargs.get("name_s", "Source")
-        self._name_m1 = kwargs.get("name_m1", "Mirror 1")
-        self._name_m2 = kwargs.get("name_m2", "Mirror 2")
-        # Initial Positions
-        self._x0 = kwargs.get("x0", 0)
-        self._xp0 = kwargs.get("xp0", 0)
-        self._x1 = kwargs.get("x1", 0)
-        self._z1 = kwargs.get("z1", 90.510)
-        self._a1 = kwargs.get("a1", 0.0014)
-        self._x2 = kwargs.get("x2", 0.0317324)
-        self._z2 = kwargs.get("z2", 101.843)
-        self._a2 = kwargs.get("a2", 0.0014)
-        # Noise for positions
-        self._noise_x0 = kwargs.get("noise_x0", 0)
-        self._noise_xp0 = kwargs.get("noise_xp0", 0)
-        self._noise_x1 = kwargs.get("noise_x1", 0)
-        self._noise_z1 = kwargs.get("noise_z1", 0)
-        self._noise_a1 = kwargs.get("noise_a1", 0)
-        self._noise_x2 = kwargs.get("noise_x2", 0)
-        self._noise_z2 = kwargs.get("noise_z2", 0)
-        self._noise_a2 = kwargs.get("noise_a2", 0)
-        # Fake Sleep for motors
-        self._fake_sleep_x0 = kwargs.get("fake_sleep_x0", 0)
-        self._fake_sleep_xp0 = kwargs.get("fake_sleep_xp0", 0)
-        self._fake_sleep_x1 = kwargs.get("fake_sleep_x1", 0)
-        self._fake_sleep_z1 = kwargs.get("fake_sleep_z1", 0)
-        self._fake_sleep_a1 = kwargs.get("fake_sleep_a1", 0)
-        self._fake_sleep_x2 = kwargs.get("fake_sleep_x2", 0)
-        self._fake_sleep_z2 = kwargs.get("fake_sleep_z2", 0)
-        self._fake_sleep_a2 = kwargs.get("fake_sleep_a2", 0)
-
-        self.source = Source(self._name_s, self._x0, self._xp0,
-                             noise_x=self._noise_x0, noise_xp=self._noise_xp0,
-                             fake_sleep_x=self._fake_sleep_x0,
-                             fake_sleep_xp=self._fake_sleep_xp0)        
-        self.mirror_1 = Mirror(self._name_m1, self._x1, self._z1, self._a1,
-                               noise_x=self._noise_x1,
-                               noise_alpha=self._noise_a1,
-                               fake_sleep_x=self._fake_sleep_x1,
-                               fake_sleep_z=self._fake_sleep_z1,
-                               fake_sleep_alpha=self._fake_sleep_a2)
-        self.mirror_2 = Mirror(self._name_m2, self._x2, self._z2, self._a2,
-                               noise_x=self._noise_x2,
-                               noise_alpha=self._noise_a2,
-                               fake_sleep_x=self._fake_sleep_x2,
-                               fake_sleep_z=self._fake_sleep_z2,
-                               fake_sleep_alpha=self._fake_sleep_a2)
-        if self.yags:
-            self.yags = self.patch_yags(self.yags)
-
-    def _x_to_pixel(self, x, yag):
-        return np.round(np.floor(yag.pix[0]/2) + \
-                        (1 - 2*yag.invert)*(x - yag._x) * \
-                        yag.pix[0]/yag.size[0])         
-
-    def _cal_cent_x(self, yag):
-        x = self.source._x + self.source._xp*yag._z
-        return self._x_to_pixel(x, yag)
-
-    def _m1_calc_cent_x(self, yag):
-        x = OneBounce(self.mirror_1.read()['alpha']['value'],
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      yag._z)
-        return self._x_to_pixel(x, yag)
-            
-    def _m1_m2_calc_cent_x(self, yag):
-        x = TwoBounce((self.mirror_1._alpha, self.mirror_2._alpha),
-                      self.source._x,
-                      self.source._xp,
-                      self.mirror_1._x,
-                      self.mirror_1._z,
-                      self.mirror_2._x,
-                      self.mirror_2._z,
-                      yag._z)
-        return self._x_to_pixel(x, yag)
-
-    def patch_yags(self, yags):
-        for yag in yags:
-            if yag._z <= self.mirror_1._z:
-                yag._cent_x = lambda : self._cal_cent_x(yag)
-            elif self.mirror_1._z < yag._z <= self.mirror_2._z:
-                yag._cent_x = lambda : self._m1_calc_cent_x(yag)
-            elif self.mirror_2._z < yag._z:
-                yag._cent_x = lambda : self._m1_m2_calc_cent_x(yag)
-        return yags
+    result = 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + \
+        2*alphas[1]*z3 + z3*xp0 - 2*x1 + 2*x2 + x0
+    logger.debug("Calculated two_bounce x position using: \nalphas={0}, x0={1}, \
+xp0={2}, x1={3}, z1={4}, x2={5}, z2={6}, z3={7}. \nResult: {8}".format(
+            alphas, x0, xp0, x1, z1, x2, z2, z3, result))
+    return result
 
 class Source(object):
     """
@@ -700,19 +130,55 @@ class Source(object):
         self.motors = [self.x, self.xp]        
         self._x = x
         self._xp = xp
+        self.log_pref = "{0} (Source) - ".format(self.name)
+        logger.info('Created new Source object. Name: {0}'.format(self.name))
         
     def read(self):
-        return dict(ChainMap(*[motor.read() for motor in self.motors]))
+        logger.info("{0}Reading Attributes.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read() for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def set(self, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: {1}".format(self.log_pref, kwargs))
         self._x = kwargs.get('x', self._x)
         self._xp = kwargs.get('xp', self._xp)        
-        for key in kwargs.keys():
-            for motor in self.motors:
-                if key in motor.read():
+        for motor in self.motors:
+            motor_params = motor.read()
+            for key in kwargs.keys():    
+                if key in motor_params:
                     motor.set(kwargs[key])
         return Status(done=True, success=True)
 
+    def describe(self, *args, **kwargs):
+        logger.debug("{0}Describing object.".format(self.log_pref))        
+        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))        
+        return result
+    
+    def describe_configuration(self, *args, **kwargs):
+        logger.debug("{0}Describing configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
+        return result
+    
+    def read_configuration(self, *args, **kwargs):
+        logger.debug("{0}Reading configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
+    def subscribe(self, *args, **kwargs):
+        logger.debug("{0}Running subscribe (currently empty).".format(self.log_pref))
+        pass
+
+    def trigger(self, *args, **kwargs):
+        logger.debug("{0}Running trigger.".format(self.log_pref))
+        return Status(done=True, success=True)
 
 class Mirror(object):
     """
@@ -776,9 +242,12 @@ class Mirror(object):
         self.motors = [self.x, self.z, self.alpha]
         self._x = x
         self._z = z
-        self._alpha = alpha        
+        self._alpha = alpha
+        self.log_pref = "{0} (Mirror) - ".format(self.name)
+        logger.info('Created new Mirror object. Name: {0}'.format(self.name))
 
     def read(self):
+        logger.info("{0}Reading Attributes.".format(self.log_pref))
         read_dict = dict(ChainMap(*[motor.read() for motor in self.motors]))
         if (read_dict['x']['value'] != self._x or
             read_dict['z']['value'] != self._z or
@@ -786,11 +255,14 @@ class Mirror(object):
             self._x = read_dict['x']['value']
             self._z = read_dict['z']['value']
             self._alpha = read_dict['alpha']['value']
-            return self.read()            
+            read_dict = self.read()
+        logger.debug("{0}Result: {1}".format(self.log_pref, read_dict))
         return read_dict
         
 
     def set(self, cmd=None, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
         if cmd in ("IN", "OUT"):
             pass  # If these were removable we'd implement it here
         elif cmd is not None:
@@ -800,34 +272,46 @@ class Mirror(object):
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
         self._alpha = kwargs.get('alpha', self._alpha)
-        for key in kwargs.keys():
-            for motor in self.motors:
-                if key in motor.read():
+        for motor in self.motors:
+            motor_params = motor.read()            
+            for key in kwargs.keys():
+                if key in motor_params:
                     motor.set(kwargs[key])
         return Status(done=True, success=True)
 
     def describe(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.describe(*args, **kwargs)
-                               for motor in self.motors]))
-
+        logger.debug("{0}Describing object.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def describe_configuration(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
-                               for motor in self.motors]))
-
+        logger.debug("{0}Describing configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
+        return result
+    
     def read_configuration(self, *args, **kwargs):
-        return dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
-                               for motor in self.motors]))
+        logger.debug("{0}Reading configuration.".format(self.log_pref))
+        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+                                 for motor in self.motors]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
     
     @property
     def blocking(self):
+        logger.debug("{0}Check for blockng.".format(self.log_pref))
         return False
 
     def subscribe(self, *args, **kwargs):
+        logger.debug("{0}Subscribing (currently empty).".format(self.log_pref))
         pass
 
     def trigger(self, *args, **kwargs):
+        logger.debug("{0}Running trigger (default status).".format(self.log_pref))
         return Status(done=True, success=True)
-
 
 class YAG(object):
     """
@@ -889,10 +373,12 @@ class YAG(object):
         self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
                                          'centroid_y' : self.cent_y,
                                          'centroid' : self.cent,
-                                         'centroid_x_abs' : self.cent_x_abs})        
+                                         'centroid_x_abs' : self.cent_x_abs})
         self.devices = [self.x, self.z, self.reader]
         self._x = x
         self._z = z
+        self.log_pref = "{0} (YAG) - ".format(self.name)
+        logger.info('Created new YAG object. Name: {0}'.format(self.name))
 
     def _cent_x(self):
         return np.floor(self.pix[0]/2)
@@ -915,10 +401,15 @@ class YAG(object):
                 self.size[0]/self.pix[0])
                                      
     def read(self, *args, **kwargs):
-        return dict(ChainMap(*[dev.read(*args, **kwargs)
-                               for dev in self.devices]))
-
+        logger.info("{0}Reading Attributes.".format(self.log_pref))        
+        result = dict(ChainMap(*[dev.read(*args, **kwargs)
+                                 for dev in self.devices]))
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def set(self, cmd=None, **kwargs):
+        logger.info("{0}Setting Attributes.".format(self.log_pref))
+        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
         if cmd == "OUT":
             self.y_state = "OUT"
         elif cmd == "IN":
@@ -928,36 +419,55 @@ class YAG(object):
             return Status(done=True, success=True)
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
-        for key in kwargs.keys():
-            for dev in self.devices:
-                if key in dev.read():
+        for dev in self.devices:
+            dev_params = dev.read()            
+            for key in kwargs.keys():
+                if key in dev_params:
                     dev.set(kwargs[key])
         return Status(done=True, success=True)
-
+    
     def trigger(self, *args, **kwargs):
-        return self.reader.trigger(*args, **kwargs)    
+        logger.debug("{0}Getting trigger.".format(self.log_pref))
+        result = self.reader.trigger(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def describe(self, *args, **kwargs):
-        return self.reader.describe(*args, **kwargs)
-
+        logger.debug("{0}Describing reader.".format(self.log_pref))        
+        result = self.reader.describe(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def describe_configuration(self, *args, **kwargs):
-        return self.reader.describe_configuration(*args, **kwargs)
-
+        logger.debug("{0}Describing reader configuration.".format(self.log_pref))        
+        result = self.reader.describe_configuration(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
+    
     def read_configuration(self, *args, **kwargs):
-        return self.reader.read_configuration(*args, **kwargs)
+        logger.debug("{0}Reading reader configuration.".format(self.log_pref))        
+        result = self.reader.read_configuration(*args, **kwargs)
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
     
     @property
     def blocking(self):
-        return self.y_state == "IN"
+        logger.debug("{0}Check for blockng.".format(self.log_pref))        
+        result = self.y_state == "IN"
+        logger.debug("{0}Result: {1}".format(self.log_pref, result))
+        return result
 
     def subscribe(self, function):
         """
         Get subs to run on demand
         """
-        super().subscribe(function)
+        logger.debug("{0}Subscribing to function.".format(self.log_pref))        
+        self.reader.subscribe(function)
         self._subs.append(function)
+        logger.debug("{0}Function: {1}".format(self.log_pref, function))
 
     def run_subs(self):
+        logger.debug("{0}Running subscribed functions".format(self.log_pref))
         for sub in self._subs:
             sub()
 
@@ -969,32 +479,41 @@ class YAG(object):
 
 
 def _x_to_pixel(x, yag):
-    return np.round(np.floor(yag.pix[0]/2) + \
+    logger.debug("Converting x position to pixel on yag '{0}'.".format(yag.name))
+    result = np.round(np.floor(yag.pix[0]/2) + \
                     (1 - 2*yag.invert)*(x - yag._x) * \
-                    yag.pix[0]/yag.size[0])         
+                    yag.pix[0]/yag.size[0])
+    logger.debug("Result: {0}".format(result))
+    return result
 
 def _calc_cent_x(source, yag):
+    logger.debug("Calculating no bounce beam position on '{0}' yag. ".format(
+            yag.name))    
     x = source._x + source._xp*yag._z
     return _x_to_pixel(x, yag)
 
 def _m1_calc_cent_x(source, mirror_1, yag):
-    x = OneBounce(mirror_1._alpha,
-                  source._x,
-                  source._xp,
-                  mirror_1._x,
-                  mirror_1._z,
-                  yag._z)
+    logger.debug("Calculating one bounce beam position on '{0}' yag. ".format(
+            yag.name))        
+    x = one_bounce(mirror_1._alpha,
+                   source._x,
+                   source._xp,
+                   mirror_1._x,
+                   mirror_1._z,
+                   yag._z)
     return _x_to_pixel(x, yag)
 
 def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
-    x = TwoBounce((mirror_1._alpha, mirror_2._alpha),
-                  source._x,
-                  source._xp,
-                  mirror_1._x,
-                  mirror_1._z,
-                  mirror_2._x,
-                  mirror_2._z,
-                  yag._z)
+    logger.debug("Calculating two bounce beam position on '{0}' yag. ".format(
+            yag.name))            
+    x = two_bounce((mirror_1._alpha, mirror_2._alpha),
+                   source._x,
+                   source._xp,
+                   mirror_1._x,
+                   mirror_1._z,
+                   mirror_2._x,
+                   mirror_2._z,
+                   yag._z)
     return _x_to_pixel(x, yag)
 
 def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
@@ -1003,47 +522,58 @@ def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
         mirrors = [mirrors]
     if not isiterable(yags):
         yags = [yags]
+    logger.info("Patching {0} yag(s)".format(len(yags)))            
     for yag in yags:
         if yag._z <= mirrors[0]._z:
-            yag._cent_x = lambda : _calc_cent_x(source,
-                                               yag)
+            logger.debug("Patching '{0}' with no bounce equation.".format(
+                    yag.name))
+            yag._cent_x = lambda : _calc_cent_x(
+                source, yag)
         elif mirrors[0]._z < yag._z:
             if len(mirrors) == 1:
-                yag._cent_x = lambda : _m1_calc_cent_x(source,
-                                                       mirrors[0],
-                                                       yag)
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_calc_cent_x(
+                    source, mirrors[0], yag)
             elif yag._z <= mirrors[1]._z:
-                yag._cent_x = lambda : _m1_calc_cent_x(source,
-                                                       mirrors[0],
-                                                       yag)
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_calc_cent_x(
+                    source, mirrors[0], yag)
             elif mirrors[1]._z < yag._z:
-                yag._cent_x = lambda : _m1_m2_calc_cent_x(source,
-                                                          mirrors[0],
-                                                          mirrors[1],
-                                                          yag)
+                logger.debug("Patching '{0}' with two bounce equation.".format(
+                        yag.name))
+                yag._cent_x = lambda : _m1_m2_calc_cent_x(
+                    source, mirrors[0], mirrors[1], yag)
     if len(yags) == 1:
         return yags[0]
     return yags
             
 if __name__ == "__main__":
-    sys = TwoMirrorSystem()
-    m1 = sys.mirror_1
-    m2 = sys.mirror_2
-    y1 = sys.yag_1
-    y2 = sys.yag_2
-    # print("x: ", m.read()['x']['value'])
-    # m.set(x=10)
-    # print("x: ", m.read()['x']['value'])
+    p1h = YAG("p1h", 0, 0)
+    feem1 = Mirror("feem1", 0, 90.510, 0)
+    p2h = YAG("p2h", 0.015000, 95.000)
+    feem2 = Mirror("feem2", 0.0317324, 101.843, 0)
+    p3h = YAG("p3h", 0.0317324, 103.6600)
+    hx2_pim = YAG("hx2_pim", 0.0317324, 150.0000)
+    um6_pim = YAG("um6_pim", 0.0317324, 200.0000)
+    dg3_pim = YAG("dg3_pim", 0.0317324, 375.0000)
 
-    # import ipdb; ipdb.set_trace()
-    # pprint(y1.read()['centroid_x']['value'])
-    # pprint(y2.read()['centroid_x']['value'])
 
-    m1.set(alpha=0.0013644716418)
-    m2.set(alpha=0.0013674199723)
+    yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags(yags, [feem1, feem2])
+
+    # print(p3h.cent_x())
     
-    pprint(y1.read()['centroid_x']['value'])
-    pprint(y2.read()['centroid_x']['value'])    
+    feem1.set(alpha=0.0013644716418)
 
+    # print(p3h.cent_x())
+    
+    feem2.set(alpha=0.0013674199723)
+    
+    # print(p3h.cent_x())
 
-    pprint(y1.describe_configuration())
+    
+    pprint(p3h.read()['centroid_x']['value'])
+    # import ipdb; ipdb.set_trace()
+    pprint(dg3_pim.read()['centroid_x']['value'])
