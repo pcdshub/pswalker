@@ -54,8 +54,8 @@ def measure_average(detectors, target_fields, num=1, delay=None):
         Tuple of the average over each event for each target_field
     """
     logger.debug("Running measure_average.")
-    logger.debug("Arguments passed: \ndetectors: {0} \ntarget_fields: {1} \nnum: {2} \
-\ndelay: {3}".format([d.name for d in detectors], target_fields, num, delay))
+    logger.debug("Arguments passed: detectors: {0}, target_fields: {1}, num: {2}, \
+delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
     #Data structure
     # import ipdb; ipdb.set_trace()
     num = num or 1
@@ -229,12 +229,12 @@ def walk_to_pixel(detector, motor, target,
     ######################################
     # import ipdb; ipdb.set_trace()
     logger.debug("Running walk_to_pixel.")
-    logger.debug("Arguments passed: \ndetector: {0} \nmotor: {1} \ntarget: {2} \
-\nstart: {3} \ngradient: {4} \ntarget_fields: {5} \nfirst_step: {6} \
-\ntolerance: {7} \nsystem: {8} \naverage: {9} \ndelay: {10} \
-\nmax_steps:{11}".format(detector.name, motor.name, target, start, gradient, 
-                         target_fields, first_step, tolerance, system, average, 
-                         delay, max_steps))
+    logger.debug("Arguments passed: detector: {0}, motor: {1}, target: {2}, \
+start: {3}, gradient: {4}, target_fields: {5}, first_step: {6}, \
+tolerance: {7}, system: {8}, average: {9}, delay: {10}, \
+max_steps:{11}".format(detector.name, motor.name, target, start, gradient, 
+                       target_fields, first_step, tolerance, system, average, 
+                       delay, max_steps))
     system  = system or []
     if start is None:
         start = motor.position

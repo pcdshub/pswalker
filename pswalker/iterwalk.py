@@ -109,6 +109,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     system = as_list(system)
     averages = as_list(averages, num)
 
+    # Debug counters
+    mirror_walks = 0
+    yag_cycles = 0
+
     # Set up end conditions
     n_steps = 0
     start_time = time.time()
@@ -119,6 +123,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             # Give higher-level a chance to suspend before moving yags
             yield from checkpoint()
             ok = (yield from prep_img_motors(i, detectors, timeout=15))
+            yag_cycles += 1
 
             # Be loud if the yags fail to move! Operator should know!
             if not ok:
@@ -136,21 +141,29 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             pos = (yield from measure_centroid(detectors[i],
                                                target_field=detector_fields[i],
                                                average=averages[i]))
+            logger.debug("recieved %s from measure_centroid on %s", pos,
+                         detectors[i])
             try:
                 pos = pos[0]
             except IndexError:
                 pass
             if abs(pos - goals[i]) < tolerances[i]:
+                logger.debug("beam aligned on %s without move", detectors[i])
                 finished[i] = True
                 if all(finished):
+                    logger.debug("beam aligned on all yags")
                     break
                 continue
             else:
                 # If any of the detectors were wrong, reset all finished flags
+                logger.debug("reset alignment flags before move")
                 finished = [False] * num
 
             # Modify goal to use overshoot
-            goal = (goals[i] - pos) * (1 + overshoot) + pos
+            if i == 0:
+                goal = goals[i]
+            else:
+                goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
             yield from checkpoint()
@@ -167,16 +180,17 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                             system=full_system,
                                             average=averages[i], max_steps=5))
             logger.debug("Walk reached pos %s on %s", pos, detectors[i].name)
+            mirror_walks += 1
 
             # Be loud if the walk fails to reach the pixel!
-            if abs(pos - goals[i]) > tolerances[i]:
+            if abs(pos - goal) > tolerances[i]:
                 err = "walk_to_pixel failed to reach the goal"
                 logger.error(err)
                 raise RuntimeError(err)
 
             # After each walk, check the global timeout.
             if timeout is not None and time.time() - start_time > timeout:
-                logger.info("Iterwalk has timed out")
+                logger.warning("Iterwalk has timed out")
                 timeout_error = True
                 break
 
@@ -191,3 +205,5 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
+    logger.debug("Finished in %.2fs after %s mirror walks and %s yag cycles",
+                 time.time() - start_time, mirror_walks, yag_cycles)
