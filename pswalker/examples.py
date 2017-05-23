@@ -4,6 +4,7 @@
 import logging
 from collections import OrderedDict, ChainMap
 from pprint import pprint
+from functools import partial
 ###############
 # Third Party #
 ###############
@@ -494,24 +495,21 @@ def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
         if yag._z <= mirrors[0]._z:
             logger.debug("Patching '{0}' with no bounce equation.".format(
                     yag.name))
-            yag._cent_x = lambda : _calc_cent_x(
-                source, yag)
+            yag._cent_x = partial(_calc_cent_x, source, yag)
         elif mirrors[0]._z < yag._z:
             if len(mirrors) == 1:
                 logger.debug("Patching '{0}' with one bounce equation.".format(
                         yag.name))
-                yag._cent_x = lambda : _m1_calc_cent_x(
-                    source, mirrors[0], yag)
+                yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
             elif yag._z <= mirrors[1]._z:
                 logger.debug("Patching '{0}' with one bounce equation.".format(
                         yag.name))
-                yag._cent_x = lambda : _m1_calc_cent_x(
-                    source, mirrors[0], yag)
+                yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
             elif mirrors[1]._z < yag._z:
                 logger.debug("Patching '{0}' with two bounce equation.".format(
                         yag.name))
-                yag._cent_x = lambda : _m1_m2_calc_cent_x(
-                    source, mirrors[0], mirrors[1], yag)
+                yag._cent_x = partial(_m1_m2_calc_cent_x, source, mirrors[0],
+                                      mirrors[1], yag)
     if len(yags) == 1:
         return yags[0]
     return yags
