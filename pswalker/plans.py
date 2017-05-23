@@ -7,6 +7,7 @@ Bluesky Plans for the Walker
 import time
 import itertools
 from collections import Iterable
+import logging
 ###############
 # Third Party #
 ###############
@@ -19,6 +20,8 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 ##########
 # Module #
 ##########
+
+logger = logging.getLogger(__name__)
 
 #TODO Half assed generalization, should really use count but it has those pesky
 #     run/stage decorators
@@ -133,7 +136,7 @@ def measure_centroid(det, target_field='centroid_x',
 
 
 def walk_to_pixel(detector, motor, target,
-                  start, gradient=None,
+                  start=None, gradient=None,
                   target_fields=['centroid_x', 'alpha'],
                   first_step=1., tolerance=20, system=None,
                   average=None, delay=None, max_steps=None):
@@ -208,12 +211,12 @@ def walk_to_pixel(detector, motor, target,
     ######################################
     average = average or 1
     system  = system or []
+    if start is None:
+        start = motor.position
+
     def walk():
         #Initial measurement
-        if start is None:
-            start = motor.position
-        else:
-            yield from mv(motor, start)
+        yield from mv(motor, start)
         #Take average of motor position and centroid
         (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
