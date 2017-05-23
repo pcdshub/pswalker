@@ -19,13 +19,14 @@ from pswalker.iterwalk import iterwalk
 
 TOL = 5
 logger = logging.getLogger(__name__)
+re_logger = logging.getLogger("RunEngine")
 
 def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
     logger.debug("test_iterwalk_terminates_on_convergence")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -44,7 +45,7 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -77,7 +78,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -110,7 +111,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -153,7 +154,7 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(lcls_two_bounce_sy
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
