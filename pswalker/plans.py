@@ -52,6 +52,8 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     average : tuple
         Tuple of the average over each event for each target_field
     """
+    logger.debug("measure_average for dets %s and fields %s", detectors,
+                 target_fields)
     #Data structure
     measurements = np.zeros((num, len(target_fields)))
 
@@ -109,7 +111,9 @@ def measure_average(detectors, target_fields, num=1, delay=None):
                 yield Msg('sleep', None, d)
 
     #Return average
-    return tuple(np.mean(measurements, axis=0))
+    ret = tuple(np.mean(measurements, axis=0))
+    logger.debug("measure_average returning %s", ret)
+    return ret
 
 
 def measure_centroid(det, target_field='centroid_x',
@@ -216,6 +220,7 @@ def walk_to_pixel(detector, motor, target,
 
     def walk():
         #Initial measurement
+        logger.debug('walk_to_pixel moving %s to start pos %s', motor, start)
         yield from mv(motor, start)
         #Take average of motor position and centroid
         (center, pos) = yield from measure_average([detector, motor]+system,
@@ -239,6 +244,8 @@ def walk_to_pixel(detector, motor, target,
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
             #Move pitch
+            logger.debug('walk_to_pixel moving %s to next pos %s', motor,
+                         next_pos)
             yield from  mv(motor, next_pos)
             #Measure centroid
             (center, pos) = yield from measure_average(
