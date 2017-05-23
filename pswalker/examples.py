@@ -313,6 +313,11 @@ class Mirror(object):
         logger.debug("{0}Running trigger (default status).".format(self.log_pref))
         return Status(done=True, success=True)
 
+    @property
+    def position(self):
+        return self.alpha.position
+
+
 class YAG(object):
     """
     Simulation of a yag imager and the assorted motors.
