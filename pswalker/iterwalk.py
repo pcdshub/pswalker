@@ -136,6 +136,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             pos = (yield from measure_centroid(detectors[i],
                                                target_field=detector_fields[i],
                                                average=averages[i]))
+            try:
+                pos = pos[0]
+            except IndexError:
+                pass
             if abs(pos - goals[i]) < tolerances[i]:
                 finished[i] = True
                 if all(finished):
