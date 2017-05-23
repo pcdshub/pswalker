@@ -155,7 +155,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             # Core walk
             yield from checkpoint()
             full_system = motors + system
-            full_system.pop(motors[i])
+            full_system.remove(motors[i])
             logger.debug("Start walk from %s to %s on %s using %s",
                          pos, goal, detectors[i].name, motors[i].name)
             pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,
