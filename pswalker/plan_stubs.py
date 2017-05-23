@@ -5,8 +5,8 @@ import threading
 import uuid
 import logging
 
-from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
-                           save)
+from bluesky.plans import wait as plan_wait, abs_set, create, read, save
+from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list
@@ -210,31 +210,30 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
         True if we reached the condition, False if we timed out or reached the
         setpoint before satisfying the condition.
     """
-    done = threading.Event()
+    # done = threading.Event()
     success = threading.Event()
 
     def condition_cb(*args, value, **kwargs):
         if condition(value):
             success.set()
-            done.set()
-
-    def dmov_cb(*args, **kwargs):
-        logger.debug("motor stopped moving in match_condition")
-        done.set()
+            mover.stop()
 
     if sub_type is not None:
         signal.subscribe(condition_cb, sub_type=sub_type)
     else:
         signal.subscribe(condition_cb)
 
-    yield from abs_set(mover, setpoint, moved_cb=dmov_cb)
-    done.wait(float(timeout))
-    yield from stop(mover)
+    try:
+        yield from abs_set(mover, setpoint, wait=True, timeout=timeout)
+    except FailedStatus:
+        if not condition(signal.value):
+            logger.exception("Issue with motor %s", mover)
+            raise
     yield from create()
     yield from read(mover)
     yield from read(signal)
     yield from save()
-    signal.unsubscribe(condition_cb)
+    signal.clear_sub(condition_cb)
 
     ok = success.is_set()
     if ok:
