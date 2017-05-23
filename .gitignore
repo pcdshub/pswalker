@@ -105,3 +105,6 @@ ENV/
 
 # vim swap files
 *.swp
+
+# debug log files
+log.txt

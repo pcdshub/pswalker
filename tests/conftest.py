@@ -6,12 +6,18 @@
 # Third Party #
 ###############
 import pytest
+import logging
 from ophyd.ophydobj import OphydObject
 
 ##########
 # Module #
 ##########
 from pswalker.examples import YAG, Mirror, Source, patch_yags
+
+
+logger = logging.getLogger(__name__)
+logger.info("pytest start")
+
 
 @pytest.fixture(scope='function')
 def simple_two_bounce_system():
@@ -22,6 +28,7 @@ def simple_two_bounce_system():
     m1 = Mirror('test_mirror_1', 0, 10, 0)
     m2 = Mirror('test_mirror_2', 5, 20, 0)
     return s, m1, m2
+
 
 @pytest.fixture(scope='function')
 def one_bounce_system():

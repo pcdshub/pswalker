@@ -471,6 +471,12 @@ class YAG(object):
         for sub in self._subs:
             sub()
 
+    def __repr__(self):
+        if self.name:
+            return self.name
+        else:
+            super().__repr__()
+
 
 def _x_to_pixel(x, yag):
     logger.debug("Converting x position to pixel on yag '{0}'.".format(yag.name))

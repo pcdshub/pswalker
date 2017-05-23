@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import time
 import threading
 import uuid
+import logging
 
-from bluesky.plans import (wait as plan_wait, abs_set, stop, create, read,
-                           save)
+from bluesky.plans import wait as plan_wait, abs_set, create, read, save
+from bluesky.utils import FailedStatus
 
 from .plans import measure_average
+from .utils.argutils import as_list
+
+logger = logging.getLogger(__name__)
 
 
-def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
+def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
+                    timeout=None):
     """
     Plan to prepare image motors for taking data. Moves the correct imagers in
     and waits for them to be ready.
@@ -18,40 +24,64 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True):
     ----------
     n_mot: int
         Index of the motor in img_motors that we need to take data with.
+
     img_motors: list of OphydObject
         OphydObjects to move in or out. These objects need to have .set methods
-        that accept the strings "IN" and "OUT", reacting appropriately. These
-        should be ordered by increasing distance to the source.
+        that accept the strings "IN" and "OUT", reacting appropriately, and
+        need to accept a "timeout" kwarg that allows their status to be set as
+        done after a timeout. These should be ordered by increasing distance
+        to the source.
+
     prev_out: bool, optional
         If True, pull out imagers closer to the source than the one we need to
         use. Default True. (True if imager blocks beam)
+
     tail_in: bool, optional
         If True, put in imagers after this one, to be ready for later. If
         False, don't touch them. We won't wait for the tail motors to move in.
+
+    timeout: number, optional
+        Only wait for this many seconds before moving on.
+
+    Returns
+    -------
+    ok: bool
+        True if the wait succeeded, False otherwise.
     """
+    start_time = time.time()
+
     prev_img_mot = str(uuid.uuid4())
     for i, mot in enumerate(img_motors):
         if i < n_mot and prev_out:
-            yield from abs_set(mot, "OUT", group=prev_img_mot)
+            if timeout is None:
+                yield from abs_set(mot, "OUT", group=prev_img_mot)
+            else:
+                yield from abs_set(mot, "OUT", group=prev_img_mot,
+                                   timeout=timeout)
         elif i == n_mot:
-            yield from abs_set(mot, "IN", group=prev_img_mot)
+            if timeout is None:
+                yield from abs_set(mot, "IN", group=prev_img_mot)
+            else:
+                yield from abs_set(mot, "IN", group=prev_img_mot,
+                                   timeout=timeout)
         elif tail_in:
             yield from abs_set(mot, "IN")
-
     yield from plan_wait(group=prev_img_mot)
 
+    if timeout is None:
+        ok = True
+    else:
+        ok = time.time() - start_time < timeout
 
-def ensure_list(obj):
-    if obj is None:
-        return []
-    try:
-        return list(obj)
-    except:
-        return [obj]
+    if ok:
+        logger.debug("prep_img_motors completed successfully")
+    else:
+        logger.debug("prep_img_motors exitted with timeout")
+    return ok
 
 
 def verify_all(detectors, target_fields, target_values, tolerances,
-               other_readers=None, other_fields=None, average=None, delay=None,
+               other_readers=None, other_fields=None, average=1, delay=None,
                summary=True):
     """
     Plan to double-check the values on each of our imagers. Manipulates the
@@ -103,18 +133,23 @@ def verify_all(detectors, target_fields, target_values, tolerances,
         False, we'll get a list of booleans, one for each detector.
     """
     # Allow variable inputs
-    detectors = ensure_list(detectors)
-    target_fields = ensure_list(target_fields)
-    target_values = ensure_list(target_values)
-    tolerances = ensure_list(tolerances)
-    other_readers = ensure_list(other_readers)
-    other_fields = ensure_list(other_fields)
+    detectors = as_list(detectors)
+    num = len(detectors)
+    target_fields = as_list(target_fields, length=num)
+    target_values = as_list(target_values, length=num)
+    tolerances = as_list(tolerances, length=num)
+    other_readers = as_list(other_readers)
+    other_fields = as_list(other_fields)
 
     # Build the ok list using our plans
-    ok = []
+    ok_list = []
     for i, (det, fld, val, tol) in enumerate(zip(detectors, target_fields,
                                                  target_values, tolerances)):
-        yield from prep_img_motors(i, detectors)
+        ok = yield from prep_img_motors(i, detectors, timeout=15)
+        if not ok:
+            err = "Detector motion timed out!"
+            logger.error(err)
+            raise RuntimeError(err)
         avgs = yield from measure_average([det] + other_readers,
                                           [fld] + other_fields,
                                           num=average, delay=delay)
@@ -122,13 +157,20 @@ def verify_all(detectors, target_fields, target_values, tolerances,
             avg = avgs[0]
         except:
             avg = avgs
-        ok.append(abs(avg - val) < tol)
+        ok_list.append(abs(avg - val) < tol)
 
     # Output for yield from
-    if summary:
-        return all(ok)
+    output = all(ok_list)
+    logger.debug("verify all complete for %s", detectors)
+    if output:
+        logger.debug("verify success")
     else:
-        return ok
+        logger.debug("verify failed, bool is %s", ok_list)
+
+    if summary:
+        return output
+    else:
+        return ok_list
 
 
 def match_condition(signal, condition, mover, setpoint, timeout=None,
@@ -168,34 +210,41 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
         True if we reached the condition, False if we timed out or reached the
         setpoint before satisfying the condition.
     """
-    done = threading.Event()
+    # done = threading.Event()
     success = threading.Event()
 
     def condition_cb(*args, value, **kwargs):
         if condition(value):
             success.set()
-            done.set()
-
-    def dmov_cb(*args, **kwargs):
-        done.set()
+            mover.stop()
 
     if sub_type is not None:
         signal.subscribe(condition_cb, sub_type=sub_type)
     else:
         signal.subscribe(condition_cb)
 
-    yield from abs_set(mover, setpoint, moved_cb=dmov_cb)
-    done.wait(float(timeout))
-    yield from stop(mover)
+    try:
+        yield from abs_set(mover, setpoint, wait=True, timeout=timeout)
+    except FailedStatus:
+        if not condition(signal.value):
+            logger.warning("Timeout on motor %s", mover)
     yield from create()
     yield from read(mover)
     yield from read(signal)
     yield from save()
+    signal.clear_sub(condition_cb)
 
-    return success.is_set()
+    ok = success.is_set()
+    if ok:
+        logger.debug("condition met in match_condition, mover=%s setpt=%s",
+                     mover.name, setpoint)
+    else:
+        logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
+                     mover.name, setpoint)
+    return ok
 
 
-def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
+def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                       try_reverse=True, ceil=True):
     """
     Plan to move motor towards each limit switch until the signal is above a
@@ -219,7 +268,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
     dir_initial: int
         1 if we're going to the positive limit switch, -1 otherwise.
 
-    dir_timeout: float, optional
+    timeout: float, optional
         If we don't reach the threshold in this many seconds, try the other
         direction.
 
@@ -232,9 +281,11 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
         If False, look for signal <= threshold instead.
     """
     if dir_initial > 0:
-        setpoint = motor.high_limit_switch.get() - 0.001
+        logger.debug("Recovering towards the high limit switch")
+        setpoint = motor.high_limit - 0.001
     else:
-        setpoint = motor.low_limit_switch.get() + 0.001
+        logger.debug("Recovering towards the low limit switch")
+        setpoint = motor.low_limit + 0.001
 
     def condition(x):
         if ceil:
@@ -242,14 +293,20 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
         else:
             return x <= threshold
     ok = yield from match_condition(signal, condition, motor, setpoint,
-                                    timeout=dir_timeout)
+                                    timeout=timeout)
     if ok:
+        logger.debug("Recovery was successful")
         return True
     else:
         if try_reverse:
+            logger.debug("First direction failed, trying reverse...")
+            if timeout is not None:
+                timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
                                                  -dir_initial,
-                                                 dir_timeout=2*dir_timeout,
-                                                 try_reverse=False))
+                                                 timeout=timeout,
+                                                 try_reverse=False,
+                                                 ceil=ceil))
         else:
+            logger.debug("Recovery failed")
             return False

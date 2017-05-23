@@ -1,108 +1,189 @@
-# Iterwalk Module for Skywalker
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import time
+import logging
 
-from __future__ import absolute_import
-from __future__ import division
+from bluesky.plans import checkpoint
 
-import numpy as np
+from .plans import walk_to_pixel, measure_centroid
+from .plan_stubs import prep_img_motors
+from .utils.argutils import as_list
 
-# Using base iterwalker exceptions for now. Implement more detailed excs later
-from .utils.exceptions import IterWalkException
+logger = logging.getLogger(__name__)
 
-class IterWalker(object):
+
+def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
+             gradients=None, detector_fields='centroid_x',
+             motor_fields='alpha', tolerances=20, system=None, averages=1,
+             overshoot=0, max_walks=None, timeout=None):
     """
-    IterWalker class that aligns the mirrors by iteratively optimizing the mirror
-    positions.
+    Iteratively adjust a system of detectors and motors where each motor
+    primarily affects the reading of a single detector but also affects the
+    other axes parasitically.
+
+    This is a Bluesky plan, but it does not have start run or end run
+    decorators so it can be included inside of other plans. It yields a
+    checkpoint message before adjusting the detector positions and before
+    executing a walk substep.
+
+    All list arguments that expect one entry per detector must be the same
+    length as the detectors list. If any optional list arguments are provided
+    as single values instead of as iterables, iterwalk will interpret it as
+    "use this value for every detector".
+
+    Parameters
+    ----------
+    detectors: list of objects
+        These are your axes of motion, which must implement both the Bluesky
+        reader interface and the setter interface. The set method must accept
+        the "IN" and "OUT" arguments to move the device in and out. It is
+        assumed that detectors earlier in the list block detectors later in the
+        list.
+
+    motors: list of objects
+        These are your axes of motion, which must implement both the Bluesky
+        reader interface and the setter interface.
+
+    goals: list of numbers
+        These are the scalar readbacks expected from the detectors at the
+        desired positions.
+
+    starts: list of numbers, optional
+        If provided, these are the nominal positions to move the motors to
+        before starting to align.
+
+    first_steps: list of numbers, optional.
+        This is how far the motors will be moved in an initial probe step as we
+        gauge the detector's response. This argument is ignored if 'gradients'
+        is provided.
+
+    gradients: list of numbers, optional
+        If provided, this is a guess at the ratio between motor move and change
+        in detector readback. This will be used to make a very good first guess
+        at the first step towards the goal pixel. This should be in units of
+        detector/motor
+
+    detector_fields: list of strings, optional
+        For each detector, this is the field we're walking to.
+
+    motor_fields: list of strings, optional
+        For each motor, this is the field we're using along with the
+        detector_field to build our linear regression. This should be the
+        readback with nominally the same value as the position field.
+
+    tolerances: list of numbers, optional
+        If our detector readbacks are within these tolerances of the goal
+        positions, we'll treat the goal as reached.
+
+    system: list of readable objects, optional
+        Other system parameters that we'd like to read during the walk.
+
+    averages: list of numbers, optional
+        For each detector, this is the number of shots to average before
+        settling on a reading.
+
+    overshoot: number, optional
+        The percent to overshoot at each goal step. For these parasitic
+        systems, over or undershooting can allow convergence to occur faster.
+        An overshoot of 0 is no overshoot, an overshoot of 0.1 is a 10%
+        overshoot, an overshoot of -0.2 is a 20% undershoot, etc.
+
+    max_walks: int, optional
+        The number of sets of walks to try before giving up on the alignment.
+        E.g. if max_walks is 3, we'll move each motor/detector pair 3 times in
+        series before giving up.
+
+    timeout: number, optional
+        The maximum time to allow for the alignment before aborting. The
+        timeout is checked after each walk step.
     """
-    # For the initial implementation of iterwalker, all it will do is call the
-    # jog_alphas_to_pixels walker method. This is the simplest and most
-    # intuitive way to implement the iterative walk so it may be best to keep it
-    # like this. However I initially thought that there may be an advantage to
-    # moving to a specific alpha instead and came up with the scheme below,
-    # which is more or less modelwalk-lite. It was only as I was adding the
-    # notes to walker.py that I started to think that this may not add enough
-    # value to be worth the time to write it out. So for now I will leave this
-    # here along with this module, but I'm now questioning if the module even
-    # needs to exist.
+    num = len(detectors)
 
-    # Smarter IterWalk (ModelWalk-Lite):
-    
-    # For the first move on each motor, it will take increasingly large step sizes
-    # in some direction until the beam has noticeably moved on the imager (where
-    # noticeably means maybe 5ish pixels). It will then do a linear fit on the two
-    # (or more) points obtained from the move and use that to calculate the alpha
-    # necessary to move to the desired point. The eq will have the form:
+    # Listify most optional arguments
+    starts = as_list(starts, num)
+    first_steps = as_list(first_steps, num, float)
+    gradients = as_list(gradients, num)
+    detector_fields = as_list(detector_fields, num)
+    motor_fields = as_list(motor_fields, num)
+    tolerances = as_list(tolerances, num)
+    system = as_list(system)
+    averages = as_list(averages, num)
 
-    # x0 + x1*a1 + x2*a2
+    # Set up end conditions
+    n_steps = 0
+    start_time = time.time()
+    timeout_error = False
+    finished = [False] * num
+    while True:
+        for i in range(num):
+            # Give higher-level a chance to suspend before moving yags
+            yield from checkpoint()
+            ok = (yield from prep_img_motors(i, detectors, timeout=15))
 
-    # fitting to x0, x1, and x2. For the first few moves, instead of moving all 
-    # the way it will only move 1/2-3/4ths of the way to the point as a way to 
-    # prevent overshooting due to poor curve fitting. The fit is then refined 
-    # using that move to then make a final move to the goal point.
-    def __init__(self, walker, monitor, **kwargs):
-        self.walker = walker
-        self.monitor = monitor
+            # Be loud if the yags fail to move! Operator should know!
+            if not ok:
+                err = "Detector motion timed out!"
+                logger.error(err)
+                raise RuntimeError(err)
 
-        self.p1 = kwargs.get("p1", 0)
-        self.p2 = kwargs.get("p2", 0)
-
-        self.mode = kwargs.get("mode", "jog")
-
-        # self.first_move = kwargs.get("first_move", 1e-9) # First proposed step        
-        # self._goal_points = np.array((self.p1, self.p2))
-        # self._turn = False      # False is alpha1's turn, True is alpha2
-        # self._n_moves = np.array((0,0))
-        # self._n_iters = np.array((0,0))
-        # self._scale = np.sqrt(10)
-
-    def step(self, **kwargs):
-        """
-        Return *both* alphas for next step. Only one of them has to be different
-        though. This is done to unify the interface to walker.
-        """        
-        # if self._turn is "alpha1":
-        #     dist = self._dist_from_goal[0]
-        #     # If this is the first move made, then make a small test move to see
-        #     # how much the beam moves at the imager
-        #     # Then use this to propose a move to the point.            
-        # elif self._turn is "alpha2":
-        #     dist = self._dist_from_goal[1]
-        #     pass
-        # else:
-        #     raise IterWalkerException("How did you do that?")
-
-        mirror_1 = kwargs.get("mirror_1", False)
-        mirror_2 = kwargs.get("mirror_2", False)
-
-        if self.mode is "jog":
-            current_centroids = self.monitor.current_centroids
-            if mirror_1 is True:
-                self.walker.jog_alphas_to_pixels(self.p1, current_centroids[1])
-            elif mirror_2 is True:
-                self.walker.jog_alphas_to_pixels(current_centroids[0], self.p2)
+            # Only choose a start position for the first move if it was given
+            if n_steps == 0 and starts[i] is not None:
+                firstpos = starts[i]
             else:
-                raise IterWalkerException
-        else:
-            raise NotImplementedError
-        
-        # dist = self._dist_from_goal[turn_idx]
-        # step_alpha = self.monitor.current_alphas[turn_idx]
+                firstpos = None
 
-        # # If this is first turn on the first iteration, do a simple fit on the
-        # # current position and the first "registered" move position
-        # if self._n_moves[turn_idx] == 0 and self._n_iters[turn_idx] == 0:
-        #     # Propose the first move            
-        #     # If it doesn't register (centroid hasnt shifted by at least 5),
-        #     # propose a another move 3.33.. times as large.
-        #     # Do a fit on all moves according to
-        #     #     x0 + x1*a1 + x2*a2            
-        #     # Propose another move using the fit that reaches            
-        #     pass
+            # Check if we're already done
+            pos = (yield from measure_centroid(detectors[i],
+                                               target_field=detector_fields[i],
+                                               average=averages[i]))
+            if abs(pos - goals[i]) < tolerances[i]:
+                finished[i] = True
+                if all(finished):
+                    break
+                continue
+            else:
+                # If any of the detectors were wrong, reset all finished flags
+                finished = [False] * num
 
-        # # After this, do a fit on the full eq using all data since the start of
-        # # the 
-                
-    # @property
-    # def _dist_from_goal(self):
-    #     return self.monitor.current_centroids - self._goal_points
+            # Modify goal to use overshoot
+            goal = (goals[i] - pos) * (1 + overshoot[i]) + pos
 
-        
+            # Core walk
+            yield from checkpoint()
+            full_system = motors + system
+            full_system.pop(motors[i])
+            logger.debug("Start walk from %s to %s on %s using %s",
+                         pos, goal, detectors[i].name, motors[i].name)
+            pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,
+                                            firstpos, gradient=gradients[i],
+                                            target_fields=[detector_fields[i],
+                                                           motor_fields[i]],
+                                            first_step=first_steps[i],
+                                            tolerance=tolerances[i],
+                                            system=full_system,
+                                            average=averages[i], max_steps=5))
+            logger.debug("Walk reached pos %s on %s", pos, detectors[i].name)
+
+            # Be loud if the walk fails to reach the pixel!
+            if abs(pos - goals[i]) > tolerances[i]:
+                err = "walk_to_pixel failed to reach the goal"
+                logger.error(err)
+                raise RuntimeError(err)
+
+            # After each walk, check the global timeout.
+            if timeout is not None and time.time() - start_time > timeout:
+                logger.info("Iterwalk has timed out")
+                timeout_error = True
+                break
+
+        if timeout_error:
+            break
+
+        if all(finished):
+            break
+
+        # After each set of walks, check if we've exceeded max_walks
+        n_steps += 1
+        if max_walks is not None and n_steps > max_walks:
+            logger.info("Iterwalk has reached the max_walks limit")
+            break
