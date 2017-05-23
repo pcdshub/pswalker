@@ -227,8 +227,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
         yield from abs_set(mover, setpoint, wait=True, timeout=timeout)
     except FailedStatus:
         if not condition(signal.value):
-            logger.exception("Issue with motor %s", mover)
-            raise
+            logger.warning("Timeout on motor %s", mover)
     yield from create()
     yield from read(mover)
     yield from read(signal)
@@ -283,10 +282,10 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
     """
     if dir_initial > 0:
         logger.debug("Recovering towards the high limit switch")
-        setpoint = motor.high_limit_switch.get() - 0.001
+        setpoint = motor.high_limit - 0.001
     else:
         logger.debug("Recovering towards the low limit switch")
-        setpoint = motor.low_limit_switch.get() + 0.001
+        setpoint = motor.low_limit + 0.001
 
     def condition(x):
         if ceil:
@@ -301,10 +300,13 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
     else:
         if try_reverse:
             logger.debug("First direction failed, trying reverse...")
+            if dir_timeout is not None:
+                dir_timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
                                                  -dir_initial,
-                                                 dir_timeout=2*dir_timeout,
-                                                 try_reverse=False))
+                                                 dir_timeout=dir_timeout,
+                                                 try_reverse=False,
+                                                 ceil=ceil))
         else:
             logger.debug("Recovery failed")
             return False
