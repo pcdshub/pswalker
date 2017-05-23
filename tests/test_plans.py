@@ -1,6 +1,7 @@
 ############
 # Standard #
 ############
+import logging
 
 ###############
 # Third Party #
@@ -9,14 +10,31 @@ import pytest
 import numpy as np
 from bluesky             import Msg, RunEngine
 from bluesky.plans       import run_wrapper
-from bluesky.callbacks   import collector
 from bluesky.tests.utils import MsgCollector
 ##########
 # Module #
 ##########
 from pswalker.plans import measure_average, measure_centroid, walk_to_pixel
 
+logger = logging.getLogger(__name__)
+
+
+def collector(field, output):
+    """
+    Reimplement bluesky.callbacks.collector to not raise exception when field
+    is missing. Instead, log a warning.
+    """
+    def f(name, event):
+        try:
+            output.append(event['data'][field])
+        except KeyError:
+            logger.warning("did not find %s in event doc, skipping", field)
+
+    return f
+
+
 def test_measure_average(one_bounce_system):
+    logger.debug("test_measure_average")
     #Load motor and yag
     _, mot, det = one_bounce_system
 
@@ -57,6 +75,7 @@ def test_measure_average(one_bounce_system):
                                        delay=[0.1], num=3)))
 
 def test_measure_centroid(one_bounce_system):
+    logger.debug("test_measure_centroid")
     #Load motor and yag
     _, mot, det = one_bounce_system
     #Create test RunEngine
@@ -72,6 +91,7 @@ def test_measure_centroid(one_bounce_system):
     assert centroids == [250.,250.,250.,250.,250.]
 
 def test_walk_to_pixel(one_bounce_system):
+    logger.debug("test_walk_to_pixel")
     _, mot, det = one_bounce_system
     #Create test RunEngine
     RE = RunEngine()
