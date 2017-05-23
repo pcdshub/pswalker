@@ -218,6 +218,7 @@ def test_match_condition_fail(mot_and_sig):
 
 @pytest.mark.timeout(5)
 def test_match_condition_timeout(mot_and_sig):
+    logger.debug("test_match_condition_timeout")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 9, mot, 5, timeout=0.3)))
@@ -227,6 +228,7 @@ def test_match_condition_timeout(mot_and_sig):
 
 @pytest.mark.timeout(5)
 def test_recover_threshold_success(mot_and_sig):
+    logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
@@ -236,6 +238,7 @@ def test_recover_threshold_success(mot_and_sig):
 
 @pytest.mark.timeout(5)
 def test_recover_threshold_success_reverse(mot_and_sig):
+    logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
@@ -245,17 +248,19 @@ def test_recover_threshold_success_reverse(mot_and_sig):
 
 @pytest.mark.timeout(5)
 def test_recover_threshold_failure(mot_and_sig):
+    logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
-    assert mot.position == -100
+    assert mot.position == -99.999
     # We got to the end of the negative direction, we failed
 
 
 @pytest.mark.timeout(5)
 def test_recover_threshold_timeout_failure(mot_and_sig):
+    logger.debug("test_recover_threshold_timeout_failure")
     mot, sig = mot_and_sig
     RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
-    assert mot.position not in (50, 100, -100)
+    assert mot.position not in (50, 99.999, -99.999)
     # If we didn't reach the goal or either end, we timed out
