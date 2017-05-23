@@ -102,7 +102,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
-def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -127,7 +127,7 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
                                 tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)
 
     # Reload system
@@ -141,10 +141,10 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
                                 tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)
         
-def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -184,6 +184,6 @@ def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_sy
                                 tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)        
         
