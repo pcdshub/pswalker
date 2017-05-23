@@ -105,4 +105,7 @@ def lcls_two_bounce_system():
     m2 = Mirror('test_m2h', 0.0317324, 101.843, 0.0014)
     y1 = YAG('test_p3h', 0.0317324, 103.660)
     y2 = YAG('test_dg3', 0.0317324, 375.000)    
+
+    patch_yags([y1, y2], mirrors=[m1, m2], source=s)
+
     return s, m1, m2, y1, y2
