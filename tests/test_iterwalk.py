@@ -33,7 +33,7 @@ def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], center_pix[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], center_pix[0], atol=TOL)
@@ -53,7 +53,7 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
@@ -65,7 +65,7 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
@@ -85,7 +85,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
@@ -97,7 +97,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
@@ -124,7 +124,7 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RunTimeError):
         RE(plan)
@@ -138,7 +138,7 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RunTimeError):
         RE(plan)
@@ -180,7 +180,7 @@ def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_sy
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
                                 tolerances=20, system=None, averages=None,
-                                overshoot=0, max_walks=5, timeout=None, sort='z'))
+                                overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RunTimeError):
         RE(plan)        
