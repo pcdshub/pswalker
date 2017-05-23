@@ -160,9 +160,7 @@ class SlowSoftPositioner(SoftPositioner):
             if not self._stopped:
                 time.sleep(self.delay)
                 self._set_position(p)
-        status.success = ok
-        status.done = True
-        self._done_moving()
+        self._done_moving(success=ok)
         logger.debug("test motor done moving")
 
 
