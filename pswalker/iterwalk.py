@@ -110,7 +110,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     averages = as_list(averages, num)
 
     # Debug counters
-    mirror_moves = 0
+    mirror_walks = 0
     yag_cycles = 0
 
     # Set up end conditions
@@ -160,7 +160,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 finished = [False] * num
 
             # Modify goal to use overshoot
-            goal = (goals[i] - pos) * (1 + overshoot) + pos
+            if i == 0:
+                goal = goals[i]
+            else:
+                goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
             yield from checkpoint()
@@ -177,10 +180,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                             system=full_system,
                                             average=averages[i], max_steps=5))
             logger.debug("Walk reached pos %s on %s", pos, detectors[i].name)
-            mirror_moves += 1
+            mirror_walks += 1
 
             # Be loud if the walk fails to reach the pixel!
-            if abs(pos - goals[i]) > tolerances[i]:
+            if abs(pos - goal) > tolerances[i]:
                 err = "walk_to_pixel failed to reach the goal"
                 logger.error(err)
                 raise RuntimeError(err)
@@ -202,5 +205,5 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    logger.debug("Finished in %.2fs after %s mirror moves and %s yag cycles",
-                 time.time() - start_time, mirror_moves, yag_cycles)
+    logger.debug("Finished in %.2fs after %s mirror walks and %s yag cycles",
+                 time.time() - start_time, mirror_walks, yag_cycles)
