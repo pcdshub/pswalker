@@ -87,17 +87,14 @@ def test_verify_all_readers(RE, fake_yags):
     yags, ans = fake_yags
     ok = False
 
-    descr = []
-    store_doc = make_store_doc(descr, 'descriptor')
-
     RE(run_wrapper(verify_all(yags[1:], 'centroid_x', ans, 5,
                               other_readers=yags[0],
-                              other_fields='centroid_y')), store_doc)
-    for desc in descr:
-        if yags[0].name in desc['object_keys'].keys():
+                              other_fields='centroid_y')))
+    for msg in RE.msg_hook.msgs:
+        if msg.command == 'read' and yags[0] is msg.obj:
             ok = True
             break
-    assert ok, ("We didn't find our extra reader in the descriptor docs")
+    assert ok, ("We didn't find our extra reader in the collected messages")
 
 
 def test_verify_all_array(RE, fake_yags):
