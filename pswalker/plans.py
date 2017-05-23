@@ -8,6 +8,7 @@ import time
 import itertools
 import logging
 from collections import Iterable
+import logging
 ###############
 # Third Party #
 ###############
@@ -21,10 +22,10 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 # Module #
 ##########
 
+logger = logging.getLogger(__name__)
+
 #TODO Half assed generalization, should really use count but it has those pesky
 #     run/stage decorators
-
-logger = logging.getLogger(__name__)
 
 def measure_average(detectors, target_fields, num=1, delay=None):
     """
@@ -55,7 +56,6 @@ def measure_average(detectors, target_fields, num=1, delay=None):
     logger.debug("Running measure_average.")
     logger.debug("Arguments passed: \ndetectors: {0} \ntarget_fields: {1} \nnum: {2} \
 \ndelay: {3}".format([d.name for d in detectors], target_fields, num, delay))
-
     #Data structure
     # import ipdb; ipdb.set_trace()
     num = num or 1
@@ -154,7 +154,7 @@ def measure_centroid(det, target_field='centroid_x',
 
 
 def walk_to_pixel(detector, motor, target,
-                  start, gradient=None,
+                  start=None, gradient=None,
                   target_fields=['centroid_x', 'alpha'],
                   first_step=1., tolerance=20, system=None,
                   average=None, delay=None, max_steps=None):
@@ -236,12 +236,13 @@ def walk_to_pixel(detector, motor, target,
                          target_fields, first_step, tolerance, system, average, 
                          delay, max_steps))
     system  = system or []
+    if start is None:
+        start = motor.position
+
     def walk():
         #Initial measurement
-        if start is None:
-            start = motor.position
-        else:
-            yield from mv(motor, start)
+        logger.debug('walk_to_pixel moving %s to start pos %s', motor, start)
+        yield from mv(motor, start)
         #Take average of motor position and centroid
         (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
@@ -265,6 +266,8 @@ def walk_to_pixel(detector, motor, target,
             #Set checkpoint for rewinding
             yield Msg('checkpoint')
             #Move pitch
+            logger.debug('walk_to_pixel moving %s to next pos %s', motor,
+                         next_pos)
             yield from  mv(motor, next_pos)
             #Measure centroid
             (center, pos) = yield from measure_average(

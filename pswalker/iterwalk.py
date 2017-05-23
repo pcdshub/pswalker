@@ -136,6 +136,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             pos = (yield from measure_centroid(detectors[i],
                                                target_field=detector_fields[i],
                                                average=averages[i]))
+            try:
+                pos = pos[0]
+            except IndexError:
+                pass
             if abs(pos - goals[i]) < tolerances[i]:
                 finished[i] = True
                 if all(finished):
@@ -146,12 +150,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 finished = [False] * num
 
             # Modify goal to use overshoot
-            goal = (goals[i] - pos) * (1 + overshoot[i]) + pos
+            goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
             yield from checkpoint()
             full_system = motors + system
-            full_system.pop(motors[i])
+            full_system.remove(motors[i])
             logger.debug("Start walk from %s to %s on %s using %s",
                          pos, goal, detectors[i].name, motors[i].name)
             pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,

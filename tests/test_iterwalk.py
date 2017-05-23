@@ -19,13 +19,14 @@ from pswalker.iterwalk import iterwalk
 
 TOL = 5
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+re_logger = logging.getLogger("RunEngine")
 
 def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_terminates_on_convergence")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -33,17 +34,18 @@ def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], center_pix, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], center_pix[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], center_pix[0], atol=TOL)
                        
 def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_converges_on_same_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -53,7 +55,7 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
@@ -65,17 +67,18 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
 def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_converges_on_alternate_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -85,7 +88,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
@@ -97,20 +100,22 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
-def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_raises_RuntimeError_on_motion_timeout")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
+    goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
     def bad_set(yag, cmd=None, **kwargs):
@@ -124,10 +129,10 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)
 
     # Reload system
@@ -138,20 +143,22 @@ def test_iterwalk_raises_RunTimeError_on_motion_timeout(lcls_two_bounce_system):
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)
         
-def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
-    RE.msg_hook = print
+    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
+    goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
     def bad_set(mirror, cmd=None, **kwargs):
@@ -180,9 +187,9 @@ def test_iterwalk_raises_RunTimeError_on_failed_walk_to_pixel(lcls_two_bounce_sy
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=None,
+                                tolerances=20, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RunTimeError):
+    with pytest.raises(RuntimeError):
         RE(plan)        
         
