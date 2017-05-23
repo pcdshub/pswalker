@@ -1,12 +1,12 @@
 ############
 # Standard #
 ############
+import logging
 
 ###############
 # Third Party #
 ###############
 import pytest
-import logging
 from ophyd.ophydobj import OphydObject
 from bluesky import RunEngine
 from bluesky.tests.utils import MsgCollector
@@ -15,7 +15,6 @@ from bluesky.tests.utils import MsgCollector
 # Module #
 ##########
 from pswalker.examples import YAG, Mirror, Source, patch_yags
-
 
 logger = logging.getLogger(__name__)
 logger.info("pytest start")
