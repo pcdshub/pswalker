@@ -33,15 +33,11 @@ def collector(field, output):
     return f
 
 
-def test_measure_average(one_bounce_system):
+def test_measure_average(RE, one_bounce_system):
     logger.debug("test_measure_average")
     #Load motor and yag
     _, mot, det = one_bounce_system
 
-    #Create test RunEngine
-    RE   = RunEngine()
-    hook = MsgCollector(msg_hook=print)
-    RE.msg_hook = hook
     #Fake event storage 
     centroids = []
     readbacks = []
@@ -74,12 +70,10 @@ def test_measure_average(one_bounce_system):
                                        ['centroid_x','alpha'],
                                        delay=[0.1], num=3)))
 
-def test_measure_centroid(one_bounce_system):
+def test_measure_centroid(RE, one_bounce_system):
     logger.debug("test_measure_centroid")
     #Load motor and yag
     _, mot, det = one_bounce_system
-    #Create test RunEngine
-    RE   = RunEngine()
     #Fake event storage 
     centroids = []
     col_c = collector('centroid_x', centroids)
@@ -90,13 +84,9 @@ def test_measure_centroid(one_bounce_system):
     #Check events
     assert centroids == [250.,250.,250.,250.,250.]
 
-def test_walk_to_pixel(one_bounce_system):
+def test_walk_to_pixel(RE, one_bounce_system):
     logger.debug("test_walk_to_pixel")
     _, mot, det = one_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = print
-
     #Walk to the pixel using dumb first step
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1e-6,
                                      tolerance=10, average=None,

@@ -8,7 +8,6 @@ import logging
 
 from ophyd import Signal
 from ophyd.positioner import SoftPositioner
-from bluesky import RunEngine
 from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
@@ -29,9 +28,8 @@ def fake_yags(fake_path_two_bounce):
     return yags, ans
 
 
-def test_prep_img_motors(fake_yags):
+def test_prep_img_motors(RE, fake_yags):
     yags = fake_yags[0]
-    RE = RunEngine({})
     for i in range(len(yags)):
         for prev_out in (True, False):
             for tail_in in (True, False):
@@ -62,9 +60,8 @@ def verify_and_stash(ok_queue, *args, **kwargs):
     ok_queue.put(ok)
 
 
-def test_verify_all_answers(fake_yags):
+def test_verify_all_answers(RE, fake_yags):
     yags, ans = fake_yags
-    RE = RunEngine({})
     ok_queue = Queue()
 
     # Check that all correct returns True, near correct returns True, and
@@ -86,27 +83,22 @@ def make_store_doc(dest, filter_doc_type='all'):
     return store_doc
 
 
-def test_verify_all_readers(fake_yags):
+def test_verify_all_readers(RE, fake_yags):
     yags, ans = fake_yags
     ok = False
-    RE = RunEngine({})
-
-    descr = []
-    store_doc = make_store_doc(descr, 'descriptor')
 
     RE(run_wrapper(verify_all(yags[1:], 'centroid_x', ans, 5,
                               other_readers=yags[0],
-                              other_fields='centroid_y')), store_doc)
-    for desc in descr:
-        if yags[0].name in desc['object_keys'].keys():
+                              other_fields='centroid_y')))
+    for msg in RE.msg_hook.msgs:
+        if msg.command == 'read' and yags[0] is msg.obj:
             ok = True
             break
-    assert ok, ("We didn't find our extra reader in the descriptor docs")
+    assert ok, ("We didn't find our extra reader in the collected messages")
 
 
-def test_verify_all_array(fake_yags):
+def test_verify_all_array(RE, fake_yags):
     yags, ans = fake_yags
-    RE = RunEngine({})
     ok_queue = Queue()
 
     # Last let's make sure we can get a list of bools that correspond correctly
@@ -195,10 +187,9 @@ def test_match_condition_fixture(mot_and_sig):
 
 
 @pytest.mark.timeout(5)
-def test_match_condition_success(mot_and_sig):
+def test_match_condition_success(RE, mot_and_sig):
     logger.debug("test_match_condition_success")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 10, mot, 20)))
     assert mot.position < 11
     # If the motor stopped shortly after 10, we matched the condition and
@@ -206,10 +197,9 @@ def test_match_condition_success(mot_and_sig):
 
 
 @pytest.mark.timeout(5)
-def test_match_condition_fail(mot_and_sig):
+def test_match_condition_fail(RE, mot_and_sig):
     logger.debug("test_match_condition_fail")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 50, mot, 40)))
     assert mot.position == 40
     # If the motor did not stop and reached 40, we didn't erroneously match the
@@ -217,50 +207,45 @@ def test_match_condition_fail(mot_and_sig):
 
 
 @pytest.mark.timeout(5)
-def test_match_condition_timeout(mot_and_sig):
+def test_match_condition_timeout(RE, mot_and_sig):
     logger.debug("test_match_condition_timeout")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(match_condition(sig, lambda x: x > 9, mot, 5, timeout=0.3)))
     assert mot.position < 5
     # If the motor did not reach 5, we timed out
 
 
 @pytest.mark.timeout(5)
-def test_recover_threshold_success(mot_and_sig):
+def test_recover_threshold_success(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
     assert mot.position < 21
     # If we stopped right after 20, we recovered
 
 
 @pytest.mark.timeout(5)
-def test_recover_threshold_success_reverse(mot_and_sig):
+def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
     assert mot.position > -2
     # If we stopped right after -1, we recovered
 
 
 @pytest.mark.timeout(5)
-def test_recover_threshold_failure(mot_and_sig):
+def test_recover_threshold_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
     assert mot.position == -99.999
     # We got to the end of the negative direction, we failed
 
 
 @pytest.mark.timeout(5)
-def test_recover_threshold_timeout_failure(mot_and_sig):
+def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_timeout_failure")
     mot, sig = mot_and_sig
-    RE = RunEngine({})
     RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
     assert mot.position not in (50, 99.999, -99.999)
     # If we didn't reach the goal or either end, we timed out

@@ -8,6 +8,8 @@
 import pytest
 import logging
 from ophyd.ophydobj import OphydObject
+from bluesky import RunEngine
+from bluesky.tests.utils import MsgCollector
 
 ##########
 # Module #
@@ -17,6 +19,18 @@ from pswalker.examples import YAG, Mirror, Source, patch_yags
 
 logger = logging.getLogger(__name__)
 logger.info("pytest start")
+run_engine_logger = logging.getLogger("RunEngine")
+
+
+@pytest.fixture(scope='function')
+def RE():
+    """
+    Standard logging runengine
+    """
+    RE = RunEngine({})
+    collector = MsgCollector(msg_hook=run_engine_logger.debug)
+    RE.msg_hook = collector
+    return RE
 
 
 @pytest.fixture(scope='function')

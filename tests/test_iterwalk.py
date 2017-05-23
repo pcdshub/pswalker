@@ -21,12 +21,9 @@ TOL = 5
 logger = logging.getLogger(__name__)
 re_logger = logging.getLogger("RunEngine")
 
-def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
+def test_iterwalk_terminates_on_convergence(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_terminates_on_convergence")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -40,12 +37,9 @@ def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
     assert np.isclose(y1.read()['centroid_x']['value'], center_pix[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], center_pix[0], atol=TOL)
                        
-def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
+def test_iterwalk_converges_on_same_side_goal_pixels(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_converges_on_same_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -73,12 +67,9 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
-def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system):
+def test_iterwalk_converges_on_alternate_side_goal_pixels(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_converges_on_alternate_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -106,12 +97,9 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
-def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_raises_RuntimeError_on_motion_timeout")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2
@@ -149,12 +137,9 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
     with pytest.raises(RuntimeError):
         RE(plan)
         
-def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
+def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
-    #Create test RunEngine
-    RE = RunEngine()
-    RE.msg_hook = re_logger.debug
 
     # Center pixels of yag
     center_pix = [y1.pix[0]/2] * 2

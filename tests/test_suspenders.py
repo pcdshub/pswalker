@@ -24,11 +24,10 @@ def sleepy_scan():
 
 
 @pytest.mark.timeout(5)
-def test_lightpath_suspender(fake_path_two_bounce):
+def test_lightpath_suspender(RE, fake_path_two_bounce):
     path = fake_path_two_bounce
     path.clear(wait=True)
     suspender = LightpathSuspender(None, path=path)
-    RE = RunEngine()
     RE.install_suspender(suspender)
     loop = RE._loop
 
