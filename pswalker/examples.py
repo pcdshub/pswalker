@@ -131,12 +131,9 @@ class Source(object):
         self._x = x
         self._xp = xp
         self.log_pref = "{0} (Source) - ".format(self.name)
-        logger.info('Created new Source object. Name: {0}'.format(self.name))
         
     def read(self):
-        logger.info("{0}Reading Attributes.".format(self.log_pref))
         result = dict(ChainMap(*[motor.read() for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
 
     def set(self, **kwargs):
@@ -152,32 +149,24 @@ class Source(object):
         return Status(done=True, success=True)
 
     def describe(self, *args, **kwargs):
-        logger.debug("{0}Describing object.".format(self.log_pref))        
         result = dict(ChainMap(*[motor.describe(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))        
         return result
     
     def describe_configuration(self, *args, **kwargs):
-        logger.debug("{0}Describing configuration.".format(self.log_pref))
         result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
         return result
     
     def read_configuration(self, *args, **kwargs):
-        logger.debug("{0}Reading configuration.".format(self.log_pref))
         result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     def subscribe(self, *args, **kwargs):
-        logger.debug("{0}Running subscribe (currently empty).".format(self.log_pref))
         pass
 
     def trigger(self, *args, **kwargs):
-        logger.debug("{0}Running trigger.".format(self.log_pref))
         return Status(done=True, success=True)
 
 class Mirror(object):
@@ -244,10 +233,8 @@ class Mirror(object):
         self._z = z
         self._alpha = alpha
         self.log_pref = "{0} (Mirror) - ".format(self.name)
-        logger.info('Created new Mirror object. Name: {0}'.format(self.name))
 
     def read(self):
-        logger.info("{0}Reading Attributes.".format(self.log_pref))
         read_dict = dict(ChainMap(*[motor.read() for motor in self.motors]))
         if (read_dict['x']['value'] != self._x or
             read_dict['z']['value'] != self._z or
@@ -256,7 +243,6 @@ class Mirror(object):
             self._z = read_dict['z']['value']
             self._alpha = read_dict['alpha']['value']
             read_dict = self.read()
-        logger.debug("{0}Result: {1}".format(self.log_pref, read_dict))
         return read_dict
         
 
@@ -280,37 +266,28 @@ class Mirror(object):
         return Status(done=True, success=True)
 
     def describe(self, *args, **kwargs):
-        logger.debug("{0}Describing object.".format(self.log_pref))
         result = dict(ChainMap(*[motor.describe(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     def describe_configuration(self, *args, **kwargs):
-        logger.debug("{0}Describing configuration.".format(self.log_pref))
         result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))             
         return result
     
     def read_configuration(self, *args, **kwargs):
-        logger.debug("{0}Reading configuration.".format(self.log_pref))
         result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     @property
     def blocking(self):
-        logger.debug("{0}Check for blockng.".format(self.log_pref))
         return False
 
     def subscribe(self, *args, **kwargs):
-        logger.debug("{0}Subscribing (currently empty).".format(self.log_pref))
         pass
 
     def trigger(self, *args, **kwargs):
-        logger.debug("{0}Running trigger (default status).".format(self.log_pref))
         return Status(done=True, success=True)
 
     @property
@@ -383,7 +360,6 @@ class YAG(object):
         self._x = x
         self._z = z
         self.log_pref = "{0} (YAG) - ".format(self.name)
-        logger.info('Created new YAG object. Name: {0}'.format(self.name))
 
     def _cent_x(self):
         return np.floor(self.pix[0]/2)
@@ -406,10 +382,8 @@ class YAG(object):
                 self.size[0]/self.pix[0])
                                      
     def read(self, *args, **kwargs):
-        logger.info("{0}Reading Attributes.".format(self.log_pref))        
         result = dict(ChainMap(*[dev.read(*args, **kwargs)
                                  for dev in self.devices]))
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     def set(self, cmd=None, **kwargs):
@@ -432,44 +406,32 @@ class YAG(object):
         return Status(done=True, success=True)
     
     def trigger(self, *args, **kwargs):
-        logger.debug("{0}Getting trigger.".format(self.log_pref))
         result = self.reader.trigger(*args, **kwargs)
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
 
     def describe(self, *args, **kwargs):
-        logger.debug("{0}Describing reader.".format(self.log_pref))        
         result = self.reader.describe(*args, **kwargs)
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     def describe_configuration(self, *args, **kwargs):
-        logger.debug("{0}Describing reader configuration.".format(self.log_pref))        
         result = self.reader.describe_configuration(*args, **kwargs)
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     def read_configuration(self, *args, **kwargs):
-        logger.debug("{0}Reading reader configuration.".format(self.log_pref))        
         result = self.reader.read_configuration(*args, **kwargs)
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
     
     @property
     def blocking(self):
-        logger.debug("{0}Check for blockng.".format(self.log_pref))        
         result = self.y_state == "IN"
-        logger.debug("{0}Result: {1}".format(self.log_pref, result))
         return result
 
     def subscribe(self, function):
         """
         Get subs to run on demand
         """
-        logger.debug("{0}Subscribing to function.".format(self.log_pref))        
         self.reader.subscribe(function)
         self._subs.append(function)
-        logger.debug("{0}Function: {1}".format(self.log_pref, function))
 
     def run_subs(self):
         logger.debug("{0}Running subscribed functions".format(self.log_pref))
