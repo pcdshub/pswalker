@@ -244,7 +244,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     return ok
 
 
-def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
+def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                       try_reverse=True, ceil=True):
     """
     Plan to move motor towards each limit switch until the signal is above a
@@ -268,7 +268,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
     dir_initial: int
         1 if we're going to the positive limit switch, -1 otherwise.
 
-    dir_timeout: float, optional
+    timeout: float, optional
         If we don't reach the threshold in this many seconds, try the other
         direction.
 
@@ -293,18 +293,18 @@ def recover_threshold(signal, threshold, motor, dir_initial, dir_timeout=None,
         else:
             return x <= threshold
     ok = yield from match_condition(signal, condition, motor, setpoint,
-                                    timeout=dir_timeout)
+                                    timeout=timeout)
     if ok:
         logger.debug("Recovery was successful")
         return True
     else:
         if try_reverse:
             logger.debug("First direction failed, trying reverse...")
-            if dir_timeout is not None:
-                dir_timeout *= 2
+            if timeout is not None:
+                timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
                                                  -dir_initial,
-                                                 dir_timeout=dir_timeout,
+                                                 timeout=timeout,
                                                  try_reverse=False,
                                                  ceil=ceil))
         else:
