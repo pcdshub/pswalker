@@ -21,6 +21,7 @@ TOL = 5
 logger = logging.getLogger(__name__)
 
 def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_terminates_on_convergence")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -39,6 +40,7 @@ def test_iterwalk_terminates_on_convergence(lcls_two_bounce_system):
     assert np.isclose(y2.read()['centroid_x']['value'], center_pix[0], atol=TOL)
                        
 def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_converges_on_same_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -71,6 +73,7 @@ def test_iterwalk_converges_on_same_side_goal_pixels(lcls_two_bounce_system):
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
 def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_converges_on_alternate_side_goal_pixels")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -103,6 +106,7 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(lcls_two_bounce_system
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
 def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_raises_RuntimeError_on_motion_timeout")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
@@ -145,6 +149,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(lcls_two_bounce_system):
         RE(plan)
         
 def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(lcls_two_bounce_system):
+    logger.debug("test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     #Create test RunEngine
     RE = RunEngine()
