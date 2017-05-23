@@ -29,9 +29,9 @@ def test_iterwalk_terminates_on_convergence(RE, lcls_two_bounce_system):
     center_pix = [y1.pix[0]/2] * 2
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], center_pix, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], center_pix[0], atol=TOL)
@@ -47,9 +47,9 @@ def test_iterwalk_converges_on_same_side_goal_pixels(RE, lcls_two_bounce_system)
     goal = [p + 300 for p in center_pix]
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
@@ -59,9 +59,9 @@ def test_iterwalk_converges_on_same_side_goal_pixels(RE, lcls_two_bounce_system)
     goal = [p - 300 for p in center_pix]
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
@@ -77,9 +77,9 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(RE, lcls_two_bounce_sy
     goal = [c + p for c,p in zip(center_pix, [200, -200])]
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
@@ -89,14 +89,15 @@ def test_iterwalk_converges_on_alternate_side_goal_pixels(RE, lcls_two_bounce_sy
     goal = [c + p for c,p in zip(center_pix, [-200, 200])]
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()['centroid_x']['value'], goal[0], atol=TOL)
     assert np.isclose(y2.read()['centroid_x']['value'], goal[1], atol=TOL)
 
+@pytest.mark.timeout(3)
 def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_raises_RuntimeError_on_motion_timeout")
     s, m1, m2, y1, y2 = lcls_two_bounce_system
@@ -110,14 +111,14 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
         logger.info("{0}Setting Attributes. (BAD)".format(yag.log_pref))
         logger.debug("{0}Setting: CMD:{1}, {2} (BAD)".format(
                 yag.log_pref, cmd, kwargs))
-        return Status(done=True, success=True)
+        return Status(done=True, success=False)
     # Patch yag set command
     y1.set = lambda cmd, **kwargs: bad_set(y1, cmd, **kwargs)
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RuntimeError):
@@ -129,9 +130,9 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
     y2.set = lambda cmd, **kwargs: bad_set(y2, cmd, **kwargs)
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RuntimeError):
@@ -150,10 +151,12 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
         logger.info("{0}Setting Attributes. (BAD)".format(mirror.log_pref))
         logger.debug("{0}Setting: CMD:{1}, {2} (BAD)".format(
                 mirror.log_pref, cmd, kwargs))
+        err = 0.1
         if cmd in ("IN", "OUT"):
             pass  # If these were removable we'd implement it here
         elif cmd is not None:
             # Here is where we move the pitch motor if a value is set
+            cmd += err
             mirror._alpha = cmd
             return mirror.alpha.set(cmd)
         mirror._x = kwargs.get('x', mirror._x)
@@ -164,15 +167,15 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
             for key in kwargs.keys():
                 if key in motor_params:
                     # Add error term to sets
-                    motor.set(kwargs[key] + 0.1)
+                    motor.set(kwargs[key] + err)
         return Status(done=True, success=True)
     # Patch yag set command
     m1.set = lambda cmd, **kwargs: bad_set(m1, cmd, **kwargs)
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1, gradients=None,
+                                first_steps=1e-6, gradients=None,
                                 detector_fields='centroid_x', motor_fields='alpha',
-                                tolerances=20, system=None, averages=1,
+                                tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
     with pytest.raises(RuntimeError):
