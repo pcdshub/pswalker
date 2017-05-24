@@ -120,8 +120,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     finished = [False] * num
     while True:
         for i in range(num):
-            # Give higher-level a chance to suspend before moving yags
-            yield from checkpoint()
             ok = (yield from prep_img_motors(i, detectors, timeout=15))
             yag_cycles += 1
 
@@ -136,6 +134,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 firstpos = starts[i]
             else:
                 firstpos = None
+
+            # Give higher-level a chance to suspend before measuring centroid
+            yield from checkpoint()
 
             # Check if we're already done
             pos = (yield from measure_centroid(detectors[i],
