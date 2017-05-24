@@ -166,7 +166,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
-            yield from checkpoint()
             full_system = motors + system
             full_system.remove(motors[i])
             logger.debug("Start walk from %s to %s on %s using %s",
