@@ -248,7 +248,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
 
 def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
-                      try_reverse=True, ceil=True):
+                      try_reverse=True, ceil=True, off_limit=0.001):
     """
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
@@ -282,13 +282,18 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     ceil: bool, optional
         If True, we're look for signal >= threshold (default).
         If False, look for signal <= threshold instead.
+
+    off_limit: float, optional
+        The distance from the limit to aim for. This is included because some
+        motor implementations do not allow us to move exactly to the limit. If
+        this is not the case, you can set it to zero. The default is 0.001.
     """
     if dir_initial > 0:
         logger.debug("Recovering towards the high limit switch")
-        setpoint = motor.high_limit - 0.001
+        setpoint = motor.high_limit - off_limit
     else:
         logger.debug("Recovering towards the low limit switch")
-        setpoint = motor.low_limit + 0.001
+        setpoint = motor.low_limit + off_limit
 
     def condition(x):
         if ceil:
