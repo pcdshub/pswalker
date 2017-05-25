@@ -61,7 +61,22 @@ def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
 
 def lcls_RE(alarming_pvs=None, RE=None):
     """
-    Instantiate a run engine that pauses when the beam has problems.
+    Instantiate a run engine that pauses when the lcls beam has problems, and
+    optionally when various PVs enter a MAJOR alarm state.
+
+    Parameters
+    ----------
+    alarming_pvs: list of str, optional
+        If provided, we'll suspend the run engine when any of these PVs report
+        a MAJOR alarm state.
+
+    RE: RunEngine, optional
+        If provided, we'll add suspenders to and return the provided RunEngine
+        instead of creating a new one.
+
+    Returns
+    -------
+    RE: RunEngine
     """
     RE = RE or RunEngine({})
     RE.install_suspender(BeamEnergySuspendFloor)
@@ -74,12 +89,27 @@ def lcls_RE(alarming_pvs=None, RE=None):
 
 def homs_RE():
     """
-    Instantiate an lcls_RE with the correct alarming pvs.
+    Instantiate an lcls_RE with the correct alarming pvs and a suspender for
+    lightpath blockage.
+
+    Returns
+    -------
+    RE: RunEngine
     """
+    # TODO determine what the correct alarm pvs even are
+    # TODO include lightpath suspender
     return lcls_RE()
 
 
 def homs_system():
+    """
+    Instantiate the real mirror and yag objects from the real homs system, and
+    pack them into a dictionary.
+
+    Returns
+    -------
+    system: dict
+    """
     system = {}
     system['m1h'] = 'm1h'
     system['m2h'] = 'm2h'
@@ -88,22 +118,54 @@ def homs_system():
     return system
 
 
+def get_thresh_signal(yag):
+    """
+    Given a yag object, return the signal we'll be using to determine if the
+    yag has beam on it.
+    """
+    return yag.stats.mean_value
+
+
 def make_homs_recover(yag, motor, threshold):
+    """
+    Make a recovery plan for a particular yag/motor combination in the homs
+    system.
+    """
     def homs_recover():
-        sig = yag.stats.mean_value
+        sig = get_thresh_signal(yag)
         dir_init = np.sign(motor.position) or 1
         plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
         return (yield from plan)
     return homs_recover
 
 
-def pick_recover(yag1, yag2):
-    pass
+def make_pick_recover(yag1, yag2, threshold):
+    """
+    Make a function of zero arguments that will determine if a recovery plan
+    needs to be run, and if so, which plan to use.
+    """
+    def pick_recover():
+        if yag1.position == "IN":
+            sig = get_thresh_signal(yag1)
+            if sig.value < threshold:
+                return 0
+            else:
+                return None
+        elif yag2.position == "IN":
+            sig = get_thresh_signal(yag2)
+            if sig.value < threshold:
+                return 1
+            else:
+                return None
+    return pick_recover
 
 
 def skywalker(detectors, motors, goals,
               gradients=None, tolerances=20, averages=20, timeout=600,
               branches=None, branch_choice=lambda: None):
+    """
+    Iterwalk as a base, with arguments for branching
+    """
     walk = iterwalk(detectors, motors, goals, gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout)
     # TODO this is where we change detector fields?
@@ -112,23 +174,27 @@ def skywalker(detectors, motors, goals,
 
 def homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
                    timeout=600, has_beam_floor=30):
+    """
+    Skywalker with homs-specific devices and recovery methods
+    """
     system = homs_system()
     recover_m1 = make_homs_recover(system['y1'], system['m1h'], has_beam_floor)
     recover_m2 = make_homs_recover(system['y2'], system['m2h'], has_beam_floor)
-    branch_choice = make_choice
+    choice = make_pick_recover(system['y1'], system['y2'], has_beam_floor)
     letsgo = skywalker([system['y1'], system['y2']],
                        [system['m1h'], system['m2h']],
                        goals, gradients=gradients, tolerances=tolerances,
                        averages=averages, timeout=timeout,
                        branches=[recover_m1, recover_m2],
-                       branch_choice=branch_choice)
+                       branch_choice=choice)
     # TODO or maybe this is where we change detector fields?
     return (yield from letsgo)
 
 
 def run_homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
-                       timeout=600):
+                       timeout=600, has_beam_floor=30):
     RE = homs_RE()
     walk = homs_skywalker(goals, gradients=gradients, tolerances=tolerances,
-                          averages=averages, timeout=timeout)
+                          averages=averages, timeout=timeout,
+                          has_beam_floor=has_beam_floor)
     RE(walk)
