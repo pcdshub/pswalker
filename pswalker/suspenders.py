@@ -146,6 +146,10 @@ class LightpathSuspender(SuspendBoolHigh):
         super().__init__(path, sleep=sleep, pre_plan=pre_plan,
                          post_plan=post_plan,
                          tripped_message="Lightpath is blocked!")
+        self.path_signal = path
+
+    def get_current_lightpath(self):
+        return self.path_signal.path
 
 
 class PvAlarmSuspend(PvSuspendCeil, PvSuspenderBase, EnumSuspenderBase):

@@ -1,155 +1,200 @@
-# Command and Control Module for Skywalker
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import logging
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import importlib
 import numpy as np
+from bluesky.plans import checkpoint, plan_mutator, null
 
-from .monitor import Monitor
-from .walker import Walker
-from .modelbuild import ModelBuilder
-from .utils.exceptions import CNCException
+from .plan_stubs import recover_threshold
+from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
+                         PvAlarmSuspend, LightpathSuspender)
+from .iterwalk import iterwalk
 
-class Skywalker(object):
+logger = logging.getLogger(__name__)
+
+
+def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
     """
-    Command and control class that interacts with the user and performs the
-    alignment.
+    Plan that allows deviations from the original plan at checkpoints.
+
+    Parameters
+    ----------
+    plan: iterable
+        Iterable that returns Msg objects as in a Bluesky plan
+
+    branches: list of functions
+        Functions that return valid plans. These are the deviations we may take
+        when plan yields a checkpoint.
+
+    branch_choice: function
+        Function that tells us which branch to take. This must return None when
+        we want to continue to normal plan and an integer that matches an index
+        in branches when we want to deviate.
+
+    branch_msg: str, optional
+        Which message to branch on. By default, this is checkpoint.
     """
-    
-    def __init__(self, **kwargs):
-        self.monitor = kwargs.get("monitor", Monitor())
-        self.walker = kwargs.get("walker", Walker(self.monitor))
-        self.model_builder = kwargs.get("model_builder", None)
-        self.model = kwargs.get("model", None)
-        self.iter_walker = kwargs.get("iter_walker", None)
-        self.model_walker = kwargs.get("model_walker", None)
-        self.load_model = kwargs.get("load_model", None)
-        self.p1 = kwargs.get("p1", 0)
-        self.p2 = kwargs.get("p2", 0)
-
-    def _converged(self):
-        """
-        Returns True if beam centroids are at the same positions as p1 and p2.
-        Returns False otherwise.
-        """
-        if self.monitor.current_centroids == np.array((self.p1, self.p2)):
-            return True
+    def do_branch():
+        choice = branch_choice()
+        if choice is None:
+            yield null()
         else:
-            return False
-        
-    def _modelbuild(self):
-        """
-        Runs the model building => modelwalk loop
-        """
-        self.model_builder = kwargs.get("model_builder", self.model_builder)
-        
-        # Create a new model_builder instance if we havent
-        if self.model_builder is None:
-            self.model_builder = ModelBuilder(self.monitor)
+            branch = branches[choice]
+            logger.debug("Switching to branch %s", choice)
+            yield from branch()
 
-        # TODO: Build a model using some input parameters denoting what
-        # subsection of the data should be used
-        # Possible inputs:
-        # # Last n inputs for alpha1, alpha2, cent1, cent2
-        # # All alpha1, alpha2, cent1, cent2 for current alignment
-        # # All directly inputted alpha1, alpha2, cent1, cent2
-        # # All alpha1, alpha2, cent1, cent2 for previous alignment
-        self.model = self.model_builder.build()
-
-        # Create a new model walker instance if we havent already
-        if self.model_walker is None:
-            self.model_walker = ModelWalker(self.walker, self.model)
-        # Get new alphas from model_walker
-        self.model_walker.step(do_move=True, model=self.model)        
-        
-    def _set_goal_points(self, model):
-        model.p1 = self.p1
-        model.p2 = self.p2
-        return model
-        
-    def _load(self, saved_model):
-        model_module = importlib.import_module("pswalker.models.{0}".format(
-            saved_model))
-        model = model_module.get_model()
-        model = self._set_goal_points(model)
-        return model
-        
-    def _modelwalk(self):
-        """
-        Runs the modelwalk loop.
-        """
-        self.model = kwargs.get("model", self.model)        
-        self.load_model = kwargs.get("load_model", self.load_model)
-        self.model_walker = kwargs.get("model_walker", self.model_walker)
-        
-        if self.load_model:
-            # Load the model from a saved module
-            # # Add a check if model was inputted or exists and the user set
-            # load_model to be True
-            self.model = self._load(self.load_model)
-        elif self.model is None:
-            raise CNCException
-
-        # Create a new model walker instance if we havent already
-        if self.model_walker is None:
-            self.model_walker = ModelWalker(self.walker, self.model)
-        # Get new alphas from model_walker
-        self.model_walker.step(do_move=True)
-
-    def _iterwalk(self):
-        """
-        Runs the iterwalk loop until convergence
-        """
-        self.iter_walker = kwargs.get("iter_walker", self.iter_walker)
-
-        if self.iter_walker is None:
-            self.iter_walker = IterWalker(self.walker, self.monitor, 
-                                          p1=self.p1, p2=self.p2)
-        while not self._converged:
-            # Get new alpha(s) from iter_walker and move to them
-            self.iter_walker.step(mirror_1=True)
-            self.iter_walker.step(mirror_2=True)
-
-    def walk(self, mode='iter'):
-        """
-        Top level method that will call each of the walking algorithms
-        singularly or in sequences depending on the inputted walk mode.
-        """
-        self.p1    = kwargs.get("p1", 0)
-        self.p2    = kwargs.get("p2", 0)
-        self.model = kwargs.get("model", self.model)
-        self.load_model    = kwargs.get("load_model", self.load_model)
-        self.iter_walker   = kwargs.get("iter_walker", self.iter_walker)
-        self.model_walker  = kwargs.get("model_walker", self.model_walker)
-        self.model_builder = kwargs.get("model_builder", self.model_builder)
-
-        if mode == "iter":
-            # Run iterwalk algorithm until completion or failure
-            self._iterwalk()
-        elif mode == "model":
-            self.load_model = kwargs.get("load_model", self.load_model)
-
-            # Run a step of modelwalk. End walk execution after step.
-            self._modelwalk()
-        elif mode == "build":
-            # Build a model using saved data then run a step of modelwalk.
-            self._modelbuild()
-        elif mode == "auto":
-            # (1) If there is a model ready to be loaded, load it and run model
-            # walk
-            # 	If model walk fails, run (3)
-            #	If converges, end run
-            # (2) If no model is provided but enough data to build a model, build
-            # a new one
-            #	Pass built model into modelwalk and run (1)
-            # (3) No model provided and one cannot be built
-            #   Take iterwalk step
-            #	If midway through step enough data is collected to build a new
-            #	model, run (2)
-            #	If converges, end run
-            raise NotImplementedError            
+    def branch_handler(msg):
+        if msg.cmd == branch_msg:
+            def new_gen():
+                if branch_choice() is not None:
+                    yield from checkpoint()
+                    yield from do_branch()
+                    logger.debug("Resuming plan after branch")
+                yield msg
+            return new_gen(), None
         else:
-            raise CNCException
-            	
+            return None, None
+
+    plan = plan_mutator(plan, branch_handler)
+    return (yield from plan)
+
+
+def lcls_RE(alarming_pvs=None, RE=None):
+    """
+    Instantiate a run engine that pauses when the lcls beam has problems, and
+    optionally when various PVs enter a MAJOR alarm state.
+
+    Parameters
+    ----------
+    alarming_pvs: list of str, optional
+        If provided, we'll suspend the run engine when any of these PVs report
+        a MAJOR alarm state.
+
+    RE: RunEngine, optional
+        If provided, we'll add suspenders to and return the provided RunEngine
+        instead of creating a new one.
+
+    Returns
+    -------
+    RE: RunEngine
+    """
+    RE = RE or RunEngine({})
+    RE.install_suspender(BeamEnergySuspendFloor)
+    RE.install_suspender(BeamRateSuspendFloor)
+    alarming_pvs = alarming_pvs or []
+    for pv in alarming_pvs:
+        RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
+    return RE
+
+
+def homs_RE():
+    """
+    Instantiate an lcls_RE with the correct alarming pvs and a suspender for
+    lightpath blockage.
+
+    Returns
+    -------
+    RE: RunEngine
+    """
+    # TODO determine what the correct alarm pvs even are
+    # TODO include lightpath suspender
+    return lcls_RE()
+
+
+def homs_system():
+    """
+    Instantiate the real mirror and yag objects from the real homs system, and
+    pack them into a dictionary.
+
+    Returns
+    -------
+    system: dict
+    """
+    system = {}
+    system['m1h'] = 'm1h'
+    system['m2h'] = 'm2h'
+    system['y1'] = 'sb1'
+    system['y2'] = 'dg3'
+    return system
+
+
+def get_thresh_signal(yag):
+    """
+    Given a yag object, return the signal we'll be using to determine if the
+    yag has beam on it.
+    """
+    return yag.stats.mean_value
+
+
+def make_homs_recover(yag, motor, threshold):
+    """
+    Make a recovery plan for a particular yag/motor combination in the homs
+    system.
+    """
+    def homs_recover():
+        sig = get_thresh_signal(yag)
+        dir_init = np.sign(motor.position) or 1
+        plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
+        return (yield from plan)
+    return homs_recover
+
+
+def make_pick_recover(yag1, yag2, threshold):
+    """
+    Make a function of zero arguments that will determine if a recovery plan
+    needs to be run, and if so, which plan to use.
+    """
+    def pick_recover():
+        if yag1.position == "IN":
+            sig = get_thresh_signal(yag1)
+            if sig.value < threshold:
+                return 0
+            else:
+                return None
+        elif yag2.position == "IN":
+            sig = get_thresh_signal(yag2)
+            if sig.value < threshold:
+                return 1
+            else:
+                return None
+    return pick_recover
+
+
+def skywalker(detectors, motors, goals,
+              gradients=None, tolerances=20, averages=20, timeout=600,
+              branches=None, branch_choice=lambda: None):
+    """
+    Iterwalk as a base, with arguments for branching
+    """
+    walk = iterwalk(detectors, motors, goals, gradients=gradients,
+                    tolerances=tolerances, averages=averages, timeout=timeout)
+    # TODO this is where we change detector fields?
+    return (yield from branching_plan(walk, branches, branch_choice))
+
+
+def homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
+                   timeout=600, has_beam_floor=30):
+    """
+    Skywalker with homs-specific devices and recovery methods
+    """
+    system = homs_system()
+    recover_m1 = make_homs_recover(system['y1'], system['m1h'], has_beam_floor)
+    recover_m2 = make_homs_recover(system['y2'], system['m2h'], has_beam_floor)
+    choice = make_pick_recover(system['y1'], system['y2'], has_beam_floor)
+    letsgo = skywalker([system['y1'], system['y2']],
+                       [system['m1h'], system['m2h']],
+                       goals, gradients=gradients, tolerances=tolerances,
+                       averages=averages, timeout=timeout,
+                       branches=[recover_m1, recover_m2],
+                       branch_choice=choice)
+    # TODO or maybe this is where we change detector fields?
+    return (yield from letsgo)
+
+
+def run_homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
+                       timeout=600, has_beam_floor=30):
+    RE = homs_RE()
+    walk = homs_skywalker(goals, gradients=gradients, tolerances=tolerances,
+                          averages=averages, timeout=timeout,
+                          has_beam_floor=has_beam_floor)
+    RE(walk)
