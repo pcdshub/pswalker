@@ -1,26 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import time
-import random
 
 import pytest
-from bluesky import RunEngine
-from bluesky.plans import sleep, checkpoint
 
-from pswalker.examples import YAG
 from pswalker.suspenders import (LightpathSuspender, BeamEnergySuspendFloor,
                                  BeamRateSuspendFloor, PvAlarmSuspend)
-
-
-def ruin_my_path(path):
-    choices = [d for d in path.devices if isinstance(d, YAG)]
-    device = random.choice(choices)
-    device.set("IN")
-
-
-def sleepy_scan():
-    yield from checkpoint()
-    yield from sleep(0.2)
+from .utils import ruin_my_path, sleepy_scan
 
 
 @pytest.mark.timeout(5)
