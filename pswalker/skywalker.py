@@ -122,8 +122,10 @@ def homs_system():
     system = {}
     system['m1h'] = 'm1h'
     system['m2h'] = 'm2h'
-    system['y1'] = 'sb1'
-    system['y2'] = 'dg3'
+    system['hx2'] = 'hx2'
+    system['dg3'] = 'dg3'
+    system['y1'] = system['hx2']
+    system['y2'] = system['dg3']
     return system
 
 
@@ -181,29 +183,34 @@ def skywalker(detectors, motors, goals,
     return (yield from branching_plan(walk, branches, branch_choice))
 
 
-def homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
-                   timeout=600, has_beam_floor=30):
+def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
+                   averages=20, timeout=600, has_beam_floor=30):
     """
     Skywalker with homs-specific devices and recovery methods
     """
     system = homs_system()
-    recover_m1 = make_homs_recover(system['y1'], system['m1h'], has_beam_floor)
-    recover_m2 = make_homs_recover(system['y2'], system['m2h'], has_beam_floor)
-    choice = make_pick_recover(system['y1'], system['y2'], has_beam_floor)
-    letsgo = skywalker([system['y1'], system['y2']],
-                       [system['m1h'], system['m2h']],
-                       goals, gradients=gradients, tolerances=tolerances,
-                       averages=averages, timeout=timeout,
-                       branches=[recover_m1, recover_m2],
+    if isinstance(y1, str):
+        y1 = system[y1]
+    if isinstance(y2, str):
+        y2 = system[y2]
+    m1h = system['m1h']
+    m2h = system['m2h']
+    recover_m1 = make_homs_recover(y1, m1h, has_beam_floor)
+    recover_m2 = make_homs_recover(y2, m2h, has_beam_floor)
+    choice = make_pick_recover(y1, y2, has_beam_floor)
+    letsgo = skywalker([y1, y2], [m1h, m2h], goals, gradients=gradients,
+                       tolerances=tolerances, averages=averages,
+                       timeout=timeout, branches=[recover_m1, recover_m2],
                        branch_choice=choice)
     # TODO or maybe this is where we change detector fields?
     return (yield from letsgo)
 
 
-def run_homs_skywalker(goals, gradients=None, tolerances=20, averages=20,
-                       timeout=600, has_beam_floor=30):
+def run_homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
+                       averages=20, timeout=600, has_beam_floor=30):
     RE = homs_RE()
-    walk = homs_skywalker(goals, gradients=gradients, tolerances=tolerances,
+    walk = homs_skywalker(goals, y1=y1, y2=y2, gradients=gradients,
+                          tolerances=tolerances,
                           averages=averages, timeout=timeout,
                           has_beam_floor=has_beam_floor)
     RE(walk)
