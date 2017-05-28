@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pytest
-import time
 from queue import Queue
 import functools
 import logging
@@ -10,7 +9,7 @@ from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
-from .utils import plan_stash, make_store_doc, SlowSoftPositioner, MotorSignal
+from .utils import plan_stash, SlowSoftPositioner, MotorSignal
 
 logger = logging.getLogger(__name__)
 
