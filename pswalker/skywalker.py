@@ -88,8 +88,8 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor)
-    RE.install_suspender(BeamRateSuspendFloor)
+    RE.install_suspender(BeamEnergySuspendFloor(0))
+    RE.install_suspender(BeamRateSuspendFloor(0))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
         RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
