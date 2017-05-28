@@ -1,31 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pytest
-import time
 from queue import Queue
-import threading
+import functools
 import logging
 
-from ophyd import Signal
-from ophyd.positioner import SoftPositioner
 from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
-from pswalker.examples import YAG
+from .utils import plan_stash, SlowSoftPositioner, MotorSignal
 
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope='function')
-def fake_yags(fake_path_two_bounce):
-    path = fake_path_two_bounce
-    yags = [d for d in path.devices if isinstance(d, YAG)]
-
-    # Pretend that the correct values are the current values
-    ans = [y.read()['centroid_x']['value'] for y in yags]
-
-    return yags, ans
 
 
 def test_prep_img_motors(RE, fake_yags):
@@ -55,9 +41,7 @@ def test_as_list():
     assert as_list("apples") == ["apples"]
 
 
-def verify_and_stash(ok_queue, *args, **kwargs):
-    ok = yield from verify_all(*args, **kwargs)
-    ok_queue.put(ok)
+verify_and_stash = functools.partial(plan_stash, verify_all)
 
 
 def test_verify_all_answers(RE, fake_yags):
@@ -74,13 +58,6 @@ def test_verify_all_answers(RE, fake_yags):
     assert ok_queue.get() is True, "Exactly correct rejected!"
     assert ok_queue.get() is True, "Within tolerance rejected!"
     assert ok_queue.get() is False, "Outside of tolerance accepted!"
-
-
-def make_store_doc(dest, filter_doc_type='all'):
-    def store_doc(doc_type, doc):
-        if filter_doc_type == 'all' or doc_type == filter_doc_type:
-            dest.append(doc)
-    return store_doc
 
 
 def test_verify_all_readers(RE, fake_yags):
@@ -110,62 +87,6 @@ def test_verify_all_array(RE, fake_yags):
     assert not ok_list[0], "Wrong element bool i=0"
     for i in range(1, len(ans)):
         assert ok_list[i], "Wrong element bool i={}".format(i)
-
-
-class SlowSoftPositioner(SoftPositioner):
-    """
-    Soft positioner that moves to the destination slowly, like a real motor
-    """
-    def __init__(self, *, n_steps, delay, position, **kwargs):
-        super().__init__(**kwargs)
-        self.n_steps = n_steps
-        self.delay = delay
-        self._position = position
-        self._stopped = False
-
-    def _setup_move(self, position, status):
-        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
-
-        self._started_moving = True
-        self._moving = True
-        self._stopped = False
-
-        delta = (position - self.position)/self.n_steps
-        pos_list = [self.position + n * delta for n in range(1, self.n_steps)]
-        pos_list.append(position)
-
-        thread = threading.Thread(target=self._move_thread,
-                                  args=(pos_list, status))
-        logger.debug("test motor start moving")
-        thread.start()
-
-    def stop(self, *, success=False):
-        self._stopped = True
-        logger.debug("stop test motor")
-
-    def _move_thread(self, pos_list, status):
-        ok = True
-        for p in pos_list:
-            if self._stopped:
-                ok = False
-                break
-            if not self._stopped:
-                time.sleep(self.delay)
-                self._set_position(p)
-        self._done_moving(success=ok)
-        logger.debug("test motor done moving")
-
-
-class MotorSignal(Signal):
-    """
-    Signal that reports its value to be that of a given positioner object
-    """
-    def __init__(self, motor, name=None, parent=None):
-        super().__init__(name=name, parent=parent)
-        motor.subscribe(self.put_cb)
-
-    def put_cb(self, *args, value, **kwargs):
-        self.put(value)
 
 
 @pytest.fixture(scope='function')
