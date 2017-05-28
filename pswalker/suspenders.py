@@ -82,7 +82,7 @@ class PathSignal(Signal):
     def __init__(self, device, exclude=None, path=None,
                  controller=_controller):
         """
-        See `LightPathSuspender` for argument documentation.
+        See `LightpathSuspender` for argument documentation.
         """
         self.path = get_path(device, exclude=exclude, path=path,
                              controller=controller)

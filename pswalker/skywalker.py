@@ -8,7 +8,7 @@ from bluesky.plans import checkpoint, plan_mutator, null
 
 from .plan_stubs import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend)
+                         PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
