@@ -3,11 +3,12 @@
 import logging
 
 import numpy as np
+from bluesky import RunEngine
 from bluesky.plans import checkpoint, plan_mutator, null
 
 from .plan_stubs import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender)
+                         PvAlarmSuspend)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
@@ -43,20 +44,28 @@ def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
             logger.debug("Switching to branch %s", choice)
             yield from branch()
 
+    is_branching = False
+
     def branch_handler(msg):
-        if msg.cmd == branch_msg:
+        nonlocal is_branching
+        if not is_branching and msg.command == branch_msg:
+            is_branching = True
+
             def new_gen():
                 if branch_choice() is not None:
                     yield from checkpoint()
                     yield from do_branch()
                     logger.debug("Resuming plan after branch")
                 yield msg
+                nonlocal is_branching
+                is_branching = False
+
             return new_gen(), None
         else:
             return None, None
 
-    plan = plan_mutator(plan, branch_handler)
-    return (yield from plan)
+    brancher = plan_mutator(plan, branch_handler)
+    return (yield from brancher)
 
 
 def lcls_RE(alarming_pvs=None, RE=None):
