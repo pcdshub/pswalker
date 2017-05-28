@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import pytest
 from bluesky.plans import count, mv
 from pswalker.skywalker import branching_plan
 from .utils import collector
 
 
+@pytest.mark.timeout(10)
 def test_branching_plan(RE, lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
 
     reads = []
+    m1.parent = None
 
     def test_plan():
         yield from mv(m1, 0)
@@ -24,9 +27,9 @@ def test_branching_plan(RE, lcls_two_bounce_system):
                 return 0
             return None
 
-        yield from branching_plan(plan, [branch], choice, branch_msg='checkpoint')
+        yield from branching_plan(plan, [branch], choice, 'checkpoint')
 
-    RE(test_plan, collector('alpha', reads))
+    RE(test_plan(), collector('alpha', reads))
 
     assert len(reads) == 10
     assert reads == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
