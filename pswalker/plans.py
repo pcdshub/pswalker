@@ -91,10 +91,9 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
         #Wait for completion
         yield Msg('wait', None, 'B')
         #Read outputs
+        yield Msg('create', None, name='primary')
         for j, det in enumerate(detectors):
-            yield Msg('create', None, name='primary')
             cur_det = yield Msg('read', det)
-            yield Msg('save')
             #Gather average measurements for supplied target_fields
             try:
                 measurements[i][j] = cur_det[target_fields[j]]['value']
@@ -102,6 +101,7 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
                     measurements[i][j], i, j))
             except IndexError:
                 break
+        yield Msg('save')
         #Delay before next reading 
         try:
             d = next(delay)
