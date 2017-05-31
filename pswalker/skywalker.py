@@ -5,6 +5,8 @@ import logging
 import numpy as np
 from bluesky import RunEngine
 from bluesky.plans import checkpoint, plan_mutator, null
+from pcdsdevices.epics.pim import PIM
+from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
@@ -120,10 +122,10 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = 'm1h'
-    system['m2h'] = 'm2h'
-    system['hx2'] = 'hx2'
-    system['dg3'] = 'dg3'
+    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611")
+    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861")
+    system['hx2'] = PIM("HX2:SB1:PIM")
+    system['dg3'] = PIM("HFX:DG3:PIM")
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
