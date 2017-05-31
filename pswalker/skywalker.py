@@ -14,6 +14,7 @@ from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
+re_logger = logging.getLogger("RunEngine")
 
 
 def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
@@ -90,11 +91,12 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(0))
-    RE.install_suspender(BeamRateSuspendFloor(0))
+    RE.install_suspender(BeamEnergySuspendFloor(0.2))
+    RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
         RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
+    RE.msg_hook = re_logger.debug
     return RE
 
 
@@ -122,10 +124,14 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611")
-    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861")
-    system['hx2'] = PIM("HX2:SB1:PIM")
-    system['dg3'] = PIM("HFX:DG3:PIM")
+    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611",
+                                 read_attrs=['pitch'], configuration_attrs=[])
+    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861",
+                                 read_attrs=['pitch'], configuration_attrs=[])
+    system['hx2'] = PIM("HX2:SB1:PIM", read_attrs=['detector'],
+                        configuration_attrs=[])
+    system['dg3'] = PIM("HFX:DG3:PIM", read_attrs=['detector'],
+                        configuration_attrs=[])
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
@@ -136,7 +142,7 @@ def get_thresh_signal(yag):
     Given a yag object, return the signal we'll be using to determine if the
     yag has beam on it.
     """
-    return yag.stats.mean_value
+    return yag.stats2.mean_value
 
 
 def make_homs_recover(yag, motor, threshold):
@@ -179,9 +185,11 @@ def skywalker(detectors, motors, goals,
     """
     Iterwalk as a base, with arguments for branching
     """
+    det_fields = ["{0}_detector_stats2_centroid_x".format(d.name) for d in dets]
+    mot_fields = ["{0}_pitch".format(m.name) for m in motors]
     walk = iterwalk(detectors, motors, goals, gradients=gradients,
-                    tolerances=tolerances, averages=averages, timeout=timeout)
-    # TODO this is where we change detector fields?
+                    tolerances=tolerances, averages=averages, timeout=timeout,
+                    detector_fields=det_fields, motor_fields=mot_fields)
     return (yield from branching_plan(walk, branches, branch_choice))
 
 
@@ -204,7 +212,6 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
                        tolerances=tolerances, averages=averages,
                        timeout=timeout, branches=[recover_m1, recover_m2],
                        branch_choice=choice)
-    # TODO or maybe this is where we change detector fields?
     return (yield from letsgo)
 
 
