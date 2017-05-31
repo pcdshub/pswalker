@@ -31,5 +31,5 @@ m2h.high_limit = 0.09
 
 m1h_pitch = "MIRR:FEE1:M1H_pitch"
 m2h_pitch = "MIRR:FEE1:M2H_pitch"
-hx2_cent_x = "HX2:SB1:PIM_detector_stats2_centroid_x"
-dg3_cent_x = "HFX:DG3:PIM_detector_stats2_centroid_x"
+hx2_cent_x = "HX2:SB1:PIM_detector_stats2_centroid_y"
+dg3_cent_x = "HFX:DG3:PIM_detector_stats2_centroid_y"

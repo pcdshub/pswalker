@@ -185,8 +185,9 @@ def skywalker(detectors, motors, goals,
     """
     Iterwalk as a base, with arguments for branching
     """
-    det_fields = ["{0}_detector_stats2_centroid_x".format(d.name) for d in dets]
+    det_fields = ["{0}_detector_stats2_centroid_y".format(d.name) for d in dets]
     mot_fields = ["{0}_pitch".format(m.name) for m in motors]
+    goals = [480 - g for g in goals]
     walk = iterwalk(detectors, motors, goals, gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout,
                     detector_fields=det_fields, motor_fields=mot_fields)
