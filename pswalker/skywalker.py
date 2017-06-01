@@ -128,6 +128,8 @@ def homs_system():
                                  read_attrs=['pitch'], configuration_attrs=[])
     system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861",
                                  read_attrs=['pitch'], configuration_attrs=[])
+    system['xrtm2'] = OffsetMirror("MIRR:XRT:M2H", section="",
+                                   read_attrs=['pitch'], configuration_attrs=[])
     system['hx2'] = PIM("HX2:SB1:PIM", read_attrs=['detector'],
                         configuration_attrs=[])
     system['dg3'] = PIM("HFX:DG3:PIM", read_attrs=['detector'],
