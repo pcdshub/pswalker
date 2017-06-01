@@ -241,8 +241,8 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
 
     def walk():
         #Initial measurement
-        logger.debug('walk_to_pixel moving %s to start pos %s', motor, start)
-        yield from mv(motor, start)
+        #logger.debug('walk_to_pixel moving %s to start pos %s', motor, start)
+        #yield from mv(motor, start)
         #Take average of motor position and centroid
         (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
