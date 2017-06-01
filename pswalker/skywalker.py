@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from bluesky import RunEngine
 from bluesky.plans import checkpoint, plan_mutator, null
+from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
@@ -99,6 +100,11 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE.msg_hook = re_logger.debug
     return RE
 
+m1h_pitch = "MIRR:FEE1:M1H_pitch"
+m2h_pitch = "MIRR:FEE1:M2H_pitch"
+hx2_cent_x = "HX2:SB1:PIM_detector_stats2_centroid_y"
+dg3_cent_x = "HFX:DG3:PIM_detector_stats2_centroid_y"
+
 
 def homs_RE():
     """
@@ -109,9 +115,13 @@ def homs_RE():
     -------
     RE: RunEngine
     """
+    # Subscribe a LiveTable to the HOMS stuff
+    RE = lcls_RE()
+    RE.subscribe('all', LiveTable([m1h_pitch, m2h_pitch, hx2_cent_x,
+                                   dg3_cent_x]))
     # TODO determine what the correct alarm pvs even are
     # TODO include lightpath suspender
-    return lcls_RE()
+    return RE
 
 
 def homs_system():
