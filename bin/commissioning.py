@@ -14,6 +14,7 @@ from pswalker.iterwalk import iterwalk  # NOQA
 from pswalker.skywalker import (homs_RE, homs_system,  # NOQA
                                 homs_skywalker as skywalker,
                                 run_homs_skywalker as run_skywalker,
+                                pitch_key, cent_x_key,
                                 m1h_pitch, m2h_pitch, hx2_cent_x, dg3_cent_x)
 from pswalker.suspenders import PvAlarmSuspend  # NOQA
 

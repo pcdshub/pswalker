@@ -100,8 +100,17 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE.msg_hook = re_logger.debug
     return RE
 
+m1h = "MIRR:FEE1:M1H"
+m2h = "MIRR:FEE1:M2H"
+hx2 = "HX2:SB1:PIM"
+dg3 = "HFX:DG3:PIM"
 pitch_key = "pitch"
 cent_x_key = "detector_stats2_centroid_y"
+fmt = "{}_{}"
+m1h_pitch = fmt.format(m1h, pitch_key)
+m2h_pitch = fmt.format(m2h, pitch_key)
+hx2_cent_x = fmt.format(hx2, cent_x_key)
+dg3_cent_x = fmt.format(dg3, cent_x_key)
 
 
 def homs_RE():
@@ -115,8 +124,8 @@ def homs_RE():
     """
     # Subscribe a LiveTable to the HOMS stuff
     RE = lcls_RE()
-    RE.subscribe('all', LiveTable([m1h_pitch, m2h_pitch, hx2_cent_x,
-                                   dg3_cent_x]))
+    RE.subscribe('all', LiveTable([m1h_pitch, m2h_pitch,
+                                   hx2_cent_x, dg3_cent_x]))
     # TODO determine what the correct alarm pvs even are
     # TODO include lightpath suspender
     return RE
@@ -132,12 +141,12 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611")
-    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861")
+    system['m1h'] = OffsetMirror(m1h, section="611")
+    system['m2h'] = OffsetMirror(m2h, section="861")
     #system['xrtm2'] = OffsetMirror("MIRR:XRT:M2H", section="")
     system['xrtm2'] = None
-    system['hx2'] = PIM("HX2:SB1:PIM")
-    system['dg3'] = PIM("HFX:DG3:PIM")
+    system['hx2'] = PIM(hx2)
+    system['dg3'] = PIM(dg3)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
