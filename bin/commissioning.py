@@ -2,13 +2,6 @@
 # -*- coding: utf-8 -*-
 import logging
 import os.path
-run_dir = '/reg/g/pcds/pyps/apps/skywalker'
-if not os.path.exists(run_dir):
-    run_dir = os.path.abspath('.')
-logfile = os.path.join(run_dir, 'log.txt')
-logging.basicConfig(level=logging.DEBUG, filename=logfile,
-                    format='%(asctime)s - %(levelname)s ' +
-                           '- %(name)s - %(message)s')
 
 from bluesky.plans import run_wrapper
 from bluesky.callbacks import LiveTable
@@ -24,6 +17,13 @@ from pswalker.skywalker import (homs_RE, homs_system,  # NOQA
                                 m1h_pitch, m2h_pitch, hx2_cent_x, dg3_cent_x)
 from pswalker.suspenders import PvAlarmSuspend  # NOQA
 
+run_dir = '/reg/g/pcds/pyps/apps/skywalker'
+if not os.path.exists(run_dir):
+    run_dir = os.path.abspath('.')
+logfile = os.path.join(run_dir, 'log.txt')
+logging.basicConfig(level=logging.DEBUG, filename=logfile,
+                    format='%(asctime)s - %(levelname)s ' +
+                           '- %(name)s - %(message)s')
 
 RE = homs_RE()
 
