@@ -220,7 +220,8 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
            'detectors': [y1.name, y2.name],
            'mirrors': [m1.name, m2.name],
            'plan_name': 'homs_skywalker',
-           'plan_args': dict(gradients=gradients, tolerances=tolerances,
+           'plan_args': dict(goals=goals, y1=repr(y1), y2=repr(y2),
+                             gradients=gradients, tolerances=tolerances,
                              averages=averages, timeout=timeout,
                              has_beam_floor=has_beam_floor)
           }
@@ -233,10 +234,10 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
                                      pitch_key, goals,
                                      gradients=gradients,
                                      tolerances=tolerances, averages=averages,
-                                     timeout=timeout, branches=[recover_m1,
-                                                                recover_m2],
+                                     timeout=timeout,
+                                     branches=[recover_m1, recover_m2],
                                      branch_choice=choice))
-    return (yield from letsgo)
+    return (yield from letsgo())
 
 
 def run_homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
