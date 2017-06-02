@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 from bluesky import RunEngine
-from bluesky.plans import checkpoint, plan_mutator, null
+from bluesky.plans import checkpoint, plan_mutator, null, run_decorator
 from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
@@ -134,16 +134,12 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611",
-                                 read_attrs=['pitch'], configuration_attrs=[])
-    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861",
-                                 read_attrs=['pitch'], configuration_attrs=[])
-    system['xrtm2'] = OffsetMirror("MIRR:XRT:M2H", section="",
-                                   read_attrs=['pitch'], configuration_attrs=[])
-    system['hx2'] = PIM("HX2:SB1:PIM", read_attrs=['detector'],
-                        configuration_attrs=[])
-    system['dg3'] = PIM("HFX:DG3:PIM", read_attrs=['detector'],
-                        configuration_attrs=[])
+    system['m1h'] = OffsetMirror("MIRR:FEE1:M1H", section="611")
+    system['m2h'] = OffsetMirror("MIRR:FEE1:M2H", section="861")
+    #system['xrtm2'] = OffsetMirror("MIRR:XRT:M2H", section="")
+    system['xrtm2'] = None
+    system['hx2'] = PIM("HX2:SB1:PIM")
+    system['dg3'] = PIM("HFX:DG3:PIM")
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
@@ -207,7 +203,7 @@ def skywalker(detectors, motors, goals,
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
-                   averages=20, timeout=600, has_beam_floor=30):
+                   averages=20, timeout=600, has_beam_floor=30, md=None):
     """
     Skywalker with homs-specific devices and recovery methods
     """
@@ -218,13 +214,30 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
         y2 = system[y2]
     m1h = system['m1h']
     m2h = system['m2h']
+    m1 = m1h
+    m2 = m2h
     recover_m1 = make_homs_recover(y1, m1h, has_beam_floor)
     recover_m2 = make_homs_recover(y2, m2h, has_beam_floor)
     choice = make_pick_recover(y1, y2, has_beam_floor)
-    letsgo = skywalker([y1, y2], [m1h, m2h], goals, gradients=gradients,
-                       tolerances=tolerances, averages=averages,
-                       timeout=timeout, branches=[recover_m1, recover_m2],
-                       branch_choice=choice)
+
+    _md = {'goals': goals,
+           'detectors': [y1.name, y2.name],
+           'mirrors': [m1.name, m2.name],
+           'plan_name': 'homs_skywalker',
+           'plan_args': dict(gradients=gradients, tolerances=tolerances,
+                             averages=averages, timeout=timeout,
+                             has_beam_floor=has_beam_floor)
+          }
+    _md.update(md or {})
+
+    @run_decorator(md=_md)
+    def letsgo():
+        return (yield from skywalker([y1, y2], [m1h, m2h], goals,
+                                     gradients=gradients,
+                                     tolerances=tolerances, averages=averages,
+                                     timeout=timeout, branches=[recover_m1,
+                                                                recover_m2],
+                                     branch_choice=choice))
     return (yield from letsgo)
 
 
