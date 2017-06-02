@@ -74,6 +74,17 @@ class BeamRateSuspendFloor(PvSuspendFloor):
                          pre_plan=pre_plan, post_plan=post_plan, **kwargs)
 
 
+class FeeSpecSuspendFloor(PvSuspendFloor):
+    """
+    Suspend the run if the fee spec rate falls below a set value.
+    """
+    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
+                 pre_plan=None, post_plan=None, **kwargs):
+        super().__init__("CAMR:FEE1:441:ArrayRate_RBV", suspend_thresh,
+                         resume_thresh=resume_thresh, sleep=sleep,
+                         pre_plan=pre_plan, post_plan=post_plan, **kwargs)
+
+
 class PathSignal(Signal):
     """
     Signal to connect to a lightpath.LightController instance and report the

@@ -11,7 +11,8 @@ from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender)
+                         PvAlarmSuspend, LightpathSuspender,
+                         FeeSpecSuspendFloor)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,8 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(0.2))
+    #RE.install_suspender(BeamEnergySuspendFloor(0.2))
+    RE.install_suspender(FeeSpecSuspendFloor(30))
     RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
