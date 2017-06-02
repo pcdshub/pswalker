@@ -8,6 +8,7 @@ import time
 import itertools
 import logging
 from collections import Iterable
+from copy import copy
 import logging
 ###############
 # Third Party #
@@ -15,6 +16,7 @@ import logging
 import numpy as np
 import bluesky
 from scipy.stats   import linregress
+from ophyd import Device, Signal
 from bluesky.utils import Msg
 from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 
@@ -80,6 +82,14 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
                 logger.error(err, stack_info=True)                
                 raise ValueError(err)
         delay = iter(delay)
+
+    # Expand fields with device names if from ophyd
+    target_fields = copy(target_fields)
+    for i, (det, fld) in list(enumerate(zip(detectors, target_fields))):
+        if isinstance(det, Device) and det.name not in fld:
+            target_fields[i] = "{}_{}".format(det.name, fld)
+        elif isinstance(det, Signal):
+            target_fields[i] = det.name
 
     #Gather shots
     logger.debug("Gathering shots..")
