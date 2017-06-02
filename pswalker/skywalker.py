@@ -100,10 +100,8 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE.msg_hook = re_logger.debug
     return RE
 
-m1h_pitch = "MIRR:FEE1:M1H_pitch"
-m2h_pitch = "MIRR:FEE1:M2H_pitch"
-hx2_cent_x = "HX2:SB1:PIM_detector_stats2_centroid_y"
-dg3_cent_x = "HFX:DG3:PIM_detector_stats2_centroid_y"
+pitch_key = "pitch"
+cent_x_key = "detector_stats2_centroid_y"
 
 
 def homs_RE():
@@ -187,15 +185,12 @@ def make_pick_recover(yag1, yag2, threshold):
     return pick_recover
 
 
-def skywalker(detectors, motors, goals,
+def skywalker(detectors, motors, det_fields, mot_fields,
               gradients=None, tolerances=20, averages=20, timeout=600,
               branches=None, branch_choice=lambda: None):
     """
     Iterwalk as a base, with arguments for branching
     """
-    det_fields = ["{0}_detector_stats2_centroid_y".format(d.name) for d in dets]
-    mot_fields = ["{0}_pitch".format(m.name) for m in motors]
-    goals = [480 - g for g in goals]
     walk = iterwalk(detectors, motors, goals, gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout,
                     detector_fields=det_fields, motor_fields=mot_fields)
@@ -229,10 +224,12 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
                              has_beam_floor=has_beam_floor)
           }
     _md.update(md or {})
+    goals = [480 - g for g in goals]
 
     @run_decorator(md=_md)
     def letsgo():
-        return (yield from skywalker([y1, y2], [m1h, m2h], goals,
+        return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
+                                     pitch_key, goals,
                                      gradients=gradients,
                                      tolerances=tolerances, averages=averages,
                                      timeout=timeout, branches=[recover_m1,
