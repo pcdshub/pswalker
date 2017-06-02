@@ -16,6 +16,10 @@ from bluesky.tests.utils import MsgCollector
 from pswalker.examples import YAG, Mirror, Source, patch_yags
 from .utils import FakePath
 
+logfile = os.path.join(os.path.dirname(__file__), "log.txt")
+logging.basicConfig(level=logging.DEBUG, filename=logfile,
+                    format='%(asctime)s - %(levelname)s ' +
+                           '- %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.info("pytest start")
 run_engine_logger = logging.getLogger("RunEngine")
