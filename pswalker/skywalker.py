@@ -193,7 +193,8 @@ def skywalker(detectors, motors, det_fields, mot_fields,
     """
     walk = iterwalk(detectors, motors, goals, gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout,
-                    detector_fields=det_fields, motor_fields=mot_fields)
+                    detector_fields=det_fields, motor_fields=mot_fields,
+                    system=detectors + motors)
     return (yield from branching_plan(walk, branches, branch_choice))
 
 
