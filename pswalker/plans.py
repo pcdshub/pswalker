@@ -107,8 +107,6 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
             #Gather average measurements for supplied target_fields
             try:
                 measurements[i][j] = cur_det[target_fields[j]]['value']
-                logger.debug("Saved measurement {0} for index {1}, {2}".format(
-                    measurements[i][j], i, j))
             except IndexError:
                 break
         yield Msg('save')
