@@ -25,10 +25,7 @@ from pswalker.skywalker import (homs_RE, homs_system,  # NOQA
 from pswalker.suspenders import PvAlarmSuspend  # NOQA
 
 
-re_logger = logging.getLogger("RunEngine")
-
 RE = homs_RE()
-RE.msg_hook = re_logger.debug
 
 system = homs_system()
 m1h = system['m1h']
