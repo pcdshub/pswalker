@@ -19,7 +19,50 @@ from bluesky.callbacks import (LiveFit, CallbackBase)
 ##########
 
 
-class LinearFit(LiveFit):
+class LiveBuild(LiveFit):
+    """
+    Base class for live model building in Skywalker
+
+    Parameters
+    ----------
+    model : lmfit.Model
+
+    y: string
+        Key of dependent variable
+
+    indpendent_vars : dict
+        Map independent variables names to keys in the event document stream
+
+    init_guess: dict, optional
+        Initial guesses for other values if expected 
+
+    update_every : int or None, optional
+        Update rate of the model. If set to None, the model will only be
+        computed at the end of the run. By default, this is set to 1 i.e
+        update on every new event
+    """
+    def eval(self, *args, **kwargs):
+        """
+        Estimate a point based on the current fit of the model.
+        Reimplemented by subclasses
+        """
+        if not self.result:
+            raise RuntimeError("Can not evaluate without a saved fit,
+                                use .update_fit()")
+
+    @property
+    def report(self):
+        """
+        Report of most recent fit
+        """
+        #Report error if no past fit
+        if not self.result:
+            raise RuntimeError("No fit has been performed")
+
+        return self.result.report
+
+
+class LinearFit(LiveBuild):
     """
     Model to fit a linear relationship between a single variable axis and a 
     depended variable
@@ -38,8 +81,9 @@ class LinearFit(LiveFit):
         update on every new event
     """
     def __init__(self, y, x, update_every=1):
+        model = LinearModel()
         #Initialize fit
-        super().__init__(y, x, {'x': axis},
+        super().__init__(model, y, x, {'x': axis},
                          update_every=update_every)
 
 
@@ -53,25 +97,62 @@ class LinearFit(LiveFit):
         x : float or int
             Independent variable to evaluate linear model
         """
-        #Report error if no past fit
-        if not self.result:
-            raise RuntimeError("Can not evaluate without a saved fit,
-                                use .update_fit()")
+        #Check result
+        super().eval(x)
 
         #Return prediction
         return self.result.model.eval({'x': x})
 
 
-    @property
-    def report(self):
-        """
-        Report of most recent fit
-        """
-        #Report error if no past fit
-        if not self.result:
-            raise RuntimeError("No fit has been performed")
+class MulitPitchFit(LiveFit):
+    """
+    Model to fit centroid position of two mirror system
 
-        return self.result.report
+    Parameters
+    ----------
+    centroid : str
+        Keyword in the event document that reports centroid position
+
+    alphas : tuple of str
+        Tuple fo the mirror pitches (a1, a2)
+
+    update_every : int or None, optional
+        Update rate of the model. If set to None, the model will only be
+        computed at the end of the run. By default, this is set to 1 i.e
+        update on every new event
+    """
+    def __init__(self, centroid, alphas, update_every=1):
+        #Create model
+        def two_bounce(a0, a1, x0, x1, x2):
+            return x0 + a0*x1 + a1*x2)
+
+        model = Model(two_bounce)
+
+        #Initialize fit
+        super().__init__(model, centroid,
+                         independent_vars={'ao' : alphas[0],
+                                           'a1' : alphas[1],
+                        update_every=1)
+
+
+    def eval(self, alphas):
+        """
+        Evaluate the predicted outcome based on the most recent fit of
+        the given information
+
+        Parameters
+        ----------
+        alphas : tuple of float
+            Mirror angles
+        """
+        #Check result
+        super().eval(x)
+
+        #Return prediction
+        return self.result.model.eval({'a0': alphas[0],
+                                       'a1': alphas[1]})
+
+
 
 
 class PositionSaving(CallbackBase):
