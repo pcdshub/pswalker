@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import time
 import logging
+from copy import copy
 
 from bluesky.plans import checkpoint
 
@@ -118,6 +119,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     start_time = time.time()
     timeout_error = False
     finished = [False] * num
+    done_pos = [0] * num
     while True:
         for i in range(num):
             ok = (yield from prep_img_motors(i, detectors, timeout=15))
@@ -151,6 +153,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             if abs(pos - goals[i]) < tolerances[i]:
                 logger.debug("beam aligned on %s without move", detectors[i])
                 finished[i] = True
+                done_pos[i] = pos
                 if all(finished):
                     logger.debug("beam aligned on all yags")
                     break
@@ -167,7 +170,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
-            full_system = system
+            full_system = copy(system)
             full_system.remove(motors[i])
             full_system.remove(detectors[i])
             logger.debug("Start walk from %s to %s on %s using %s",
@@ -179,7 +182,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                             first_step=first_steps[i],
                                             tolerance=tolerances[i],
                                             system=full_system,
-                                            average=averages[i], max_steps=5))
+                                            average=averages[i], max_steps=10))
             logger.debug("Walk reached pos %s on %s", pos, detectors[i].name)
             mirror_walks += 1
 
@@ -208,3 +211,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             break
     logger.debug("Finished in %.2fs after %s mirror walks and %s yag cycles",
                  time.time() - start_time, mirror_walks, yag_cycles)
+    logger.debug("Aligned to %s", done_pos)
+    logger.debug("Goals were %s", goals)
+    logger.debug("Deltas are %s", [g - d for g, d in zip(goals, done_pos)])
