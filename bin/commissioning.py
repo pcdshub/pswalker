@@ -15,7 +15,8 @@ from pswalker.skywalker import (homs_RE, homs_system,  # NOQA
                                 homs_skywalker as skywalker,
                                 run_homs_skywalker as run_skywalker,
                                 pitch_key, cent_x_key,
-                                m1h_pitch, m2h_pitch, hx2_cent_x, dg3_cent_x)
+                                m1h_pitch, m2h_pitch, hx2_cent_x, dg3_cent_x,
+                                make_homs_recover)
 from pswalker.suspenders import PvAlarmSuspend  # NOQA
 
 run_dir = '/reg/g/pcds/pyps/apps/skywalker'
@@ -27,10 +28,13 @@ logging.basicConfig(level=logging.DEBUG, filename=logfile,
                            '- %(name)s - %(message)s')
 
 RE = homs_RE()
+RE.verbose = True # Enables internal RE logging
 
 system = homs_system()
 m1h = system['m1h']
+m1h2 = system['m1h2']
 m2h = system['m2h']
+m2h2 = system['m2h2']
 xrtm2 = system['xrtm2']
 hx2 = system['hx2']
 dg3 = system['dg3']
