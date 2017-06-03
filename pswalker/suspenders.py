@@ -22,10 +22,10 @@ class AvgSignal(Signal):
     def __init__(self, signal, averages, name=None, parent=None, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
         self.sig = signal
+        self.lock = threading.RLock()
+        self.index = 0
         self.values = np.ones(averages) * self.sig.get()
         self.sig.subscribe(self._update_avg)
-        self.index = 0
-        self.lock = threading.RLock()
 
     def _update_avg(self, *args, value, **kwargs):
         with self.lock:
