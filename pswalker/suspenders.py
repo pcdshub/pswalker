@@ -56,7 +56,7 @@ class BeamEnergySuspendFloor(PvSuspendFloor):
     """
     Suspend the run if the beam energy falls below a set value.
     """
-    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
+    def __init__(self, suspend_thresh, resume_thresh=None, sleep=5.0,
                  pre_plan=None, post_plan=None, **kwargs):
         super().__init__("GDET:FEE1:241:ENRC", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
@@ -67,7 +67,7 @@ class BeamRateSuspendFloor(PvSuspendFloor):
     """
     Suspend the run if the beam rate falls below a set value.
     """
-    def __init__(self, suspend_thresh, resume_thresh=None, sleep=0,
+    def __init__(self, suspend_thresh, resume_thresh=None, sleep=5.0,
                  pre_plan=None, post_plan=None, **kwargs):
         super().__init__("EVNT:SYS0:1:LCLSBEAMRATE", suspend_thresh,
                          resume_thresh=resume_thresh, sleep=sleep,
