@@ -264,6 +264,7 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
             next_pos = start + first_step
         #Store information as we scan
         step = 0
+        slope = 0 #WHAT IF WE ARE ALREADY THERE!!!
         centers, angles = [center], [pos]
         #Stop when motors have entered acceptable region
         while not np.isclose(target, center, atol=tolerance):
@@ -287,12 +288,16 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
             angles.append(next_pos)
             #Calculate next step
             slope, intercept, r, p, err = linregress(angles, centers)
+            logger.debug('linregress: slope=%s, intercept=%s, r=%s, p=%s, err=%s',
+                         slope, intercept, r, p, err)
             #Don't divide by zero
             if slope:
                 next_pos = (target - intercept)/slope
             step += 1
-        
+
         logger.debug("Result: {0}".format(center))
+        print("Found gradient of {}".format(slope))
+        logger.debug("Found gradient of {}".format(slope))
         return center
 
     return (yield from walk())
