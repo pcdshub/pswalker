@@ -17,7 +17,6 @@ from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
-re_logger = logging.getLogger("RunEngine")
 
 
 def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
@@ -100,8 +99,7 @@ def lcls_RE(alarming_pvs=None, RE=None):
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
         RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
-    #RE.msg_hook = re_logger.debug
-    RE.msg_hook = print
+    RE.msg_hook = RE.log.debug
     return RE
 
 m1h = "MIRR:FEE1:M1H"
@@ -132,8 +130,8 @@ def homs_RE():
     """
     # Subscribe a LiveTable to the HOMS stuff
     RE = lcls_RE()
-    #RE.subscribe('all', LiveTable([m1h_pitch, m2h_pitch,
-    #                               hx2_cent_x, dg3_cent_x]))
+    RE.subscribe('all', LiveTable([m1h_pitch, m2h_pitch,
+                                   hx2_cent_x, dg3_cent_x]))
     # TODO determine what the correct alarm pvs even are
     # TODO include lightpath suspender
     return RE
