@@ -131,7 +131,8 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
                 yield Msg('sleep', None, d)
 
     #Return average
-    result = tuple(np.mean(measurements, axis=0))
+    #result = tuple(np.mean(measurements, axis=0))
+    result = tuple(np.median(measurements, axis=0))
     logger.debug("Result: {0}".format(result))
     return result
 
@@ -255,13 +256,20 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
         (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
                                                     num=average, delay=delay)
-        #Calculate next move if gradient is given
-        if gradient:
-            intercept = center - gradient*pos
-            next_pos = (target - intercept)/gradient
-        #Otherwise go with first_step
-        else:
-            next_pos = start + first_step
+        def get_first_step():
+            #Calculate next move if gradient is given
+            if gradient:
+                intercept = center - gradient*pos
+                next_pos = (target - intercept)/gradient
+                first_step = next_pos - start
+
+            #Otherwise go with first_step
+            else:
+                next_pos = start + first_step
+
+            return next_pos
+        next_pos = get_first_step()
+
         #Store information as we scan
         step = 0
         slope = 0 #WHAT IF WE ARE ALREADY THERE!!!
@@ -291,8 +299,13 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
             logger.debug('linregress: slope=%s, intercept=%s, r=%s, p=%s, err=%s',
                          slope, intercept, r, p, err)
             #Don't divide by zero
-            if slope:
+            if slope and r > 0.5:
                 next_pos = (target - intercept)/slope
+            else:
+                logger.warning('linregress was bad, dumping our points')
+                next_pos = get_first_step()
+                step = 0
+                centers, angles = [center], [pos]
             step += 1
 
         logger.debug("Result: {0}".format(center))
@@ -301,5 +314,4 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
         return center
 
     return (yield from walk())
-
 
