@@ -6,7 +6,7 @@ from copy import copy
 
 from bluesky.plans import checkpoint
 
-from .plans import walk_to_pixel, measure_centroid
+from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
 from .utils.argutils import as_list
 
@@ -140,11 +140,16 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             # Give higher-level a chance to suspend before measuring centroid
             yield from checkpoint()
 
+            # Collect auxilliary datas
+            full_system = copy(system)
+            full_system.remove(motors[i])
+            full_system.remove(detectors[i])
+
             # Check if we're already done
-            pos = (yield from measure_centroid(detectors[i],
-                                               target_field=detector_fields[i],
-                                               average=averages[i]))
-            logger.debug("recieved %s from measure_centroid on %s", pos,
+            pos = (yield from measure_average([detectors[i], motors[i]] + full_system,
+                                              [detector_fields[i]],
+                                              num=averages[i]))
+            logger.debug("recieved %s from measure_average on %s", pos,
                          detectors[i])
             try:
                 pos = pos[0]
@@ -170,9 +175,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
-            full_system = copy(system)
-            full_system.remove(motors[i])
-            full_system.remove(detectors[i])
             logger.debug("Start walk from %s to %s on %s using %s",
                          pos, goal, detectors[i].name, motors[i].name)
             pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,
@@ -191,6 +193,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 err = "walk_to_pixel failed to reach the goal"
                 logger.error(err)
                 raise RuntimeError(err)
+
+            finished[i] = True
+            done_pos[i] = pos
 
             # After each walk, check the global timeout.
             if timeout is not None and time.time() - start_time > timeout:
@@ -213,4 +218,4 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                  time.time() - start_time, mirror_walks, yag_cycles)
     logger.debug("Aligned to %s", done_pos)
     logger.debug("Goals were %s", goals)
-    logger.debug("Deltas are %s", [g - d for g, d in zip(goals, done_pos)])
+    logger.debug("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
