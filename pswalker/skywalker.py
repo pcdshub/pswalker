@@ -93,7 +93,7 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(0.2))
+    RE.install_suspender(BeamEnergySuspendFloor(0.01))
     #RE.install_suspender(FeeSpecSuspendFloor(30))
     RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
@@ -165,27 +165,38 @@ def get_thresh_signal(yag):
     Given a yag object, return the signal we'll be using to determine if the
     yag has beam on it.
     """
-    return yag.detector.stats2.mean_value
+    #return yag.detector.stats2.mean_value
+    return yag.detector.stats2.centroid.y
 
 
-def make_homs_recover(yag, motor, threshold, center=0):
-    """
-    Make a recovery plan for a particular yag/motor combination in the homs
-    system.
-    """
-    #def homs_recover():
-    #    sig = get_thresh_signal(yag)
-    #    dir_init = np.sign(motor.position) or 1
-    #    if motor.position < center:
-    #        dir_init = 1
-    #    else:
-    #        dir_init = -1
-    #    plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
-    #    return (yield from plan)
+#def make_homs_recover(yag, motor, threshold, center=0):
+#    """
+#    Make a recovery plan for a particular yag/motor combination in the homs
+#    system.
+#    """
+#    #def homs_recover():
+#    #    sig = get_thresh_signal(yag)
+#    #    dir_init = np.sign(motor.position) or 1
+#    #    if motor.position < center:
+#    #        dir_init = 1
+#    #    else:
+#    #        dir_init = -1
+#    #    plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
+#    #    return (yield from plan)
+#
+#    def homs_recover():
+#        logger.debug("running backup recovery plan")
+#        return (yield from abs_set(motor, center))
+#
+#    return homs_recover
+
+
+def make_homs_recover(m1, m2, c1, c2):
 
     def homs_recover():
         logger.debug("running backup recovery plan")
-        return (yield from abs_set(motor, center))
+        yield from abs_set(m1, c1)
+        yield from abs_set(m2, c2)
 
     return homs_recover
 
@@ -195,22 +206,22 @@ def make_pick_recover(yag1, yag2, threshold):
     Make a function of zero arguments that will determine if a recovery plan
     needs to be run, and if so, which plan to use.
     """
-    #def pick_recover():
-    #    if yag1.position == "IN":
-    #        sig = get_thresh_signal(yag1)
-    #        if sig.value < threshold:
-    #            return 0
-    #        else:
-    #            return None
-    #    elif yag2.position == "IN":
-    #        sig = get_thresh_signal(yag2)
-    #        if sig.value < threshold:
-    #            return 1
-    #        else:
-    #            return None
-
     def pick_recover():
-        return None
+        if yag1.position == "IN":
+            sig = get_thresh_signal(yag1)
+            if sig.value < threshold[0]:
+                return 0
+            else:
+                return None
+        elif yag2.position == "IN":
+            sig = get_thresh_signal(yag2)
+            if sig.value < threshold[1]:
+                return 1
+            else:
+                return None
+
+    #def pick_recover():
+    #    return None
 
     return pick_recover
 
@@ -230,13 +241,13 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
-                   averages=250, timeout=600, has_beam_floor=100, md=None,
+                   averages=250, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
                    first_steps=1):
     """
     Skywalker with homs-specific devices and recovery methods
     """
     if gradients is None:
-        gradients = [-16500, 78000]
+        gradients = [-8000, 64000]
     system = homs_system()
     if isinstance(y1, str):
         y1 = system[y1]
@@ -246,8 +257,8 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
     m2h = system['m2h']
     m1 = m1h
     m2 = m2h
-    recover_m1 = make_homs_recover(y1, m1h, has_beam_floor, center=0.058)
-    recover_m2 = make_homs_recover(y2, m2h, has_beam_floor, center=0.0504)
+    recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
     #xrtm2 is 0.0354
     choice = make_pick_recover(y1, y2, has_beam_floor)
 
