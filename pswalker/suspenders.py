@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import logging
 from enum import Enum
 import threading
 
 import numpy as np
 from ophyd.utils import ReadOnlyError
+from bluesky.plans import null
 from bluesky.suspenders import (SuspenderBase, SuspendCeil, SuspendFloor,
                                 SuspendBoolHigh)
 # from pcdsdevices.signal import Signal
@@ -13,6 +15,8 @@ from ophyd.signal import Signal
 from ophyd.signal import EpicsSignalRO
 
 from .path import get_path, _controller
+
+logger = logging.getLogger(__name__)
 
 
 class AvgSignal(Signal):
@@ -47,9 +51,18 @@ class PvSuspenderBase(SuspenderBase):
                  tripped_message="", averages=1, **kwargs):
         sig = EpicsSignalRO(pvname)
         if averages > 1:
-            sig = AvgSignal(sig, averages)
-        super().__init__(sig, sleep=sleep, pre_plan=pre_plan,
-                         post_plan=post_plan, tripped_message=tripped_message,
+            sig = AvgSignal(sig, averages, name=sig.name + "_avg")
+
+        def pre_plan(*args, **kwargs):
+            logger.debug("starting suspender")
+            return (yield from null())
+
+        def post_plan(*args, **kwargs):
+            logger.debug("releasing suspender")
+            return (yield from null())
+
+        super().__init__(sig, sleep=sleep, pre_plan=pre_plan(),
+                         post_plan=post_plan(), tripped_message=tripped_message,
                          **kwargs)
 
 
