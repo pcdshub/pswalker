@@ -140,10 +140,16 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             # Give higher-level a chance to suspend before measuring centroid
             yield from checkpoint()
 
-            # Collect auxilliary datas
+            # Set up the system to not include the redundant objects
             full_system = copy(system)
-            full_system.remove(motors[i])
-            full_system.remove(detectors[i])
+            try:
+                full_system.remove(motors[i])
+            except ValueError:
+                pass
+            try:
+                full_system.remove(detectors[i])
+            except ValueError:
+                pass
 
             # Check if we're already done
             pos = (yield from measure_average([detectors[i], motors[i]] + full_system,
