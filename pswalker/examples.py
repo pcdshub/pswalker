@@ -1,20 +1,25 @@
 ############
 # Standard #
 ############
+import time
 import logging
-from collections import OrderedDict, ChainMap
 from pprint import pprint
 from functools import partial
+from collections import OrderedDict, ChainMap
 ###############
 # Third Party #
 ###############
 import numpy as np
-from bluesky.examples import Mover, Reader
+from ophyd.signal import Signal
 from ophyd.status import Status
-from .utils.pyUtils import isiterable
+from ophyd import PositionerBase
+from pcdsdevices.device import Device
+from pcdsdevices.component import (FormattedComponent, Component)
+
 ##########
 # Module #
 ##########
+from .utils.pyUtils import isiterable
 
 logger = logging.getLogger(__name__)
 # logging.basicConfig(level=logging.INFO)
@@ -26,22 +31,22 @@ def one_bounce(a1, x0, xp0, x1, z1, z2):
     Parameters
     ----------
     a1 : float
-    	Pitch of first mirror in radians
+        Pitch of first mirror in radians
 
     x0 : float
-    	x position of the source in meters
+        x position of the source in meters
 
     xp0 : float
-    	Pitch of source in radians
+        Pitch of source in radians
 
     x1 : float
-    	x position of the first mirror in meters
+        x position of the first mirror in meters
 
     z1 : float
-    	z position of the first mirror in meters
+        z position of the first mirror in meters
 
     z2 : float
-    	z position of the imager    
+        z position of the imager    
     """
     result = -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
     logger.debug("Calculated one_bounce x position using: \na1={0}, x0={1}, \
@@ -56,28 +61,28 @@ def two_bounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     Parameters
     ----------
     alphas : tuple
-    	Tuple of the mirror pitches (a1, a2) in radians
+        Tuple of the mirror pitches (a1, a2) in radians
 
     x0 : float
-    	x position of the source in meters
+        x position of the source in meters
 
     xp0 : float
-    	Pitch of source in radians
+        Pitch of source in radians
 
     x1 : float
-    	x position of the first mirror in meters
+        x position of the first mirror in meters
 
     z1 : float
-    	z position of the first mirror in meters
+        z position of the first mirror in meters
 
     x2 : float
-    	x position of the second mirror in meters
+        x position of the second mirror in meters
     
     z2 : float
-    	z position of the second mirror in meters
+        z position of the second mirror in meters
 
     z3 : float
-    	z position of imager
+        z position of imager
     """
     result = 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + \
         2*alphas[1]*z3 + z3*xp0 - 2*x1 + 2*x2 + x0
@@ -108,10 +113,10 @@ class Source(object):
         Multiplicative noise factor added to xp-motor readback
 
     fake_sleep_x : float, optional
-    	Amount of time to wait after moving x-motor
+        Amount of time to wait after moving x-motor
 
     fake_sleep_xp : float, optional
-    	Amount of time to wait after moving xp-motor    
+        Amount of time to wait after moving xp-motor    
     """
     def __init__(self, name='Source', x=0, xp=0, noise_x=0, noise_xp=0,
                  fake_sleep_x=0, fake_sleep_xp=0, **kwargs):
@@ -170,7 +175,191 @@ class Source(object):
     def trigger(self, *args, **kwargs):
         return Status(done=True, success=True)
 
-class Mirror(object):
+class OMMotor(Device, PositionerBase):
+    """
+    Offset Mirror Motor object used in the offset mirror systems. Mostly taken
+    from ophyd.epics_motor.
+    """
+    # position
+    user_readback = Component(Signal)
+    user_setpoint = Component(Signal)
+
+    # configuration
+    velocity = Component(Signal)
+
+    # motor status
+    motor_is_moving = Component(Signal, value=0)
+    motor_done_move = Component(Signal, value=1)
+    high_limit_switch = Component(Signal)
+    low_limit_switch = Component(Signal)
+
+    # status
+    interlock = Component(Signal)
+    enabled = Component(Signal)
+
+    motor_stop = Component(Signal)
+
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, velocity=0**kwargs):
+        if read_attrs is None:
+            read_attrs = ['user_readback']
+
+        if configuration_attrs is None:
+            configuration_attrs = ['velocity', 'interlock',
+                                   'enabled', 'user_offset', 'user_offset_dir']
+
+        super().__init__(prefix, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         name=name, parent=parent, settle_time=1, **kwargs)
+        
+        # Make the default alias for the user_readback the name of the
+        # motor itself.
+        self.user_readback.name = self.name
+        self.tol = 0.0001
+        self.velocity.put(velocity)
+
+        self.motor_done_move.subscribe(self._move_changed)
+        self.user_readback.subscribe(self._pos_changed)
+
+    @property
+    def limits(self):
+        """
+        Returns the EPICS limits of the user_setpoint pv.
+        """
+        return self.user_setpoint.limits
+
+    @property
+    def moving(self):
+        """
+        Whether or not the motor is moving.
+
+        Returns
+        -------
+        moving : bool
+        """
+        return bool(self.motor_is_moving.get(use_monitor=False))
+
+    def move(self, position, wait=True, **kwargs):
+        """
+        Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+
+        Returns
+        -------
+        status : MoveStatus
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        """
+        self.user_setpoint.put(position)
+        self.motor_is_moving.put(1)
+        self.motor_done_move.put(0)
+
+        # Add uniform noise
+        pos = position + np.random.uniform(-1, 1)*self.fake_noise
+
+        # If velo is set, incrementally set the readback according to the refresh
+        if self.velocity.value:
+            next_pos = self.user_readback.value
+            while next_pos < pos:
+                self.user_readback = next_pos
+                time.sleep(self.refresh)
+                next_pos += self.velocity.value*refresh
+        # If fake sleep is set, incrementatlly sleep while setting the readback
+        elif self.fake_sleep:
+            wait = 0
+            while wait < fake_sleep:
+                time.sleep(self.refresh)
+                wait += refresh
+                self.user_readback.put(wait/self.fake_sleep * pos)
+
+        status = self.user_readback.set(pos)
+        self.motor_is_moving.put(0)
+        self.motor_done_move.put(1)
+
+        return status
+
+    @property
+    def position(self):
+        """
+        The current position of the motor in its engineering units.
+
+        Returns
+        -------
+        position : float
+        """
+        return self.user_readback.value
+
+    def set_current_position(self, pos):
+        """
+        Configure the motor user position to the given value.
+
+        Parameters
+        ----------
+        pos
+           Position to set.
+        """
+        self.user_setpoint.put(pos, wait=True)
+
+    def check_value(self, pos):
+        """
+        Check that the position is within the soft limits.
+        """
+        self.user_setpoint.check_value(pos)
+
+    def _pos_changed(self, timestamp=None, value=None, **kwargs):
+        """
+        Callback from EPICS, indicating a change in position.
+        """
+        self._set_position(value)
+
+    def _move_changed(self, timestamp=None, value=None, sub_type=None,
+                      **kwargs):
+        """
+        Callback from EPICS, indicating that movement status has changed.
+        """
+        was_moving = self._moving
+        self._moving = (value != 1)
+
+        started = False
+        if not self._started_moving:
+            started = self._started_moving = (not was_moving and self._moving)
+
+        if started:
+            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
+                           value=value, **kwargs)
+
+        if was_moving and not self._moving:
+            success = True
+            # Check if we are moving towards the low limit switch
+            #if self.low_limit_switch.get() == 1:
+            #    success = False
+            #if self.high_limit_switch.get() == 1:
+            #    success = False
+
+            # Some issues with severity, ctrl timeouts, etc.
+            #severity = self.user_readback.alarm_severity
+
+            #if severity != AlarmSeverity.NO_ALARM:
+            #    status = self.user_readback.alarm_status
+            #    logger.error('Motion failed: %s is in an alarm state '
+            #                 'status=%s severity=%s',
+            #                 self.name, status, severity)
+            #    success = False
+            self._done_moving(success=success, timestamp=timestamp, value=value)
+
+
+class OffsetMirror(Device):
     """
     Simulation of a simple flat mirror with assorted motors.
     
@@ -198,102 +387,142 @@ class Mirror(object):
         Multiplicative noise factor added to alpha-motor readback
     
     fake_sleep_x : float, optional
-    	Amount of time to wait after moving x-motor
+        Amount of time to wait after moving x-motor
 
     fake_sleep_z : float, optional
-    	Amount of time to wait after moving z-motor
+        Amount of time to wait after moving z-motor
 
     fake_sleep_alpha : float, optional
-    	Amount of time to wait after moving alpha-motor
+        Amount of time to wait after moving alpha-motor
     """
-    def __init__(self, name, x, z, alpha, noise_x=0, noise_z=0,
-                 noise_alpha=0, fake_sleep_x=0, fake_sleep_z=0,
-                 fake_sleep_alpha=0):
-        self.name = name
-        self.noise_x = noise_x
-        self.noise_z = noise_z
-        self.noise_alpha = noise_alpha
-        self.fake_sleep_x = fake_sleep_x
-        self.fake_sleep_z = fake_sleep_z
-        self.fake_sleep_alpha = fake_sleep_alpha
-        self.x = Mover('X Motor', OrderedDict(
-                [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
-                 ('x_setpoint', lambda x: x)]), {'x': x},
-                       fake_sleep=self.fake_sleep_x)
-        self.z = Mover('Z Motor', OrderedDict(
-                [('z', lambda z: z + np.random.uniform(-1, 1)*self.noise_z),
-                 ('z_setpoint', lambda z: z)]), {'z': z},
-                       fake_sleep=self.fake_sleep_z)
-        self.alpha = Mover('Alpha Motor', OrderedDict(
-                [('alpha', lambda alpha: alpha +
-                  np.random.uniform(-1, 1)*self.noise_alpha),
-                 ('alpha_setpoint', lambda alpha: alpha)]), {'alpha': alpha},
-                           fake_sleep=self.fake_sleep_alpha)
-        self.motors = [self.x, self.z, self.alpha]
-        self._x = x
-        self._z = z
-        self._alpha = alpha
-        self.log_pref = "{0} (Mirror) - ".format(self.name)
+    # Gantry motors
+    gan_x_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:P")
+    gan_x_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:S")
+    gan_y_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:P")
+    gan_y_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:S")
+    
+    # Pitch Motor
+    pitch = FormattedComponent(OMMotor, "{self._prefix}")
 
-    def read(self):
-        read_dict = dict(ChainMap(*[motor.read() for motor in self.motors]))
-        if (read_dict['x']['value'] != self._x or
-            read_dict['z']['value'] != self._z or
-            read_dict['alpha']['value'] != self._alpha):
-            self._x = read_dict['x']['value']
-            self._z = read_dict['z']['value']
-            self._alpha = read_dict['alpha']['value']
-            read_dict = self.read()
-        return read_dict
+    # This needs to be properly implemented
+    motor_stop = Component(Signal)
+
+    def __init__(self, prefix, *, name=None, read_attrs=None, parent=None, 
+                 configuration_attrs=None, section="", x=0, y=0, z=0, alpha=0, 
+                 velo_x=0, velo_y=0, velo_alpha=0, refresh_x=0, refresh_y=0, 
+                 refresh_alpha=0, noise_x=0, noise_z=0, noise_alpha=0, 
+                 fake_sleep_x=0, fake_sleep_z=0, fake_sleep_alpha=0):
+        self.prefix = prefix
+        self._area = prefix.split(":")[1]
+        self._mirror = prefix.split(":")[2]
+        self._section = section
+
+        if read_attrs is None:
+            read_attrs = ['pitch', 'gan_x_p', 'gan_x_s']
+
+        if configuration_attrs is None:
+            configuration_attrs = []
+
+        super().__init__(prefix, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         name=name, parent=parent, **kwargs)
+
+        # Simulation Attributes
+        # Fake noise to readback and moves
+        self.gan_x_p.fake_noise = self.gan_x_s.fake_noise = noise_x
+        self.gan_y_p.fake_noise = self.gan_y_s.fake_noise = noise_y
+        self.pitch.fake_noise = noise_alpha
         
+        # Fake sleep for every move
+        self.gan_x_p.fake_sleep = self.gan_x_s.fake_sleep = fake_sleep_x
+        self.gan_y_p.fake_sleep = self.gan_y_s.fake_sleep = fake_sleep_y
+        self.alpha.fake_sleep = fake_sleep_alpha
 
-    def set(self, cmd=None, **kwargs):
-        logger.info("{0}Setting Attributes.".format(self.log_pref))
-        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
-        if cmd in ("IN", "OUT"):
-            pass  # If these were removable we'd implement it here
-        elif cmd is not None:
-            # Here is where we move the pitch motor if a value is set
-            self._alpha = cmd
-            return self.alpha.set(cmd)
-        self._x = kwargs.get('x', self._x)
-        self._z = kwargs.get('z', self._z)
-        self._alpha = kwargs.get('alpha', self._alpha)
-        for motor in self.motors:
-            motor_params = motor.read()            
-            for key in kwargs.keys():
-                if key in motor_params:
-                    motor.set(kwargs[key])
-        return Status(done=True, success=True)
+        # Velocity for every move
+        self.gan_x_p.velocity.value = self.gan_x_s.velocity.value = velo_x
+        self.gan_y_p.velocity.value = self.gan_y_s.velocity.value = velo_y
+        self.alpha.velocity.value = velo_alpha
 
-    def describe(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
+        # Refresh rate for moves
+        self.gan_x_p.refresh = self.gan_x_s.refresh = refresh_x
+        self.gan_y_p.refresh = self.gan_y_s.refresh = refresh_y
+        self.alpha.refresh = refresh_alpha
+        
+        # Set initial position values
+        self.gan_x_p.user_setpoint.put(x)
+        self.gan_x_p.user_readback.put(x)
+        self.gan_x_s.user_setpoint.put(x)
+        self.gan_x_s.user_readback.put(x)
+        self.gan_y_p.user_setpoint.put(y)
+        self.gan_y_p.user_readback.put(y)
+        self.gan_y_s.user_setpoint.put(y)
+        self.gan_y_s.user_readback.put(y)
+        self.pitch.user_setpoint.put(alpha)
+        self.pitch.user_readback.put(alpha)
+        self.z = z
+
+    def move(self, position, **kwargs):
+        """
+        Move to the inputted position in pitch.
+        """        
+        return self.pitch.move(position, **kwargs)
+
+    def set(self, position, **kwargs):
+        """
+        Alias for move.
+        """
+        return self.move(position, **kwargs)
     
-    def describe_configuration(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
-    
-    def read_configuration(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
-    
-    @property
-    def blocking(self):
-        return False
-
-    def subscribe(self, *args, **kwargs):
-        pass
-
-    def trigger(self, *args, **kwargs):
-        return Status(done=True, success=True)
-
     @property
     def position(self):
-        return self.alpha.position
+        """
+        Readback the current pitch position.
+        """
+        return self.pitch.user_readback.value        
+
+    @property
+    def alpha(self):
+        """
+        Mirror pitch readback. Does the same thing as self.position.
+        """
+        return self.position
+
+    @alpha.setter
+    def alpha(self, position, **kwargs):
+        """
+        Mirror pitch setter. Does the same thing as self.move.
+        """
+        return self.move(position, **kwargs)
+
+    @property
+    def x(self):
+        """
+        Mirror x position readback.
+        """
+        return self.gan_x_p.user_readback.value
+
+    @x.setter
+    def x(self, position):
+        """
+        Mirror x position setter.
+        """
+        return self.gan_x_p.move(position, **kwargs)
+
+    @property
+    def _x(self):
+        return self.gan_x_p.user_readback.value
+
+    @property
+    def _y(self):
+        return self.gan_y_p.user_readback.value
+
+    @property
+    def _z(self):
+        return self.z
+
+    @property
+    def _alpha(self):
+        return self.pitch.user_readback.value
 
 
 class YAG(object):
@@ -318,16 +547,16 @@ class YAG(object):
         Multiplicative noise factor added to z-motor readback
 
     fake_sleep_x : float, optional
-    	Amount of time to wait after moving x-motor
+        Amount of time to wait after moving x-motor
 
     fake_sleep_z : float, optional
-    	Amount of time to wait after moving z-motor
+        Amount of time to wait after moving z-motor
 
     pix : tuple, optional
-    	Dimensions of imager in pixels
+        Dimensions of imager in pixels
 
     size : tuple, optional
-    	Dimensions of imager in meters
+        Dimensions of imager in meters
     """
     SUB_VALUE = "value"
     _default_sub = SUB_VALUE
