@@ -29,8 +29,6 @@ def test_linear_fit():
 
     #Assemble fitting callback
     cb = LinearFit('centroid', 'motor',
-                    init_guess={'slope'     : 3,
-                                'intercept' : 1},
                     update_every=None)
 
     #Scan through variables
@@ -42,7 +40,6 @@ def test_linear_fit():
 
     #Check we create an accurate estimate
     print(cb.result.fit_report())
-    print(cb.eval(np.array([10])))
     assert np.allclose(cb.eval(10), 52, atol=1e-5)
 
 
@@ -62,9 +59,6 @@ def test_multi_fit():
 
     #Assemble fitting callback
     cb = MultiPitchFit('centroid', ('m1','m2'),
-                       init_guess={'x0'     : 3,
-                                'x1' :     2,
-                                'x2' :     1},
                        update_every=None)
 
     #Scan through variables
@@ -74,6 +68,6 @@ def test_multi_fit():
     print(cb.result.fit_report())
     for k,v in expected.items():
         assert np.allclose(cb.result.values[k], v, atol=1e-6)
-    
+
     #Check we create an accurate estimate
     assert np.allclose(cb.eval(5,10), 55, atol=1e-5)
