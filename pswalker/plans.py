@@ -23,6 +23,7 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 ##########
 # Module #
 ##########
+from .examples import TestBase
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
     # Expand fields with device names if from ophyd
     target_fields = copy(target_fields)
     for i, (det, fld) in list(enumerate(zip(detectors, target_fields))):
-        if isinstance(det, Device) and det.name not in fld:
+        if isinstance(det, (Device, TestBase)) and det.name not in fld:
             target_fields[i] = "{}_{}".format(det.name, fld)
         elif isinstance(det, Signal):
             target_fields[i] = det.name
@@ -103,7 +104,7 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
         #Read outputs
         yield Msg('create', None, name='primary')
         det_reads = []
-        for det in enumerate(detectors):
+        for det in detectors:
             cur_det = yield Msg('read', det)
             det_reads.append(cur_det)
         for j, det in enumerate(det_reads):
@@ -259,7 +260,7 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
         (center, pos) = yield from measure_average([detector, motor]+system,
                                                     target_fields,
                                                     num=average, delay=delay)
-        def get_first_step():
+        def get_first_step(first_step=first_step):
             #Calculate next move if gradient is given
             if gradient:
                 intercept = center - gradient*pos
