@@ -46,9 +46,9 @@ def test_iterwalk(RE, lcls_two_bounce_system,
                                 first_steps=first_steps, gradients=gradients,
                                 detector_fields='centroid_x',
                                 motor_fields='alpha',
-                                tolerances=tolerances, system=None, averages=1,
-                                overshoot=overshoot, max_walks=max_walks,
-                                timeout=None))
+                                tolerances=tolerances, system=[m1, m2, y1, y2],
+                                averages=1, overshoot=overshoot,
+                                max_walks=max_walks, timeout=None))
     RE(plan)
     assert np.isclose(y1.read()[y1.name + '_centroid_x']['value'], goal[0],
                       atol=tolerances)
