@@ -74,10 +74,17 @@ class LinearFit(LiveBuild):
     """
     def __init__(self, y, x, init_guess=None, update_every=1):
         #Create model
-        model = LinearModel()
+        model = LinearModel(missing='drop')
+        
+        #Initialize parameters
+        init = {'slope' : 0, 'intercept' : 0}
+
+        if init_guess:
+            init.update(init_guess)
+        
         #Initialize fit
         super().__init__(model, y, {'x': x},
-                         init_guess=init_guess,
+                         init_guess=init,
                          update_every=update_every)
 
 
@@ -120,19 +127,28 @@ class MultiPitchFit(LiveBuild):
         update on every new event
     """
     def __init__(self, centroid, alphas, init_guess=None, update_every=1):
+
         #Simple model of two-bounce system
         def two_bounce(a0, a1, x0, x1, x2):
             return x0 + a0*x1 + a1*x2
 
         #Create model
-        model = lmfit.Model(two_bounce, independent_vars = ['a0', 'a1'])
+        model = lmfit.Model(two_bounce,
+                            independent_vars = ['a0', 'a1'],
+                            missing='drop')
+
+        #Initialize parameters
+        init = {'x0' : 0, 'x1': 0, 'x2' : 0}
+
+        if init_guess:
+            init.update(init_guess)
+
 
         #Initialize fit
         super().__init__(model, centroid,
                          independent_vars={'a0' : alphas[0],
                                            'a1' : alphas[1]},
-                         init_guess=init_guess,
-                         update_every=1)
+                         init_guess=init, update_every=update_every)
 
 
     def eval(self, a0, a1):
