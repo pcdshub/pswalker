@@ -170,7 +170,17 @@ class Source(object):
     def trigger(self, *args, **kwargs):
         return Status(done=True, success=True)
 
-class Mirror(object):
+class TestBase(object):
+    """
+    When you want things to be Ophyd-like but are too lazy to make it real
+    Opyhd
+    """
+    def nameify_keys(self, d):
+        return {self.name + "_" + key : value
+                for key, value in d.items()}
+
+
+class Mirror(TestBase):
     """
     Simulation of a simple flat mirror with assorted motors.
     
@@ -244,8 +254,7 @@ class Mirror(object):
             self._z = read_dict['z']['value']
             self._alpha = read_dict['alpha']['value']
             read_dict = self.read()
-        return read_dict
-        
+        return self.nameify_keys(read_dict)
 
     def set(self, cmd=None, **kwargs):
         logger.info("{0}Setting Attributes.".format(self.log_pref))
@@ -269,17 +278,17 @@ class Mirror(object):
     def describe(self, *args, **kwargs):
         result = dict(ChainMap(*[motor.describe(*args, **kwargs)
                                  for motor in self.motors]))
-        return result
+        return self.nameify_keys(result)
     
     def describe_configuration(self, *args, **kwargs):
         result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        return result
+        return self.nameify_keys(result)
     
     def read_configuration(self, *args, **kwargs):
         result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
                                  for motor in self.motors]))
-        return result
+        return self.nameify_keys(result)
     
     @property
     def blocking(self):
@@ -296,7 +305,7 @@ class Mirror(object):
         return self.alpha.position
 
 
-class YAG(object):
+class YAG(TestBase):
     """
     Simulation of a yag imager and the assorted motors.
 
@@ -385,7 +394,7 @@ class YAG(object):
     def read(self, *args, **kwargs):
         result = dict(ChainMap(*[dev.read(*args, **kwargs)
                                  for dev in self.devices]))
-        return result
+        return self.nameify_keys(result)
     
     def set(self, cmd=None, **kwargs):
         logger.info("{0}Setting Attributes.".format(self.log_pref))
@@ -412,15 +421,15 @@ class YAG(object):
 
     def describe(self, *args, **kwargs):
         result = self.reader.describe(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     def describe_configuration(self, *args, **kwargs):
         result = self.reader.describe_configuration(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     def read_configuration(self, *args, **kwargs):
         result = self.reader.read_configuration(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     @property
     def blocking(self):

@@ -12,6 +12,7 @@ from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal
 
 logger = logging.getLogger(__name__)
+tmo = 10
 
 
 def test_prep_img_motors(RE, fake_yags):
@@ -97,7 +98,7 @@ def mot_and_sig():
     return mot, sig
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_match_condition_fixture(mot_and_sig):
     mot, sig = mot_and_sig
     mot.move(5)
@@ -107,7 +108,7 @@ def test_match_condition_fixture(mot_and_sig):
     assert mot.position < 20
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_match_condition_success(RE, mot_and_sig):
     logger.debug("test_match_condition_success")
     mot, sig = mot_and_sig
@@ -117,7 +118,7 @@ def test_match_condition_success(RE, mot_and_sig):
     # stopped
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_match_condition_fail(RE, mot_and_sig):
     logger.debug("test_match_condition_fail")
     mot, sig = mot_and_sig
@@ -127,7 +128,7 @@ def test_match_condition_fail(RE, mot_and_sig):
     # condition
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_match_condition_timeout(RE, mot_and_sig):
     logger.debug("test_match_condition_timeout")
     mot, sig = mot_and_sig
@@ -136,7 +137,7 @@ def test_match_condition_timeout(RE, mot_and_sig):
     # If the motor did not reach 5, we timed out
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_recover_threshold_success(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
@@ -145,7 +146,7 @@ def test_recover_threshold_success(RE, mot_and_sig):
     # If we stopped right after 20, we recovered
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
@@ -154,7 +155,7 @@ def test_recover_threshold_success_reverse(RE, mot_and_sig):
     # If we stopped right after -1, we recovered
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_recover_threshold_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
@@ -163,7 +164,7 @@ def test_recover_threshold_failure(RE, mot_and_sig):
     # We got to the end of the negative direction, we failed
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(tmo)
 def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_timeout_failure")
     mot, sig = mot_and_sig

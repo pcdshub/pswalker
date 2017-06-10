@@ -103,7 +103,7 @@ class FakePath(OphydObject):
     _default_sub = SUB_PTH_CHNG
 
     def __init__(self, *devices):
-        self.devices = sorted(devices, key=lambda d: d.read()["z"]["value"])
+        self.devices = sorted(devices, key=lambda d: d.read()[d.name + "_z"]["value"])
         super().__init__()
 
     def clear(self, *args, **kwargs):

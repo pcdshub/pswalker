@@ -17,14 +17,16 @@ from pswalker.iterwalk import iterwalk
 TOL = 5
 logger = logging.getLogger(__name__)
 
+tmo = 3
 
-@pytest.mark.timeout(3)
+
+@pytest.mark.timeout(tmo)
 @pytest.mark.parametrize("goal1", [-300, 0, 300])
 @pytest.mark.parametrize("goal2", [-300, 0, 300])
-@pytest.mark.parametrize("first_steps", [1e-6])
+@pytest.mark.parametrize("first_steps", [1e-4])
 @pytest.mark.parametrize("gradients", [None])
 @pytest.mark.parametrize("tolerances", [3])
-@pytest.mark.parametrize("overshoot", [0, 0.25])
+@pytest.mark.parametrize("overshoot", [0])
 @pytest.mark.parametrize("max_walks", [5])
 def test_iterwalk(RE, lcls_two_bounce_system,
                   goal1, goal2, first_steps, gradients,
@@ -44,17 +46,40 @@ def test_iterwalk(RE, lcls_two_bounce_system,
                                 first_steps=first_steps, gradients=gradients,
                                 detector_fields='centroid_x',
                                 motor_fields='alpha',
-                                tolerances=tolerances, system=None, averages=1,
-                                overshoot=overshoot, max_walks=max_walks,
-                                timeout=None))
+                                tolerances=tolerances, system=[m1, m2, y1, y2],
+                                averages=1, overshoot=overshoot,
+                                max_walks=max_walks, timeout=None))
     RE(plan)
-    assert np.isclose(y1.read()['centroid_x']['value'], goal[0],
+    assert np.isclose(y1.read()[y1.name + '_centroid_x']['value'], goal[0],
                       atol=tolerances)
-    assert np.isclose(y2.read()['centroid_x']['value'], goal[1],
+    assert np.isclose(y2.read()[y2.name + '_centroid_x']['value'], goal[1],
                       atol=tolerances)
 
+    # Make sure we actually read all the groups as we went
+    m1_reads = 0
+    m2_reads = 0
+    y1_reads = 0
+    y2_reads = 0
+    saves = 0
+    for msg in RE.msg_hook.msgs:
+        if msg.command == 'read':
+            if msg.obj == m1:
+                m1_reads += 1
+            if msg.obj == m2:
+                m2_reads += 1
+            if msg.obj == y1:
+                y1_reads += 1
+            if msg.obj == y2:
+                y2_reads += 1
+        if msg.command == 'save':
+            saves += 1
+    assert saves > 0
+    assert all(map(lambda x: x == saves,
+                   [m1_reads, m2_reads, y1_reads, y2_reads]))
 
-@pytest.mark.timeout(3)
+
+
+@pytest.mark.timeout(tmo)
 def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_system):
     logger.debug("test_iterwalk_raises_RuntimeError_on_motion_timeout")
     s, m1, m2, y1, y2 = lcls_two_bounce_system

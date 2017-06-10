@@ -23,6 +23,7 @@ from bluesky.plans import mv, trigger_and_read, run_decorator, stage_decorator
 ##########
 # Module #
 ##########
+from .examples import TestBase
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
     # Expand fields with device names if from ophyd
     target_fields = copy(target_fields)
     for i, (det, fld) in list(enumerate(zip(detectors, target_fields))):
-        if isinstance(det, Device) and det.name not in fld:
+        if isinstance(det, (Device, TestBase)) and det.name not in fld:
             target_fields[i] = "{}_{}".format(det.name, fld)
         elif isinstance(det, Signal):
             target_fields[i] = det.name
@@ -102,11 +103,14 @@ delay: {3}".format([d.name for d in detectors], target_fields, num, delay))
         yield Msg('wait', None, 'B')
         #Read outputs
         yield Msg('create', None, name='primary')
-        for j, det in enumerate(detectors):
+        det_reads = []
+        for det in detectors:
             cur_det = yield Msg('read', det)
+            det_reads.append(cur_det)
+        for j, det in enumerate(det_reads):
             #Gather average measurements for supplied target_fields
             try:
-                measurements[i][j] = cur_det[target_fields[j]]['value']
+                measurements[i][j] = det[target_fields[j]]['value']
             except IndexError:
                 break
         yield Msg('save')
@@ -253,10 +257,10 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
         #logger.debug('walk_to_pixel moving %s to start pos %s', motor, start)
         #yield from mv(motor, start)
         #Take average of motor position and centroid
-        (center, pos) = yield from measure_average([detector, motor]+system,
+        (center, pos) = yield from measure_average([detector, motor] + system,
                                                     target_fields,
                                                     num=average, delay=delay)
-        def get_first_step():
+        def get_first_step(start=start, first_step=first_step, gradient=gradient):
             #Calculate next move if gradient is given
             if gradient:
                 intercept = center - gradient*pos
@@ -268,7 +272,7 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
                 next_pos = start + first_step
 
             return next_pos
-        next_pos = get_first_step()
+        next_pos = get_first_step(first_step=first_step, gradient=gradient)
 
         #Store information as we scan
         step = 0
@@ -288,22 +292,26 @@ max_steps:{11}".format(detector.name, motor.name, target, start, gradient,
             yield from  mv(motor, next_pos)
             #Measure centroid
             (center, pos) = yield from measure_average(
-                                                    [detector, motor],
+                                                    [detector, motor] + system,
                                                     target_fields,
                                                     num=average, delay=delay)
             #Store data point
             centers.append(center)
-            angles.append(next_pos)
+            angles.append(pos)
             #Calculate next step
+            logger.debug('calc linregress with angles=%s, centers=%s',
+                         angles, centers)
             slope, intercept, r, p, err = linregress(angles, centers)
             logger.debug('linregress: slope=%s, intercept=%s, r=%s, p=%s, err=%s',
                          slope, intercept, r, p, err)
             #Don't divide by zero
-            if slope and r > 0.5:
+            if slope and abs(r) > 0.5:
                 next_pos = (target - intercept)/slope
             else:
                 logger.warning('linregress was bad, dumping our points')
-                next_pos = get_first_step()
+                next_pos = get_first_step(start=pos,
+                                          first_step=first_step,
+                                          gradient=gradient)
                 step = 0
                 centers, angles = [center], [pos]
             step += 1
