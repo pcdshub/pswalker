@@ -55,6 +55,29 @@ def test_iterwalk(RE, lcls_two_bounce_system,
     assert np.isclose(y2.read()[y2.name + '_centroid_x']['value'], goal[1],
                       atol=tolerances)
 
+    # Make sure we actually read all the groups as we went
+    m1_reads = 0
+    m2_reads = 0
+    y1_reads = 0
+    y2_reads = 0
+    saves = 0
+    for msg in RE.msg_hook.msgs:
+        if msg.command == 'read':
+            if msg.obj == m1:
+                m1_reads += 1
+            if msg.obj == m2:
+                m2_reads += 1
+            if msg.obj == y1:
+                y1_reads += 1
+            if msg.obj == y2:
+                y2_reads += 1
+        if msg.command == 'save':
+            saves += 1
+    assert saves > 0
+    assert all(map(lambda x: x == saves,
+                   [m1_reads, m2_reads, y1_reads, y2_reads]))
+
+
 
 @pytest.mark.timeout(tmo)
 def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_system):
