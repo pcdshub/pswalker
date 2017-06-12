@@ -13,8 +13,8 @@ import numpy as np
 from ophyd.signal import Signal
 from ophyd.status import Status
 from ophyd import PositionerBase
-from pcdsdevices.epics import (mirror, pim)
 from pcdsdevices.device import Device
+from pcdsdevices.epics import (mirror, pim)
 from pcdsdevices.component import (FormattedComponent, Component)
 
 ##########
@@ -176,14 +176,17 @@ class Source(object):
     def trigger(self, *args, **kwargs):
         return Status(done=True, success=True)
 
+class Mirror(object):
+    pass
+
 class OMMotor(mirror.OMMotor):
     """
     Offset Mirror Motor object used in the offset mirror systems. Mostly taken
     from ophyd.epics_motor.
     """
     # position
-    user_readback = Component(Signal)
-    user_setpoint = Component(Signal)
+    user_readback = Component(Signal, value=0)
+    user_setpoint = Component(Signal, value=0)
 
     # configuration
     velocity = Component(Signal)
@@ -191,8 +194,8 @@ class OMMotor(mirror.OMMotor):
     # motor status
     motor_is_moving = Component(Signal, value=0)
     motor_done_move = Component(Signal, value=1)
-    high_limit_switch = Component(Signal)
-    low_limit_switch = Component(Signal)
+    high_limit_switch = Component(Signal, value=10000)
+    low_limit_switch = Component(Signal, value=-10000)
 
     # status
     interlock = Component(Signal)
@@ -201,11 +204,15 @@ class OMMotor(mirror.OMMotor):
     motor_stop = Component(Signal)
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, velocity=0, **kwargs):
-        self.velocity.put(velocity)
+                 name=None, parent=None, velocity=0, fake_noise=0, fake_sleep=0, 
+                 refresh=0.1, settle_time=0, **kwargs):
         super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, settle_time=1, **kwargs)        
+                         configuration_attrs=configuration_attrs, name=name, 
+                         parent=parent, settle_time=settle_time, **kwargs)
+        self.velocity.put(velocity)
+        self.fake_noise = fake_noise
+        self.fake_sleep = fake_sleep
+        self.refresh = refresh
 
     def move(self, position, wait=True, **kwargs):
         """
@@ -238,26 +245,31 @@ class OMMotor(mirror.OMMotor):
         # Add uniform noise
         pos = position + np.random.uniform(-1, 1)*self.fake_noise
 
+        # Make sure refresh is set to something sensible if using velo or sleep
+        if (self.velocity.value or self.fake_sleep) and not self.refresh:
+            self.refresh = 0.1
+
         # If velo is set, incrementally set the readback according to the refresh
         if self.velocity.value:
             next_pos = self.user_readback.value
             while next_pos < pos:
-                self.user_readback = next_pos
+                self.user_readback.put(next_pos) 
                 time.sleep(self.refresh)
-                next_pos += self.velocity.value*refresh
+                next_pos += self.velocity.value*self.refresh
+
         # If fake sleep is set, incrementatlly sleep while setting the readback
         elif self.fake_sleep:
             wait = 0
-            while wait < fake_sleep:
+            while wait < self.fake_sleep:
                 time.sleep(self.refresh)
-                wait += refresh
+                wait += self.refresh
                 self.user_readback.put(wait/self.fake_sleep * pos)
         status = self.user_readback.set(pos)
 
-        # Switch to finished state
+        # Switch to finished state and wait for status to update
         self.motor_is_moving.put(0)
         self.motor_done_move.put(1)
-
+        time.sleep(0.1)
         return status
 
 
@@ -297,6 +309,19 @@ class OffsetMirror(mirror.OffsetMirror):
     fake_sleep_alpha : float, optional
         Amount of time to wait after moving alpha-motor
     """
+    # Gantry Motors
+    gan_x_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:P")
+    gan_x_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:S")
+    gan_y_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:P")
+    gan_y_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:S")
+    
+    # Pitch Motor
+    pitch = FormattedComponent(OMMotor, "{self._prefix}")
+
+    # Placeholder signals
+    motor_stop = Component(Signal)
+    piezo = Component(Signal)    
+    coupling = Component(Signal)
 
     def __init__(self, prefix, *, name=None, read_attrs=None, parent=None, 
                  configuration_attrs=None, section="", x=0, y=0, z=0, alpha=0, 
@@ -342,6 +367,20 @@ class OffsetMirror(mirror.OffsetMirror):
         self.pitch.user_readback.put(alpha)
         self.z = z
 
+    # Coupling motor isnt implemented as an example so override its properties
+    @property
+    def decoupled(self):
+        raise NotImplementedError
+
+    @property
+    def fault(self):
+        raise NotImplementedError
+
+    @property
+    def gdif(self):
+        raise NotImplementedError
+
+    # Properties to simplify yag patching
     @property
     def _x(self):
         return self.gan_x_p.user_readback.value
@@ -551,35 +590,38 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
                    yag._z)
     return _x_to_pixel(x, yag)
 
-def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
-               source=Source('Zero Source', 0, 0)):
-    if not isiterable(mirrors):
-        mirrors = [mirrors]
-    if not isiterable(yags):
-        yags = [yags]
-    logger.info("Patching {0} yag(s)".format(len(yags)))            
-    for yag in yags:
-        if yag._z <= mirrors[0]._z:
-            logger.debug("Patching '{0}' with no bounce equation.".format(
-                    yag.name))
-            yag._cent_x = partial(_calc_cent_x, source, yag)
-        elif mirrors[0]._z < yag._z:
-            if len(mirrors) == 1:
-                logger.debug("Patching '{0}' with one bounce equation.".format(
-                        yag.name))
-                yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
-            elif yag._z <= mirrors[1]._z:
-                logger.debug("Patching '{0}' with one bounce equation.".format(
-                        yag.name))
-                yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
-            elif mirrors[1]._z < yag._z:
-                logger.debug("Patching '{0}' with two bounce equation.".format(
-                        yag.name))
-                yag._cent_x = partial(_m1_m2_calc_cent_x, source, mirrors[0],
-                                      mirrors[1], yag)
-    if len(yags) == 1:
-        return yags[0]
-    return yags
+def patch_yags(*args, **kwargs):
+    pass
+
+# def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
+#                source=Source('Zero Source', 0, 0)):
+#     if not isiterable(mirrors):
+#         mirrors = [mirrors]
+#     if not isiterable(yags):
+#         yags = [yags]
+#     logger.info("Patching {0} yag(s)".format(len(yags)))            
+#     for yag in yags:
+#         if yag._z <= mirrors[0]._z:
+#             logger.debug("Patching '{0}' with no bounce equation.".format(
+#                     yag.name))
+#             yag._cent_x = partial(_calc_cent_x, source, yag)
+#         elif mirrors[0]._z < yag._z:
+#             if len(mirrors) == 1:
+#                 logger.debug("Patching '{0}' with one bounce equation.".format(
+#                         yag.name))
+#                 yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
+#             elif yag._z <= mirrors[1]._z:
+#                 logger.debug("Patching '{0}' with one bounce equation.".format(
+#                         yag.name))
+#                 yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
+#             elif mirrors[1]._z < yag._z:
+#                 logger.debug("Patching '{0}' with two bounce equation.".format(
+#                         yag.name))
+#                 yag._cent_x = partial(_m1_m2_calc_cent_x, source, mirrors[0],
+#                                       mirrors[1], yag)
+#     if len(yags) == 1:
+#         return yags[0]
+#     return yags
             
 if __name__ == "__main__":
     p1h = YAG("p1h", 0, 0)
