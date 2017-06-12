@@ -318,17 +318,17 @@ class OffsetMirror(mirror.OffsetMirror):
     # Pitch Motor
     pitch = FormattedComponent(OMMotor, "{self._prefix}")
 
-    # Placeholder signals
-    motor_stop = Component(Signal)
+    # Placeholder signals for non-implemented components
     piezo = Component(Signal)    
     coupling = Component(Signal)
+    motor_stop = Component(Signal)
 
     def __init__(self, prefix, *, name=None, read_attrs=None, parent=None, 
                  configuration_attrs=None, section="", x=0, y=0, z=0, alpha=0, 
                  velo_x=0, velo_y=0, velo_alpha=0, refresh_x=0, refresh_y=0, 
-                 refresh_alpha=0, noise_x=0, noise_z=0, noise_alpha=0, 
-                 fake_sleep_x=0, fake_sleep_z=0, fake_sleep_alpha=0):
-
+                 refresh_alpha=0, noise_x=0, noise_y=0, noise_alpha=0, 
+                 fake_sleep_x=0, fake_sleep_y=0, fake_sleep_alpha=0, **kwargs):
+        prefix = "MIRR:TST:{0}".format(prefix)
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          name=name, parent=parent, **kwargs)
@@ -342,17 +342,17 @@ class OffsetMirror(mirror.OffsetMirror):
         # Fake sleep for every move
         self.gan_x_p.fake_sleep = self.gan_x_s.fake_sleep = fake_sleep_x
         self.gan_y_p.fake_sleep = self.gan_y_s.fake_sleep = fake_sleep_y
-        self.alpha.fake_sleep = fake_sleep_alpha
+        self.pitch.fake_sleep = fake_sleep_alpha
 
         # Velocity for every move
         self.gan_x_p.velocity.value = self.gan_x_s.velocity.value = velo_x
         self.gan_y_p.velocity.value = self.gan_y_s.velocity.value = velo_y
-        self.alpha.velocity.value = velo_alpha
+        self.pitch.velocity.value = velo_alpha
 
         # Refresh rate for moves
         self.gan_x_p.refresh = self.gan_x_s.refresh = refresh_x
         self.gan_y_p.refresh = self.gan_y_s.refresh = refresh_y
-        self.alpha.refresh = refresh_alpha
+        self.pitch.refresh = refresh_alpha
         
         # Set initial position values
         self.gan_x_p.user_setpoint.put(x)
@@ -370,15 +370,15 @@ class OffsetMirror(mirror.OffsetMirror):
     # Coupling motor isnt implemented as an example so override its properties
     @property
     def decoupled(self):
-        raise NotImplementedError
+        return False
 
     @property
     def fault(self):
-        raise NotImplementedError
+        return False
 
     @property
     def gdif(self):
-        raise NotImplementedError
+        return 0.0
 
     # Properties to simplify yag patching
     @property

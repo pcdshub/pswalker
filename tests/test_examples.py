@@ -3,7 +3,7 @@
 ############
 import time
 import subprocess
-
+from collections import OrderedDict
 ###############
 # Third Party #
 ###############
@@ -18,15 +18,17 @@ import numpy as np
 
 from pswalker.examples import (OMMotor, OffsetMirror)
 
+# OMMotor Tests
+
 def test_OMMotor_instantiates():
     assert(OMMotor("TEST"))
 
-def test_OMMotor_runs_ophyd_functions_correctly():
+def test_OMMotor_runs_ophyd_functions():
     ommotor = OMMotor("TEST")
-    assert(ommotor.read())
-    assert(ommotor.describe())
-    assert(ommotor.describe_configuration())
-    assert(ommotor.read_configuration())
+    assert(isinstance(ommotor.read(), OrderedDict))
+    assert(isinstance(ommotor.describe(), OrderedDict))
+    assert(isinstance(ommotor.describe_configuration(), OrderedDict))
+    assert(isinstance(ommotor.read_configuration(), OrderedDict))
 
 def test_OMMotor_moves_properly():
     ommotor = OMMotor("TEST")
@@ -46,7 +48,7 @@ def test_OMMotor_velocity_move_time():
     assert(ommotor.position == next_pos)
     assert(status.success)
 
-def test_OMMOTOR_fake_sleep_move_time():
+def test_OMMotor_fake_sleep_move_time():
     ommotor = OMMotor("TEST")
     diff = 1
     next_pos = ommotor.position + diff
@@ -58,6 +60,47 @@ def test_OMMOTOR_fake_sleep_move_time():
     assert(np.isclose(t1, ommotor.fake_sleep + 0.1, rtol=0.1))
     assert(ommotor.position == next_pos)
     assert(status.success)
+
+# OffsetMirror tests
+
+def test_OffsetMirror_instantiates():
+    assert(OffsetMirror("TEST"))
+
+def test_OffsetMirror_motors_all_read():
+    om = OffsetMirror("TEST")
+    assert(isinstance(om.gan_x_p.read(), OrderedDict))
+    assert(isinstance(om.gan_x_s.read(), OrderedDict))
+    assert(isinstance(om.gan_y_p.read(), OrderedDict))
+    assert(isinstance(om.gan_y_s.read(), OrderedDict))
+    assert(isinstance(om.pitch.read(), OrderedDict))
+
+def test_OffsetMirror_runs_ophyd_functions():
+    om = OffsetMirror("TEST")
+    assert(isinstance(om.read(), OrderedDict))
+    assert(isinstance(om.describe(), OrderedDict))
+    assert(isinstance(om.describe_configuration(), OrderedDict))
+    assert(isinstance(om.read_configuration(), OrderedDict))
+
+def test_OffsetMirror_move_method():
+    om = OffsetMirror("TEST")
+    om.move(10)
+    assert(om.position == 10)
+    assert(om.pitch.position == 10)
+    
+def test_OffsetMirror_yag_patch_properties():
+    om = OffsetMirror("TEST", x=10, y=15, z=20, alpha=1)
+    assert(om._x == 10)
+    assert(om._y == 15)
+    assert(om._z == 20)
+    assert(om._alpha == 1)
+    om.gan_x_p.move(75)
+    om.gan_y_p.move(100)
+    om.z = 125
+    om.move(50)
+    assert(om._x == 75)
+    assert(om._y == 100)
+    assert(om._z == 125)
+    assert(om._alpha == 50)
 
 # def test_YAG_Mirror_instantiates():
 #     assert YAG('test yag', 0, 0)
