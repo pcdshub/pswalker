@@ -13,6 +13,7 @@ import numpy as np
 from ophyd.signal import Signal
 from ophyd.status import Status
 from ophyd import PositionerBase
+from pcdsdevices.epics import (mirror, pim)
 from pcdsdevices.device import Device
 from pcdsdevices.component import (FormattedComponent, Component)
 
@@ -175,7 +176,7 @@ class Source(object):
     def trigger(self, *args, **kwargs):
         return Status(done=True, success=True)
 
-class OMMotor(Device, PositionerBase):
+class OMMotor(mirror.OMMotor):
     """
     Offset Mirror Motor object used in the offset mirror systems. Mostly taken
     from ophyd.epics_motor.
@@ -200,44 +201,11 @@ class OMMotor(Device, PositionerBase):
     motor_stop = Component(Signal)
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, velocity=0**kwargs):
-        if read_attrs is None:
-            read_attrs = ['user_readback']
-
-        if configuration_attrs is None:
-            configuration_attrs = ['velocity', 'interlock',
-                                   'enabled', 'user_offset', 'user_offset_dir']
-
+                 name=None, parent=None, velocity=0, **kwargs):
+        self.velocity.put(velocity)
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, settle_time=1, **kwargs)
-        
-        # Make the default alias for the user_readback the name of the
-        # motor itself.
-        self.user_readback.name = self.name
-        self.tol = 0.0001
-        self.velocity.put(velocity)
-
-        self.motor_done_move.subscribe(self._move_changed)
-        self.user_readback.subscribe(self._pos_changed)
-
-    @property
-    def limits(self):
-        """
-        Returns the EPICS limits of the user_setpoint pv.
-        """
-        return self.user_setpoint.limits
-
-    @property
-    def moving(self):
-        """
-        Whether or not the motor is moving.
-
-        Returns
-        -------
-        moving : bool
-        """
-        return bool(self.motor_is_moving.get(use_monitor=False))
+                         name=name, parent=parent, settle_time=1, **kwargs)        
 
     def move(self, position, wait=True, **kwargs):
         """
@@ -262,6 +230,8 @@ class OMMotor(Device, PositionerBase):
             If motion fails other than timing out
         """
         self.user_setpoint.put(position)
+
+        # Switch to moving state
         self.motor_is_moving.put(1)
         self.motor_done_move.put(0)
 
@@ -282,84 +252,16 @@ class OMMotor(Device, PositionerBase):
                 time.sleep(self.refresh)
                 wait += refresh
                 self.user_readback.put(wait/self.fake_sleep * pos)
-
         status = self.user_readback.set(pos)
+
+        # Switch to finished state
         self.motor_is_moving.put(0)
         self.motor_done_move.put(1)
 
         return status
 
-    @property
-    def position(self):
-        """
-        The current position of the motor in its engineering units.
 
-        Returns
-        -------
-        position : float
-        """
-        return self.user_readback.value
-
-    def set_current_position(self, pos):
-        """
-        Configure the motor user position to the given value.
-
-        Parameters
-        ----------
-        pos
-           Position to set.
-        """
-        self.user_setpoint.put(pos, wait=True)
-
-    def check_value(self, pos):
-        """
-        Check that the position is within the soft limits.
-        """
-        self.user_setpoint.check_value(pos)
-
-    def _pos_changed(self, timestamp=None, value=None, **kwargs):
-        """
-        Callback from EPICS, indicating a change in position.
-        """
-        self._set_position(value)
-
-    def _move_changed(self, timestamp=None, value=None, sub_type=None,
-                      **kwargs):
-        """
-        Callback from EPICS, indicating that movement status has changed.
-        """
-        was_moving = self._moving
-        self._moving = (value != 1)
-
-        started = False
-        if not self._started_moving:
-            started = self._started_moving = (not was_moving and self._moving)
-
-        if started:
-            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
-                           value=value, **kwargs)
-
-        if was_moving and not self._moving:
-            success = True
-            # Check if we are moving towards the low limit switch
-            #if self.low_limit_switch.get() == 1:
-            #    success = False
-            #if self.high_limit_switch.get() == 1:
-            #    success = False
-
-            # Some issues with severity, ctrl timeouts, etc.
-            #severity = self.user_readback.alarm_severity
-
-            #if severity != AlarmSeverity.NO_ALARM:
-            #    status = self.user_readback.alarm_status
-            #    logger.error('Motion failed: %s is in an alarm state '
-            #                 'status=%s severity=%s',
-            #                 self.name, status, severity)
-            #    success = False
-            self._done_moving(success=success, timestamp=timestamp, value=value)
-
-
-class OffsetMirror(Device):
+class OffsetMirror(mirror.OffsetMirror):
     """
     Simulation of a simple flat mirror with assorted motors.
     
@@ -395,33 +297,12 @@ class OffsetMirror(Device):
     fake_sleep_alpha : float, optional
         Amount of time to wait after moving alpha-motor
     """
-    # Gantry motors
-    gan_x_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:P")
-    gan_x_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:X:S")
-    gan_y_p = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:P")
-    gan_y_s = FormattedComponent(OMMotor, "STEP:{self._mirror}:Y:S")
-    
-    # Pitch Motor
-    pitch = FormattedComponent(OMMotor, "{self._prefix}")
-
-    # This needs to be properly implemented
-    motor_stop = Component(Signal)
 
     def __init__(self, prefix, *, name=None, read_attrs=None, parent=None, 
                  configuration_attrs=None, section="", x=0, y=0, z=0, alpha=0, 
                  velo_x=0, velo_y=0, velo_alpha=0, refresh_x=0, refresh_y=0, 
                  refresh_alpha=0, noise_x=0, noise_z=0, noise_alpha=0, 
                  fake_sleep_x=0, fake_sleep_z=0, fake_sleep_alpha=0):
-        self.prefix = prefix
-        self._area = prefix.split(":")[1]
-        self._mirror = prefix.split(":")[2]
-        self._section = section
-
-        if read_attrs is None:
-            read_attrs = ['pitch', 'gan_x_p', 'gan_x_s']
-
-        if configuration_attrs is None:
-            configuration_attrs = []
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -461,53 +342,6 @@ class OffsetMirror(Device):
         self.pitch.user_readback.put(alpha)
         self.z = z
 
-    def move(self, position, **kwargs):
-        """
-        Move to the inputted position in pitch.
-        """        
-        return self.pitch.move(position, **kwargs)
-
-    def set(self, position, **kwargs):
-        """
-        Alias for move.
-        """
-        return self.move(position, **kwargs)
-    
-    @property
-    def position(self):
-        """
-        Readback the current pitch position.
-        """
-        return self.pitch.user_readback.value        
-
-    @property
-    def alpha(self):
-        """
-        Mirror pitch readback. Does the same thing as self.position.
-        """
-        return self.position
-
-    @alpha.setter
-    def alpha(self, position, **kwargs):
-        """
-        Mirror pitch setter. Does the same thing as self.move.
-        """
-        return self.move(position, **kwargs)
-
-    @property
-    def x(self):
-        """
-        Mirror x position readback.
-        """
-        return self.gan_x_p.user_readback.value
-
-    @x.setter
-    def x(self, position):
-        """
-        Mirror x position setter.
-        """
-        return self.gan_x_p.move(position, **kwargs)
-
     @property
     def _x(self):
         return self.gan_x_p.user_readback.value
@@ -523,6 +357,10 @@ class OffsetMirror(Device):
     @property
     def _alpha(self):
         return self.pitch.user_readback.value
+
+
+class PIMPulnixDetector(pim.PIMPulnixDetector):
+    pass
 
 
 class YAG(object):
