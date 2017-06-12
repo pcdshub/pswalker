@@ -21,6 +21,64 @@ from bluesky.callbacks import (LiveFit, LiveFitPlot, CallbackBase)
 # Module #
 ##########
 
+logger = logging.getLogger(__name__)
+
+def apply_filters(doc, filters=None, drop_missing=True):
+    """
+    Filter an event document
+
+    Parameters
+    ----------
+    doc : dict
+        Bluesky Document to filter
+
+    filters : dict
+        Filters are provided in a dictionary of key / callable pairs that take
+        a single input from the data stream and return a boolean value.
+
+    drop_missing : bool, optional
+        Only include documents who have associated data for each filter key.
+        This includes events missing the key entirely or reporting NaN
+
+    Returns
+    -------
+    resp : bool
+        Whether the event passes all provided filters
+
+    Example
+    -------
+    ..code::
+
+        apply_filters(doc, filters = {'a' : lambda x : x > 0,
+                                      'c' : lambda x : 4 < x < 6})
+    """
+    resp    = []
+    filters = filters or dict()
+
+    #Iterate through filters
+    for key, func in filters.items(): 
+        try:
+            #Handle NaN
+            if pd.isnull(doc['data'][key]):
+                resp.append(not drop_missing)
+
+            #Evaluate filter
+            else:
+                resp.append(bool(func(doc['data'][key])))
+
+        #Handle missing information
+        except KeyError:
+            resp.append(not drop_missing)
+
+        #Handle improper filter
+        except Exception as e:
+            logger.critical('Filter associated with event_key {}'\
+                            'reported exception "{}"'\
+                            ''.format(key, e))
+
+    #Summarize
+    return all(resp)
+
 
 class LiveBuild(LiveFit):
     """

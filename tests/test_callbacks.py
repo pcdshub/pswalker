@@ -13,7 +13,7 @@ from bluesky.examples import Mover, Reader
 ##########
 # Module #
 ##########
-from pswalker.callbacks import LinearFit, MultiPitchFit
+from pswalker.callbacks import apply_filters, LinearFit, MultiPitchFit
 
 def test_linear_fit():
     #Create RunEngine
@@ -71,3 +71,25 @@ def test_multi_fit():
 
     #Check we create an accurate estimate
     assert np.allclose(cb.eval(5,10), 55, atol=1e-5)
+
+
+def test_apply_filters():
+    mock_doc = {'data' : {'a' : 4,
+                          'b' : -1}
+               }
+    #Passing filters
+    assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0}
+            )
+    #Block non-zero
+    assert not apply_filters(mock_doc,  filters={'b' : lambda x : x > 0})
+
+    #Exclude missing
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+   
+    #Exclude NaN
+    mock_doc['c'] = np.nan
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+    
+    #Include missing
+    assert apply_filters(mock_doc, filters={'c' : lambda x : True},
+                             drop_missing=False)
