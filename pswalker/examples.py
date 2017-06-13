@@ -17,7 +17,7 @@ from ophyd import PositionerBase
 from ophyd.signal import (Signal, ArrayAttributeSignal)
 import pcdsdevices.device as device
 from pcdsdevices.epics import (mirror, pim)
-from pcdsdevices.epics.areadetector import (base, plugins)
+from pcdsdevices.epics.areadetector import (base, plugins, cam, detectors)
 from pcdsdevices.component import (FormattedComponent, Component)
 
 ##########
@@ -511,7 +511,7 @@ class PluginBase(plugins.PluginBase):
     unique_id = Component(Signal, value=0)
 
 
-class StatsPlugin(areadetector.StatsPlugin, PluginBase):
+class StatsPlugin(plugins.StatsPlugin, PluginBase):
     """
     StatsPlugin but with components instantiated to be empty signals.
     """
@@ -580,7 +580,7 @@ class StatsPlugin(areadetector.StatsPlugin, PluginBase):
     total = Component(Signal, value=0)
 
 
-class CamBase(areadetector.cam.CamBase):
+class CamBase(cam.CamBase):
     # Shared among all cams and plugins
     array_counter = Component(Signal, value=0)
     array_rate = Component(Signal, value=0)
@@ -661,11 +661,42 @@ class CamBase(areadetector.cam.CamBase):
     time_remaining = Component(Signal, value=0)
     trigger_mode = Component(Signal, value=0)
 
-class PulnixCam(CamBase):
+
+class PulnixCam(cam.PulnixCam, CamBase):
     pass
 
-class PIMPulnixDetector(pim.PIMPulnixDetector):
+
+class DetectorBase(detectors.DetectorBase):
     pass
+
+
+class PulnixDetector(detectors.PulnixDetector, DetectorBase):
+    cam = Component(PulnixCam, ":")
+
+
+class PIMPulnixDetector(pim.PIMPulnixDetector, PulnixDetector):
+    stats2 = Component(StatsPlugin, ":Stats2:", read_attrs=['centroid',
+                                                            'mean_value'])
+
+class PIMMotor(pim.PIMMotor):
+    states = Component(Signal, value="OUT")
+    
+    def move(self, position, **kwargs):
+        if isinstance(position, str):
+            if position.upper() in ("DIODE", "OUT", "IN", "YAG"): 
+                if position.upper() == "IN":
+                    return self.states.set("YAG")
+                return self.states.set(position.upper())
+        raise ValueError("Position must be a PIM valid state.")
+
+    @property
+    def position(self):
+        pos = self.states.value
+        if pos == "YAG":
+            return "IN"
+        return pos
+    
+
 
 class YAG(TestBase):
     """
