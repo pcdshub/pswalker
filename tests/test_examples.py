@@ -38,30 +38,30 @@ def test_OMMotor_moves_properly():
     assert(ommotor.position == 10)
     assert(status.success)
     
-# def test_OMMotor_velocity_move_time():
-#     ommotor = OMMotor("TEST")
-#     diff = 1
-#     next_pos = ommotor.position + diff
-#     ommotor.velocity.put(0.5)    
-#     t0 = time.time()
-#     status = ommotor.move(next_pos)
-#     t1 = time.time() - t0
-#     assert(np.isclose(t1, diff/ommotor.velocity.value  + 0.1, rtol=0.1))
-#     assert(ommotor.position == next_pos)
-#     assert(status.success)
+def test_OMMotor_velocity_move_time():
+    ommotor = OMMotor("TEST")
+    diff = 1
+    next_pos = ommotor.position + diff
+    ommotor.velocity.put(0.5)    
+    t0 = time.time()
+    status = ommotor.move(next_pos)
+    t1 = time.time() - t0
+    assert(np.isclose(t1, diff/ommotor.velocity.value  + 0.1, rtol=0.1))
+    assert(ommotor.position == next_pos)
+    assert(status.success)
 
-# def test_OMMotor_fake_sleep_move_time():
-#     ommotor = OMMotor("TEST")
-#     diff = 1
-#     next_pos = ommotor.position + diff
-#     ommotor.velocity.put(0)    
-#     ommotor.fake_sleep = 1
-#     t0 = time.time()
-#     status = ommotor.move(next_pos)
-#     t1 = time.time() - t0
-#     assert(np.isclose(t1, ommotor.fake_sleep + 0.1, rtol=0.1))
-#     assert(ommotor.position == next_pos)
-#     assert(status.success)
+def test_OMMotor_fake_sleep_move_time():
+    ommotor = OMMotor("TEST")
+    diff = 1
+    next_pos = ommotor.position + diff
+    ommotor.velocity.put(0)    
+    ommotor.fake_sleep = 1
+    t0 = time.time()
+    status = ommotor.move(next_pos)
+    t1 = time.time() - t0
+    assert(np.isclose(t1, ommotor.fake_sleep + 0.1, rtol=0.1))
+    assert(ommotor.position == next_pos)
+    assert(status.success)
 
 # OffsetMirror tests
 
@@ -104,6 +104,8 @@ def test_OffsetMirror_yag_patch_properties():
     assert(om._z == 125)
     assert(om._alpha == 50)
 
+# PluginBase Tests
+
 def test_PluginBase_instantiates():
     assert(PluginBase("TEST"))
 
@@ -113,6 +115,8 @@ def test_PluginBase_runs_ophyd_functions():
     assert(isinstance(plugin.describe(), OrderedDict))
     assert(isinstance(plugin.describe_configuration(), OrderedDict))
     assert(isinstance(plugin.read_configuration(), OrderedDict))
+
+# StatsPlugin Tests
 
 def test_StatsPlugin_instantiates():
     assert(StatsPlugin("TEST"))
@@ -124,6 +128,8 @@ def test_StatsPlugin_runs_ophyd_functions():
     assert(isinstance(plugin.describe_configuration(), OrderedDict))
     assert(isinstance(plugin.read_configuration(), OrderedDict))
 
+# CamBase Tests
+
 def test_CamBase_instantiates():
     assert(CamBase("TEST"))
 
@@ -133,6 +139,8 @@ def test_CamBase_runs_ophyd_functions():
     assert(isinstance(cam.describe(), OrderedDict))
     assert(isinstance(cam.describe_configuration(), OrderedDict))
     assert(isinstance(cam.read_configuration(), OrderedDict))
+
+# PulnixCam Tests
 
 def test_PulnixCam_instantiates():
     assert(PulnixCam("TEST"))
@@ -144,6 +152,8 @@ def test_PulnixCam_runs_ophyd_functions():
     assert(isinstance(pulnix.describe_configuration(), OrderedDict))
     assert(isinstance(pulnix.read_configuration(), OrderedDict))
 
+# DetectorBase Tests
+
 def test_DetectorBase_instantiates():
     assert(DetectorBase("TEST"))
 
@@ -153,6 +163,8 @@ def test_DetectorBase_runs_ophyd_functions():
     assert(isinstance(det.describe(), OrderedDict))
     assert(isinstance(det.describe_configuration(), OrderedDict))
     assert(isinstance(det.read_configuration(), OrderedDict))
+
+# PulnixDetector Tests
 
 def test_PulnixDetector_instantiates():
     assert(PulnixDetector("TEST"))
@@ -168,6 +180,8 @@ def test_PulnixDetector_cam_component_reads():
     pulnix_det = PulnixDetector("TEST")
     assert(isinstance(pulnix_det.cam.read(), OrderedDict))
 
+# PIMPulnixDetector Tests
+
 def test_PIMPulnixDetector_instantiates():
     assert(PIMPulnixDetector("TEST"))
 
@@ -181,6 +195,8 @@ def test_PIMPulnixDetector_runs_ophyd_functions():
 def test_PIMPulnixDetector_stats_plugin_reads():
     pim_pulnix_det = PIMPulnixDetector("TEST")
     assert(isinstance(pim_pulnix_det.stats2.read(), OrderedDict))
+
+# PIMMotor Tests
 
 def test_PIMMotor_instantiates():
     assert(PIMMotor("TEST"))
@@ -203,6 +219,8 @@ def test_PIMMotor_transitions_states_correctly():
     status = pmotor.move("DIODE")
     assert(pmotor.position == "DIODE")
     assert(status.success)
+
+# PIM Tests
 
 def test_PIM_instantiates():
     assert(PIM("TEST"))

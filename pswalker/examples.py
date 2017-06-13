@@ -259,7 +259,7 @@ class OMMotor(mirror.OMMotor):
             while next_pos < pos:
                 self.user_readback.put(next_pos) 
                 time.sleep(refresh)
-                next_pos += self.velocity.value*self.refresh
+                next_pos += self.velocity.value*refresh
 
         # If fake sleep is set, incrementatlly sleep while setting the readback
         elif self.fake_sleep:
@@ -737,10 +737,6 @@ class PIM(pim.PIM, PIMMotor):
     @property
     def _z(self):
         return self.z
-
-    @property
-    def _alpha(self):
-        return self.pitch.user_readback.value
     
 
 class YAG(TestBase):
