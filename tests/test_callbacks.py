@@ -13,7 +13,7 @@ from bluesky.examples import Mover, Reader
 ##########
 # Module #
 ##########
-from pswalker.callbacks import LinearFit, MultiPitchFit
+from pswalker.callbacks import apply_filters, LinearFit, MultiPitchFit
 
 def test_linear_fit():
     #Create RunEngine
@@ -29,8 +29,6 @@ def test_linear_fit():
 
     #Assemble fitting callback
     cb = LinearFit('centroid', 'motor',
-                    init_guess={'slope'     : 3,
-                                'intercept' : 1},
                     update_every=None)
 
     #Scan through variables
@@ -42,7 +40,6 @@ def test_linear_fit():
 
     #Check we create an accurate estimate
     print(cb.result.fit_report())
-    print(cb.eval(np.array([10])))
     assert np.allclose(cb.eval(10), 52, atol=1e-5)
 
 
@@ -62,9 +59,6 @@ def test_multi_fit():
 
     #Assemble fitting callback
     cb = MultiPitchFit('centroid', ('m1','m2'),
-                       init_guess={'x0'     : 3,
-                                'x1' :     2,
-                                'x2' :     1},
                        update_every=None)
 
     #Scan through variables
@@ -74,6 +68,28 @@ def test_multi_fit():
     print(cb.result.fit_report())
     for k,v in expected.items():
         assert np.allclose(cb.result.values[k], v, atol=1e-6)
-    
+
     #Check we create an accurate estimate
     assert np.allclose(cb.eval(5,10), 55, atol=1e-5)
+
+
+def test_apply_filters():
+    mock_doc = {'data' : {'a' : 4,
+                          'b' : -1}
+               }
+    #Passing filters
+    assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0}
+            )
+    #Block non-zero
+    assert not apply_filters(mock_doc,  filters={'b' : lambda x : x > 0})
+
+    #Exclude missing
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+   
+    #Exclude NaN
+    mock_doc['c'] = np.nan
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+    
+    #Include missing
+    assert apply_filters(mock_doc, filters={'c' : lambda x : True},
+                             drop_missing=False)

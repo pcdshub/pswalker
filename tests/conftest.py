@@ -90,7 +90,7 @@ def fake_yags(fake_path_two_bounce):
     yags = [d for d in path.devices if isinstance(d, YAG)]
 
     # Pretend that the correct values are the current values
-    ans = [y.read()['centroid_x']['value'] for y in yags]
+    ans = [y.read()[y.name + '_centroid_x']['value'] for y in yags]
 
     return yags, ans
 

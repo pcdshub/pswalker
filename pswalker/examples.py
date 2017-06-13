@@ -274,6 +274,16 @@ class OMMotor(mirror.OMMotor):
         self.motor_is_moving.put(0)
         self.motor_done_move.put(1)
         time.sleep(0.1)
+
+    
+class TestBase(object):
+    """
+    When you want things to be Ophyd-like but are too lazy to make it real
+    Opyhd
+    """
+    def nameify_keys(self, d):
+        return {self.name + "_" + key : value
+                for key, value in d.items()}
         return status
 
 
@@ -458,7 +468,7 @@ class PIMPulnixDetector(pim.PIMPulnixDetector):
     pass
 
 
-class YAG(object):
+class YAG(TestBase):
     """
     Simulation of a yag imager and the assorted motors.
 
@@ -547,7 +557,7 @@ class YAG(object):
     def read(self, *args, **kwargs):
         result = dict(ChainMap(*[dev.read(*args, **kwargs)
                                  for dev in self.devices]))
-        return result
+        return self.nameify_keys(result)
     
     def set(self, cmd=None, **kwargs):
         logger.info("{0}Setting Attributes.".format(self.log_pref))
@@ -574,15 +584,15 @@ class YAG(object):
 
     def describe(self, *args, **kwargs):
         result = self.reader.describe(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     def describe_configuration(self, *args, **kwargs):
         result = self.reader.describe_configuration(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     def read_configuration(self, *args, **kwargs):
         result = self.reader.read_configuration(*args, **kwargs)
-        return result
+        return self.nameify_keys(result)
     
     @property
     def blocking(self):

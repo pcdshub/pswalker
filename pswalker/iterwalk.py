@@ -122,6 +122,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     done_pos = [0] * num
     while True:
         for i in range(num):
+            logger.debug("putting imager in")
             ok = (yield from prep_img_motors(i, detectors, timeout=15))
             yag_cycles += 1
 
@@ -140,12 +141,20 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             # Give higher-level a chance to suspend before measuring centroid
             yield from checkpoint()
 
-            # Collect auxilliary datas
+            # Set up the system to not include the redundant objects
             full_system = copy(system)
-            full_system.remove(motors[i])
-            full_system.remove(detectors[i])
+            try:
+                full_system.remove(motors[i])
+            except ValueError:
+                pass
+            try:
+                full_system.remove(detectors[i])
+            except ValueError:
+                pass
 
             # Check if we're already done
+            logger.debug("measure_average on det=%s, mot=%s, sys=%s",
+                         detectors[i], motors[i], full_system)
             pos = (yield from measure_average([detectors[i], motors[i]] + full_system,
                                               [detector_fields[i]],
                                               num=averages[i]))
@@ -175,8 +184,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 goal = (goals[i] - pos) * (1 + overshoot) + pos
 
             # Core walk
-            logger.debug("Start walk from %s to %s on %s using %s",
-                         pos, goal, detectors[i].name, motors[i].name)
+            logger.debug("Start walk from %s to %s on %s using %s, system=%s",
+                         pos, goal, detectors[i].name, motors[i].name,
+                         full_system)
             pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,
                                             firstpos, gradient=gradients[i],
                                             target_fields=[detector_fields[i],

@@ -21,6 +21,64 @@ from bluesky.callbacks import (LiveFit, LiveFitPlot, CallbackBase)
 # Module #
 ##########
 
+logger = logging.getLogger(__name__)
+
+def apply_filters(doc, filters=None, drop_missing=True):
+    """
+    Filter an event document
+
+    Parameters
+    ----------
+    doc : dict
+        Bluesky Document to filter
+
+    filters : dict
+        Filters are provided in a dictionary of key / callable pairs that take
+        a single input from the data stream and return a boolean value.
+
+    drop_missing : bool, optional
+        Only include documents who have associated data for each filter key.
+        This includes events missing the key entirely or reporting NaN
+
+    Returns
+    -------
+    resp : bool
+        Whether the event passes all provided filters
+
+    Example
+    -------
+    ..code::
+
+        apply_filters(doc, filters = {'a' : lambda x : x > 0,
+                                      'c' : lambda x : 4 < x < 6})
+    """
+    resp    = []
+    filters = filters or dict()
+
+    #Iterate through filters
+    for key, func in filters.items(): 
+        try:
+            #Handle NaN
+            if pd.isnull(doc['data'][key]):
+                resp.append(not drop_missing)
+
+            #Evaluate filter
+            else:
+                resp.append(bool(func(doc['data'][key])))
+
+        #Handle missing information
+        except KeyError:
+            resp.append(not drop_missing)
+
+        #Handle improper filter
+        except Exception as e:
+            logger.critical('Filter associated with event_key {}'\
+                            'reported exception "{}"'\
+                            ''.format(key, e))
+
+    #Summarize
+    return all(resp)
+
 
 class LiveBuild(LiveFit):
     """
@@ -74,10 +132,17 @@ class LinearFit(LiveBuild):
     """
     def __init__(self, y, x, init_guess=None, update_every=1):
         #Create model
-        model = LinearModel()
+        model = LinearModel(missing='drop')
+        
+        #Initialize parameters
+        init = {'slope' : 0, 'intercept' : 0}
+
+        if init_guess:
+            init.update(init_guess)
+        
         #Initialize fit
         super().__init__(model, y, {'x': x},
-                         init_guess=init_guess,
+                         init_guess=init,
                          update_every=update_every)
 
 
@@ -120,19 +185,28 @@ class MultiPitchFit(LiveBuild):
         update on every new event
     """
     def __init__(self, centroid, alphas, init_guess=None, update_every=1):
+
         #Simple model of two-bounce system
         def two_bounce(a0, a1, x0, x1, x2):
             return x0 + a0*x1 + a1*x2
 
         #Create model
-        model = lmfit.Model(two_bounce, independent_vars = ['a0', 'a1'])
+        model = lmfit.Model(two_bounce,
+                            independent_vars = ['a0', 'a1'],
+                            missing='drop')
+
+        #Initialize parameters
+        init = {'x0' : 0, 'x1': 0, 'x2' : 0}
+
+        if init_guess:
+            init.update(init_guess)
+
 
         #Initialize fit
         super().__init__(model, centroid,
                          independent_vars={'a0' : alphas[0],
                                            'a1' : alphas[1]},
-                         init_guess=init_guess,
-                         update_every=1)
+                         init_guess=init, update_every=update_every)
 
 
     def eval(self, a0, a1):

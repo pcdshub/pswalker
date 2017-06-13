@@ -29,7 +29,7 @@ def test_branching_plan(RE, lcls_two_bounce_system):
 
         yield from branching_plan(plan, [branch], choice, 'checkpoint')
 
-    RE(test_plan(), collector('alpha', reads))
+    RE(test_plan(), collector(m1.name + '_alpha', reads))
 
     assert len(reads) == 10
     assert reads == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
