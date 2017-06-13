@@ -11,10 +11,11 @@ from collections import OrderedDict, ChainMap
 # Third Party #
 ###############
 import numpy as np
-from ophyd.signal import Signal
+import ophyd.areadetector as areadetector
 from ophyd.status import Status
 from ophyd import PositionerBase
-from pcdsdevices.device import Device
+from ophyd.signal import (Signal, ArrayAttributeSignal)
+import pcdsdevices.device as device
 from pcdsdevices.epics import (mirror, pim)
 from pcdsdevices.epics.areadetector import (base, plugins)
 from pcdsdevices.component import (FormattedComponent, Component)
@@ -274,6 +275,7 @@ class OMMotor(mirror.OMMotor):
         self.motor_is_moving.put(0)
         self.motor_done_move.put(1)
         time.sleep(0.1)
+        return status
 
     
 class TestBase(object):
@@ -284,7 +286,6 @@ class TestBase(object):
     def nameify_keys(self, d):
         return {self.name + "_" + key : value
                 for key, value in d.items()}
-        return status
 
 
 class OffsetMirror(mirror.OffsetMirror):
@@ -413,38 +414,58 @@ class OffsetMirror(mirror.OffsetMirror):
         return self.pitch.user_readback.value
 
 
-class PluginBase(base.ADBase):
-    # Partially inherit PluginBase
-    def __init__(self, *args, configuration_attrs=None, **kwargs):
-        if configuration_attrs is None:
-            configuration_attrs = self._default_configuration_attrs
-        # Turn array callbacks on during staging.
-        # Without this, no array data is sent to the plugins.
-        super().__init__(*args, configuration_attrs=configuration_attrs,
-                         **kwargs)
-        # make sure it is the right type of plugin
-        if (self._plugin_type is not None and
-                not self.plugin_type.get().startswith(self._plugin_type)):
-            raise TypeError('Trying to use {!r} class which is for {!r} '
-                            'plugin type for a plugin that reports being '
-                            'of type {!r} with base prefix '
-                            '{!r}'.format(self.__class__.__name__,
-                                          self._plugin_type,
-                                          self.plugin_type.get(), self.prefix))
+class DynamicDeviceComponent(device.DynamicDeviceComponent):
+    """
+    DynamicDeviceComponent that accepts signals with no suffix.
+    """
+    def create_attr(self, attr_name):
+        try:
+            cls, suffix, kwargs = self.defn[attr_name]
+            inst = Component(cls, suffix, **kwargs)
+        except ValueError:
+            cls, kwargs = self.defn[attr_name]
+            inst = Component(cls, **kwargs)
+        inst.attr = attr_name
+        return inst
 
-        self.stage_sigs['blocking_callbacks'] = 'Yes'
-        if self.parent is not None and hasattr(self.parent, 'cam'):
-            self.stage_sigs.update([('parent.cam.array_callbacks', 1),])
+    def __repr__(self):
+        doc = []
+        for attr, items in self.defn.items():
+            try:
+                cls, suffix, kwargs = items
+            except ValueError:
+                cls, kwargs = items
+                suffix = None
+            kw_str = ', '.join('{}={!r}'.format(k, v)
+                               for k, v in kwargs.items())
+            if suffix is not None:
+                suffix_str = '{!r}'.format(suffix)
+                if kwargs:
+                    suffix_str += ', '
+            else:
+                suffix_str = ''
+            if suffix_str or kw_str:
+                arg_str = ', {}{}'.format(suffix_str, kw_str)
+            else:
+                arg_str = ''
+            doc.append('{attr} = Component({cls.__name__}{arg_str})'
+                       ''.format(attr=attr, cls=cls, arg_str=arg_str))
+        return '\n'.join(doc)
 
-    _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
-                                    'blocking_callbacks', 'plugin_type',
-                                    'asyn_pipeline_config',
-                                    'configuration_names')
+def ad_group(cls, attr_suffix, **kwargs):
+    """
+    Definition creation for groups of 'empty' signals in areadetectors.
+    """
+    defn = OrderedDict()
+    for attr in attr_suffix:
+        defn[attr] = (cls, kwargs)
+    return defn
 
-    _html_docs = ['pluginDoc.html']
-    _plugin_type = None
-    _suffix_re = None
 
+class PluginBase(plugins.PluginBase):
+    """
+    PluginBase but with components initialized to be empty signals.
+    """
     array_counter = Component(Signal, value=0)
     array_rate = Component(Signal, value=0)
     asyn_io = Component(Signal, value=0)
@@ -456,17 +477,195 @@ class PluginBase(base.ADBase):
     pool_used_buffers = Component(Signal, value=0)
     pool_used_mem = Component(Signal, value=0)
     port_name = Component(Signal, value=0)
+    width = Component(Signal, value=0)
+    height = Component(Signal, value=0)
+    depth = Component(Signal, value=0)
+    array_size = DynamicDeviceComponent(ad_group(
+        Signal, (('height'), ('width'), ('depth')), value=0), 
+                                        doc='The array size')
+    bayer_pattern = Component(Signal, value=0)
+    blocking_callbacks = Component(Signal, value=0)
+    color_mode = Component(Signal, value=0)
+    data_type = Component(Signal, value=0)
+    dim0_sa = Component(Signal, value=0)
+    dim1_sa = Component(Signal, value=0)
+    dim2_sa = Component(Signal, value=0)
+    dim_sa = DynamicDeviceComponent(ad_group(
+        Signal, (('dim0'), ('dim1'), ('dim2')), value=0),
+                                    doc='Dimension sub-arrays')
+    dimensions = Component(Signal, value=0)
+    dropped_arrays = Component(Signal, value=0)
+    enable = Component(Signal, value=0)
+    min_callback_time = Component(Signal, value=0)
+    nd_array_address = Component(Signal, value=0)
+    nd_array_port = Component(Signal, value=0)
+    ndimensions = Component(Signal, value=0)
+    plugin_type = Component(Signal, value=0)
+    queue_free = Component(Signal, value=0)
+    queue_free_low = Component(Signal, value=0)
+    queue_size = Component(Signal, value=0)
+    queue_use = Component(Signal, value=0)
+    queue_use_high = Component(Signal, value=0)
+    queue_use_hihi = Component(Signal, value=0)
+    time_stamp = Component(Signal, value=0)
+    unique_id = Component(Signal, value=0)
 
-    stage = plugins.PluginBase.stage
-    source_plugin = plugins.PluginBase.source_plugin
-    describe_configuration = plugins.PluginBase.describe_configuration
-    _asyn_pipeline = plugins.PluginBase._asyn_pipeline
-    _asyn_pipeline_configuration_names = \
-      plugins.PluginBase._asyn_pipeline_configuration_names
+
+class StatsPlugin(areadetector.StatsPlugin, PluginBase):
+    """
+    StatsPlugin but with components instantiated to be empty signals.
+    """
+    plugin_type = Component(Signal, value='NDPluginStats')
+    bgd_width = Component(Signal, value=0)
+    centroid_threshold = Component(Signal, value=0)
+    centroid = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0),
+                                      doc='The centroid XY')
+    compute_centroid = Component(Signal, value=0)
+    compute_histogram = Component(Signal, value=0)
+    compute_profiles = Component(Signal, value=0)
+    compute_statistics = Component(Signal, value=0)
+    cursor = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0),
+                                    doc='The cursor XY')
+    hist_entropy = Component(Signal, value=0)
+    hist_max = Component(Signal, value=0)
+    hist_min = Component(Signal, value=0)
+    hist_size = Component(Signal, value=0)
+    histogram = Component(Signal, value=0)
+    max_size = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0),
+                                      doc='The maximum size in XY')
+    max_value = Component(Signal, value=0)
+    max_xy = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0),
+                                    doc='Maximum in XY')
+    mean_value = Component(Signal, value=0)
+    min_value = Component(Signal, value=0)
+    min_xy = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0), 
+                                    doc='Minimum in XY')
+    net = Component(Signal, value=0)
+    profile_average = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Profile average in XY')
+    profile_centroid = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Profile centroid in XY')
+    profile_cursor = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Profile cursor in XY')
+    profile_size = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Profile size in XY')
+    profile_threshold = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Profile threshold in XY')
+    set_xhopr = Component(Signal, value=0)
+    set_yhopr = Component(Signal, value=0)
+    sigma_xy = Component(Signal, value=0)
+    sigma_x = Component(Signal, value=0)
+    sigma_y = Component(Signal, value=0)
+    sigma = Component(Signal, value=0)
+    ts_acquiring = Component(Signal, value=0)
+    ts_centroid = DynamicDeviceComponent(ad_group(
+        Signal, (('x'), ('y')), value=0), doc='Time series centroid in XY')
+    ts_control = Component(Signal, value=0)
+    ts_current_point = Component(Signal, value=0)
+    ts_max_value = Component(Signal, value=0)
+    ts_max = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0), 
+                                    doc='Time series maximum in XY')
+    ts_mean_value = Component(Signal, value=0)
+    ts_min_value = Component(Signal, value=0)
+    ts_min = DynamicDeviceComponent(ad_group(Signal, (('x'), ('y')), value=0), 
+                                    doc='Time series minimum in XY')
+    ts_net = Component(Signal, value=0)
+    ts_num_points = Component(Signal, value=0)
+    ts_read = Component(Signal, value=0)
+    ts_sigma = Component(Signal, value=0)
+    ts_sigma_x = Component(Signal, value=0)
+    ts_sigma_xy = Component(Signal, value=0)
+    ts_sigma_y = Component(Signal, value=0)
+    ts_total = Component(Signal, value=0)
+    total = Component(Signal, value=0)
+
+
+class CamBase(areadetector.cam.CamBase):
+    # Shared among all cams and plugins
+    array_counter = Component(Signal, value=0)
+    array_rate = Component(Signal, value=0)
+    asyn_io = Component(Signal, value=0)
+
+    nd_attributes_file = Component(Signal, value=0)
+    pool_alloc_buffers = Component(Signal, value=0)
+    pool_free_buffers = Component(Signal, value=0)
+    pool_max_buffers = Component(Signal, value=0)
+    pool_max_mem = Component(Signal, value=0)
+    pool_used_buffers = Component(Signal, value=0)
+    pool_used_mem = Component(Signal, value=0)
+    port_name = Component(Signal, value=0)
+
+    # Cam-specific
+    acquire = Component(Signal, value=0)
+    acquire_period = Component(Signal, value=0)
+    acquire_time = Component(Signal, value=0)
+
+    array_callbacks = Component(Signal, value=0)
+    array_size = DynamicDeviceComponent(ad_group(Signal,
+                              (('array_size_x'),
+                               ('array_size_y'),
+                               ('array_size_z')), value=0),
+                     doc='Size of the array in the XYZ dimensions')
+
+    array_size_bytes = Component(Signal, value=0)
+    bin_x = Component(Signal, value=0)
+    bin_y = Component(Signal, value=0)
+    color_mode = Component(Signal, value=0)
+    data_type = Component(Signal, value=0)
+    detector_state = Component(Signal, value=0)
+    frame_type = Component(Signal, value=0)
+    gain = Component(Signal, value=0)
+
+    image_mode = Component(Signal, value=0)
+    manufacturer = Component(Signal, value=0)
+
+    max_size = DynamicDeviceComponent(ad_group(Signal,
+                            (('max_size_x'),
+                             ('max_size_y')), value=0),
+                   doc='Maximum sensor size in the XY directions')
+
+    min_x = Component(Signal, value=0)
+    min_y = Component(Signal, value=0)
+    model = Component(Signal, value=0)
+
+    num_exposures = Component(Signal, value=0)
+    num_exposures_counter = Component(Signal, value=0)
+    num_images = Component(Signal, value=0)
+    num_images_counter = Component(Signal, value=0)
+
+    read_status = Component(Signal, value=0)
+    reverse = DynamicDeviceComponent(ad_group(Signal,
+                           (('reverse_x'),
+                            ('reverse_y')), value=0))
+
+    shutter_close_delay = Component(Signal, value=0)
+    shutter_close_epics = Component(Signal, value=0)
+    shutter_control = Component(Signal, value=0)
+    shutter_control_epics = Component(Signal, value=0)
+    shutter_fanout = Component(Signal, value=0)
+    shutter_mode = Component(Signal, value=0)
+    shutter_open_delay = Component(Signal, value=0)
+    shutter_open_epics = Component(Signal, value=0)
+    shutter_status_epics = Component(Signal, value=0)
+    shutter_status = Component(Signal, value=0)
+
+    size = DynamicDeviceComponent(ad_group(Signal,
+                        (('size_x'),
+                         ('size_y')), value=0))
+
+    status_message = Component(Signal, value=0)
+    string_from_server = Component(Signal, value=0)
+    string_to_server = Component(Signal, value=0)
+    temperature = Component(Signal, value=0)
+    temperature_actual = Component(Signal, value=0)
+    time_remaining = Component(Signal, value=0)
+    trigger_mode = Component(Signal, value=0)
+
+class PulnixCam(CamBase):
+    pass
 
 class PIMPulnixDetector(pim.PIMPulnixDetector):
     pass
-
 
 class YAG(TestBase):
     """
@@ -572,7 +771,7 @@ class YAG(TestBase):
         self._x = kwargs.get('x', self._x)
         self._z = kwargs.get('z', self._z)
         for dev in self.devices:
-            dev_params = dev.read()            
+            dev_params = dev.read()
             for key in kwargs.keys():
                 if key in dev_params:
                     dev.set(kwargs[key])

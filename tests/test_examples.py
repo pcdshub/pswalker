@@ -16,7 +16,8 @@ import numpy as np
 #                                _calc_cent_x, _m1_calc_cent_x,
 #                                _m1_m2_calc_cent_x)
 
-from pswalker.examples import (OMMotor, OffsetMirror, PluginBase)
+from pswalker.examples import (OMMotor, OffsetMirror, PluginBase, StatsPlugin,
+                               CamBase, PulnixCam)
 
 # OMMotor Tests
 
@@ -111,6 +112,36 @@ def test_PluginBase_runs_ophyd_functions():
     assert(isinstance(plugin.describe(), OrderedDict))
     assert(isinstance(plugin.describe_configuration(), OrderedDict))
     assert(isinstance(plugin.read_configuration(), OrderedDict))
+
+def test_StatsPlugin_instantiates():
+    assert(StatsPlugin("TEST"))
+
+def test_StatsPlugin_runs_ophyd_functions():
+    plugin = StatsPlugin("TEST")
+    assert(isinstance(plugin.read(), OrderedDict))
+    assert(isinstance(plugin.describe(), OrderedDict))
+    assert(isinstance(plugin.describe_configuration(), OrderedDict))
+    assert(isinstance(plugin.read_configuration(), OrderedDict))
+
+def test_CamBase_instantiates():
+    assert(CamBase("TEST"))
+
+def test_CamBase_runs_ophyd_functions():
+    cam = CamBase("TEST")
+    assert(isinstance(cam.read(), OrderedDict))
+    assert(isinstance(cam.describe(), OrderedDict))
+    assert(isinstance(cam.describe_configuration(), OrderedDict))
+    assert(isinstance(cam.read_configuration(), OrderedDict))
+
+def test_PulnixCam_instantiates():
+    assert(PulnixCam("TEST"))
+
+def test_PulnixCam_runs_ophyd_functions():
+    pulnix = PulnixCam("TEST")
+    assert(isinstance(pulnix.read(), OrderedDict))
+    assert(isinstance(pulnix.describe(), OrderedDict))
+    assert(isinstance(pulnix.describe_configuration(), OrderedDict))
+    assert(isinstance(pulnix.read_configuration(), OrderedDict))
 
 # def test_YAG_Mirror_instantiates():
 #     assert YAG('test yag', 0, 0)
