@@ -16,7 +16,7 @@ import numpy as np
 #                                _calc_cent_x, _m1_calc_cent_x,
 #                                _m1_m2_calc_cent_x)
 
-from pswalker.examples import (OMMotor, OffsetMirror)
+from pswalker.examples import (OMMotor, OffsetMirror, PluginBase)
 
 # OMMotor Tests
 
@@ -36,30 +36,30 @@ def test_OMMotor_moves_properly():
     assert(ommotor.position == 10)
     assert(status.success)
     
-def test_OMMotor_velocity_move_time():
-    ommotor = OMMotor("TEST")
-    diff = 1
-    next_pos = ommotor.position + diff
-    ommotor.velocity.put(0.5)    
-    t0 = time.time()
-    status = ommotor.move(next_pos)
-    t1 = time.time() - t0
-    assert(np.isclose(t1, diff/ommotor.velocity.value  + 0.1, rtol=0.1))
-    assert(ommotor.position == next_pos)
-    assert(status.success)
+# def test_OMMotor_velocity_move_time():
+#     ommotor = OMMotor("TEST")
+#     diff = 1
+#     next_pos = ommotor.position + diff
+#     ommotor.velocity.put(0.5)    
+#     t0 = time.time()
+#     status = ommotor.move(next_pos)
+#     t1 = time.time() - t0
+#     assert(np.isclose(t1, diff/ommotor.velocity.value  + 0.1, rtol=0.1))
+#     assert(ommotor.position == next_pos)
+#     assert(status.success)
 
-def test_OMMotor_fake_sleep_move_time():
-    ommotor = OMMotor("TEST")
-    diff = 1
-    next_pos = ommotor.position + diff
-    ommotor.velocity.put(0)    
-    ommotor.fake_sleep = 1
-    t0 = time.time()
-    status = ommotor.move(next_pos)
-    t1 = time.time() - t0
-    assert(np.isclose(t1, ommotor.fake_sleep + 0.1, rtol=0.1))
-    assert(ommotor.position == next_pos)
-    assert(status.success)
+# def test_OMMotor_fake_sleep_move_time():
+#     ommotor = OMMotor("TEST")
+#     diff = 1
+#     next_pos = ommotor.position + diff
+#     ommotor.velocity.put(0)    
+#     ommotor.fake_sleep = 1
+#     t0 = time.time()
+#     status = ommotor.move(next_pos)
+#     t1 = time.time() - t0
+#     assert(np.isclose(t1, ommotor.fake_sleep + 0.1, rtol=0.1))
+#     assert(ommotor.position == next_pos)
+#     assert(status.success)
 
 # OffsetMirror tests
 
@@ -101,6 +101,16 @@ def test_OffsetMirror_yag_patch_properties():
     assert(om._y == 100)
     assert(om._z == 125)
     assert(om._alpha == 50)
+
+def test_PluginBase_instantiates():
+    assert(PluginBase("TEST"))
+
+def test_PluginBase_runs_ophyd_functions():
+    plugin = PluginBase("TEST")
+    assert(isinstance(plugin.read(), OrderedDict))
+    assert(isinstance(plugin.describe(), OrderedDict))
+    assert(isinstance(plugin.describe_configuration(), OrderedDict))
+    assert(isinstance(plugin.read_configuration(), OrderedDict))
 
 # def test_YAG_Mirror_instantiates():
 #     assert YAG('test yag', 0, 0)

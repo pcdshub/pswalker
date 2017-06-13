@@ -6,6 +6,7 @@ import logging
 from pprint import pprint
 from functools import partial
 from collections import OrderedDict, ChainMap
+
 ###############
 # Third Party #
 ###############
@@ -15,6 +16,7 @@ from ophyd.status import Status
 from ophyd import PositionerBase
 from pcdsdevices.device import Device
 from pcdsdevices.epics import (mirror, pim)
+from pcdsdevices.epics.areadetector import (base, plugins)
 from pcdsdevices.component import (FormattedComponent, Component)
 
 ##########
@@ -177,9 +179,11 @@ class Source(object):
         return Status(done=True, success=True)
 
 class Mirror(object):
+    # Remove this when beginning to put together higher level tests in conftests
     pass
 
 class OMMotor(mirror.OMMotor):
+    # TODO: Write a proper docstring
     """
     Offset Mirror Motor object used in the offset mirror systems. Mostly taken
     from ophyd.epics_motor.
@@ -214,7 +218,7 @@ class OMMotor(mirror.OMMotor):
         self.fake_sleep = fake_sleep
         self.refresh = refresh
 
-    def move(self, position, wait=True, **kwargs):
+    def move(self, position, **kwargs):
         """
         Move to a specified position, optionally waiting for motion to
         complete.
@@ -274,6 +278,7 @@ class OMMotor(mirror.OMMotor):
 
 
 class OffsetMirror(mirror.OffsetMirror):
+    # TODO: Add all parameters to doc string
     """
     Simulation of a simple flat mirror with assorted motors.
     
@@ -397,6 +402,57 @@ class OffsetMirror(mirror.OffsetMirror):
     def _alpha(self):
         return self.pitch.user_readback.value
 
+
+class PluginBase(base.ADBase):
+    # Partially inherit PluginBase
+    def __init__(self, *args, configuration_attrs=None, **kwargs):
+        if configuration_attrs is None:
+            configuration_attrs = self._default_configuration_attrs
+        # Turn array callbacks on during staging.
+        # Without this, no array data is sent to the plugins.
+        super().__init__(*args, configuration_attrs=configuration_attrs,
+                         **kwargs)
+        # make sure it is the right type of plugin
+        if (self._plugin_type is not None and
+                not self.plugin_type.get().startswith(self._plugin_type)):
+            raise TypeError('Trying to use {!r} class which is for {!r} '
+                            'plugin type for a plugin that reports being '
+                            'of type {!r} with base prefix '
+                            '{!r}'.format(self.__class__.__name__,
+                                          self._plugin_type,
+                                          self.plugin_type.get(), self.prefix))
+
+        self.stage_sigs['blocking_callbacks'] = 'Yes'
+        if self.parent is not None and hasattr(self.parent, 'cam'):
+            self.stage_sigs.update([('parent.cam.array_callbacks', 1),])
+
+    _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
+                                    'blocking_callbacks', 'plugin_type',
+                                    'asyn_pipeline_config',
+                                    'configuration_names')
+
+    _html_docs = ['pluginDoc.html']
+    _plugin_type = None
+    _suffix_re = None
+
+    array_counter = Component(Signal, value=0)
+    array_rate = Component(Signal, value=0)
+    asyn_io = Component(Signal, value=0)
+    nd_attributes_file = Component(Signal, value=0)
+    pool_alloc_buffers = Component(Signal, value=0)
+    pool_free_buffers = Component(Signal, value=0)
+    pool_max_buffers = Component(Signal, value=0)
+    pool_max_mem = Component(Signal, value=0)
+    pool_used_buffers = Component(Signal, value=0)
+    pool_used_mem = Component(Signal, value=0)
+    port_name = Component(Signal, value=0)
+
+    stage = plugins.PluginBase.stage
+    source_plugin = plugins.PluginBase.source_plugin
+    describe_configuration = plugins.PluginBase.describe_configuration
+    _asyn_pipeline = plugins.PluginBase._asyn_pipeline
+    _asyn_pipeline_configuration_names = \
+      plugins.PluginBase._asyn_pipeline_configuration_names
 
 class PIMPulnixDetector(pim.PIMPulnixDetector):
     pass
