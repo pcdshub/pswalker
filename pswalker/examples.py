@@ -344,7 +344,8 @@ class OffsetMirror(mirror.OffsetMirror):
                  velo_x=0, velo_y=0, velo_alpha=0, refresh_x=0, refresh_y=0, 
                  refresh_alpha=0, noise_x=0, noise_y=0, noise_alpha=0, 
                  fake_sleep_x=0, fake_sleep_y=0, fake_sleep_alpha=0, **kwargs):
-        prefix = "MIRR:TST:{0}".format(prefix)
+        if len(prefix.split(":")) < 3:
+            prefix = "MIRR:TST:{0}".format(prefix)
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          name=name, parent=parent, **kwargs)
@@ -695,8 +696,17 @@ class PIMMotor(pim.PIMMotor):
         if pos == "YAG":
             return "IN"
         return pos
-    
 
+
+class PIM(pim.PIM):
+    detector = FormattedComponent(PIMPulnixDetector, 
+                                  "{self._section}:{self._imager}:CVV:01",
+                                  read_attrs=['stats2'])
+    def __init__(self, prefix, **kwargs):
+        if len(prefix.split(":")) < 2:
+            prefix = "TST:{0}".format(prefix)
+        super().__init__(prefix, **kwargs)
+    
 
 class YAG(TestBase):
     """

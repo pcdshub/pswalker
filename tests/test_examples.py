@@ -18,7 +18,7 @@ import numpy as np
 
 from pswalker.examples import (OMMotor, OffsetMirror, PluginBase, StatsPlugin,
                                CamBase, PulnixCam, DetectorBase, PulnixDetector,
-                               PIMPulnixDetector, PIMMotor)
+                               PIMPulnixDetector, PIMMotor, PIM)
 
 # OMMotor Tests
 
@@ -182,7 +182,6 @@ def test_PIMPulnixDetector_stats_plugin_reads():
     pim_pulnix_det = PIMPulnixDetector("TEST")
     assert(isinstance(pim_pulnix_det.stats2.read(), OrderedDict))
 
-
 def test_PIMMotor_instantiates():
     assert(PIMMotor("TEST"))
 
@@ -204,6 +203,16 @@ def test_PIMMotor_transitions_states_correctly():
     status = pmotor.move("DIODE")
     assert(pmotor.position == "DIODE")
     assert(status.success)
+
+def test_PIM_instantiates():
+    assert(PIM("TEST"))
+
+def test_PIM_runs_ophyd_functions():
+    pim = PIM("TEST")
+    assert(isinstance(pim.read(), OrderedDict))
+    assert(isinstance(pim.describe(), OrderedDict))
+    assert(isinstance(pim.describe_configuration(), OrderedDict))
+    assert(isinstance(pim.read_configuration(), OrderedDict))
     
 
 
