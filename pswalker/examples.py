@@ -210,7 +210,7 @@ class OMMotor(mirror.OMMotor):
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  name=None, parent=None, velocity=0, fake_noise=0, fake_sleep=0, 
-                 refresh=0.1, settle_time=0, **kwargs):
+                 refresh=0, settle_time=0, **kwargs):
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs, name=name, 
                          parent=parent, settle_time=settle_time, **kwargs)
@@ -251,23 +251,22 @@ class OMMotor(mirror.OMMotor):
         pos = position + np.random.uniform(-1, 1)*self.fake_noise
 
         # Make sure refresh is set to something sensible if using velo or sleep
-        if (self.velocity.value or self.fake_sleep) and not self.refresh:
-            self.refresh = 0.1
+        refresh = self.refresh or self.fake_sleep/10 or 0.1
 
         # If velo is set, incrementally set the readback according to the refresh
         if self.velocity.value:
             next_pos = self.user_readback.value
             while next_pos < pos:
                 self.user_readback.put(next_pos) 
-                time.sleep(self.refresh)
+                time.sleep(refresh)
                 next_pos += self.velocity.value*self.refresh
 
         # If fake sleep is set, incrementatlly sleep while setting the readback
         elif self.fake_sleep:
             wait = 0
             while wait < self.fake_sleep:
-                time.sleep(self.refresh)
-                wait += self.refresh
+                time.sleep(refresh)
+                wait += refresh
                 self.user_readback.put(wait/self.fake_sleep * pos)
         status = self.user_readback.set(pos)
 
@@ -681,13 +680,30 @@ class PIMPulnixDetector(pim.PIMPulnixDetector, PulnixDetector):
 
 class PIMMotor(pim.PIMMotor):
     states = Component(Signal, value="OUT")
+
+    def __init__(self, prefix, fake_sleep=0, y_in=0, y_diode=0.5, y_out=1, 
+                 **kwargs):
+        self.fake_sleep = fake_sleep
+        if y_diode < y_in:
+            y_diode = y_in + 0.5
+        if y_out < y_diode:
+            t_out = t_out + 0.5
+        self.y_pos = {"DIODE":y_diode, "OUT":y_out, "IN":y_in, "YAG":y_in}
+        super().__init__(prefix, **kwargs)
     
     def move(self, position, **kwargs):
         if isinstance(position, str):
             if position.upper() in ("DIODE", "OUT", "IN", "YAG"): 
+                self.states.put("MOVING")
                 if position.upper() == "IN":
-                    return self.states.set("YAG")
-                return self.states.set(position.upper())
+                    pos = "YAG"
+                else:
+                    pos = position.upper()
+                if self.fake_sleep:
+                    time.sleep(self.fake_sleep)
+                status = self.states.set(position.upper())
+                time.sleep(0.1)
+                return status
         raise ValueError("Position must be a PIM valid state.")
 
     @property
@@ -698,14 +714,33 @@ class PIMMotor(pim.PIMMotor):
         return pos
 
 
-class PIM(pim.PIM):
+class PIM(pim.PIM, PIMMotor):
     detector = FormattedComponent(PIMPulnixDetector, 
                                   "{self._section}:{self._imager}:CVV:01",
                                   read_attrs=['stats2'])
-    def __init__(self, prefix, **kwargs):
+    def __init__(self, prefix, x=0, z=0, **kwargs):
         if len(prefix.split(":")) < 2:
             prefix = "TST:{0}".format(prefix)
+        self.x = x
+        self.z = z
         super().__init__(prefix, **kwargs)
+
+    # Properties to simplify yag patching
+    @property
+    def _x(self):
+        return self.x
+
+    @property
+    def _y(self):
+        return self.y_pos[self.position]
+
+    @property
+    def _z(self):
+        return self.z
+
+    @property
+    def _alpha(self):
+        return self.pitch.user_readback.value
     
 
 class YAG(TestBase):

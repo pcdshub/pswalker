@@ -214,7 +214,35 @@ def test_PIM_runs_ophyd_functions():
     assert(isinstance(pim.describe_configuration(), OrderedDict))
     assert(isinstance(pim.read_configuration(), OrderedDict))
     
+def test_PIM_has_centroid():
+    pim = PIM("TEST")
+    assert(isinstance(pim.detector.stats2.centroid.x.read(), dict))
+    assert(isinstance(pim.detector.stats2.centroid.y.read(), dict))
+    
+def test_PIM_fake_sleep_move_time():
+    pim = PIM("TEST")
+    pim.move("OUT")
+    pim.fake_sleep = 1
+    t0 = time.time()
+    status = pim.move("IN")
+    t1 = time.time() - t0
+    assert(np.isclose(t1, pim.fake_sleep + 0.1, rtol=0.1))
+    assert(pim.position == "IN")
+    assert(status.success)
 
+def test_PIM_yag_patch_properties():
+    pim = PIM("TEST", x=10, y_in=15, y_diode=20, y_out=25, z=20)
+    status = pim.move("OUT")
+    assert(pim._x == 10)
+    assert(pim._y == 25)
+    assert(pim._z == 20)
+    assert(status.success)
+    status = pim.move("DIODE")
+    assert(pim._y == 20)
+    assert(status.success)
+    status = pim.move("IN")
+    assert(pim._y == 15)
+    assert(status.success)
 
 # def test_YAG_Mirror_instantiates():
 #     assert YAG('test yag', 0, 0)
