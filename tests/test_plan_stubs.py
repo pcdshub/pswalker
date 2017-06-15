@@ -9,6 +9,7 @@ from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
+from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,8 @@ def test_match_condition_timeout(RE, mot_and_sig):
 def test_recover_threshold_success(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
     assert mot.position < 21
     # If we stopped right after 20, we recovered
 
@@ -150,7 +152,8 @@ def test_recover_threshold_success(RE, mot_and_sig):
 def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
     assert mot.position > -2
     # If we stopped right after -1, we recovered
 
@@ -159,7 +162,8 @@ def test_recover_threshold_success_reverse(RE, mot_and_sig):
 def test_recover_threshold_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
     assert mot.position == -99.999
     # We got to the end of the negative direction, we failed
 
@@ -168,6 +172,7 @@ def test_recover_threshold_failure(RE, mot_and_sig):
 def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_timeout_failure")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
     assert mot.position not in (50, 99.999, -99.999)
     # If we didn't reach the goal or either end, we timed out
