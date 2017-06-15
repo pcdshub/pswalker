@@ -240,16 +240,17 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
     ok = success.is_set()
     if ok:
-        logger.debug("condition met in match_condition, mover=%s setpt=%s",
-                     mover.name, setpoint)
+        logger.debug(('condition met in match_condition, '
+                      'mover=%s setpt=%s cond value=%s'),
+                     mover.name, setpoint, signal.value)
     else:
         logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
-                     mover.name, setpoint)
+                     mover.name, setpoint, signal.value)
     return ok
 
 
 def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
-                      try_reverse=True, ceil=True, off_limit=0.001):
+                      try_reverse=True, ceil=True, off_limit=0):
     """
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
@@ -289,7 +290,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     off_limit: float, optional
         The distance from the limit to aim for. This is included because some
         motor implementations do not allow us to move exactly to the limit. If
-        this is not the case, you can set it to zero. The default is 0.001.
+        this is the case, set it to some small value compared to your move
+        sizes.
     """
     if dir_initial > 0:
         logger.debug("Recovering towards the high limit switch")
