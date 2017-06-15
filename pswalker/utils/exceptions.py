@@ -69,3 +69,10 @@ class MonitorException(PSWalkerException):
 	"""Base ModelBuild exception class."""
 	pass
 
+################################################################################
+#                  Other Exceptions (no reasonable category)                   #
+################################################################################
+
+class RecoverDone(PSWalkerException):
+    """Raised when a recovery has occured so the encompassing plan can react"""
+    pass
