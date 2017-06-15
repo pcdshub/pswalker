@@ -120,6 +120,38 @@ def test_match_condition_success(RE, mot_and_sig):
 
 
 @pytest.mark.timeout(tmo)
+def test_match_condition_success_no_stop(RE, mot_and_sig):
+    logger.debug("test_match_condition_success_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    # Delay has no purpose if we aren't going to stop
+
+    def condition(x):
+        if 5 < x < 7:
+            return True
+        elif 10 < x < 16:
+            return True
+        return False
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 12 < mot.position < 14
+    # Motor should end in the middle of the largest True region
+
+    mot.move(0, wait=True)
+
+    def condition(x):
+        return 10 < x < 16
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 12 < mot.position < 14
+
+    mot.move(0, wait=True)
+
+    def condition(x):
+        return x > 10
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 14 < mot.position < 16
+
+
+@pytest.mark.timeout(tmo)
 def test_match_condition_fail(RE, mot_and_sig):
     logger.debug("test_match_condition_fail")
     mot, sig = mot_and_sig
@@ -127,6 +159,18 @@ def test_match_condition_fail(RE, mot_and_sig):
     assert mot.position == 40
     # If the motor did not stop and reached 40, we didn't erroneously match the
     # condition
+
+
+@pytest.mark.timeout(tmo)
+def test_match_condition_fail_no_stop(RE, mot_and_sig):
+    logger.debug("test_match_condition_fail_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    RE(run_wrapper(match_condition(sig, lambda x: x > 50, mot, 40,
+                                   has_stop=False)))
+    assert mot.position == 40
+    # If the motor reached 40 and didn't go back, we didn't erroneously match
+    # the condition
 
 
 @pytest.mark.timeout(tmo)
@@ -149,6 +193,17 @@ def test_recover_threshold_success(RE, mot_and_sig):
 
 
 @pytest.mark.timeout(tmo)
+def test_recover_threshold_success_no_stop(RE, mot_and_sig):
+    logger.debug("test_recover_threshold_success_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, 20, mot, +1, has_stop=False)))
+    assert 59 < mot.position < 61
+    # If we went halfway between 20 and 100, it worked
+
+
+@pytest.mark.timeout(tmo)
 def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
@@ -164,6 +219,17 @@ def test_recover_threshold_failure(RE, mot_and_sig):
     mot, sig = mot_and_sig
     with pytest.raises(RecoverFail):
         RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
+    assert mot.position == -100
+    # We got to the end of the negative direction, we failed
+
+
+@pytest.mark.timeout(tmo)
+def test_recover_threshold_failure_no_stop(RE, mot_and_sig):
+    logger.debug("test_recover_threshold_failure_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 101, mot, +1, has_stop=False)))
     assert mot.position == -100
     # We got to the end of the negative direction, we failed
 
