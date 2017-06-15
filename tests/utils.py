@@ -23,6 +23,8 @@ def collector(field, output):
     def f(name, event):
         try:
             output.append(event['data'][field])
+            logger.debug("%s collector has collected, all output: %s",
+                         field, output)
         except KeyError:
             logger.warning("did not find %s in event doc, skipping", field)
 
