@@ -76,3 +76,7 @@ class MonitorException(PSWalkerException):
 class RecoverDone(PSWalkerException):
     """Raised when a recovery has occured so the encompassing plan can react"""
     pass
+
+class RecoverFail(PSWalkerException):
+    """Raised when a recovery has failed"""
+    pass

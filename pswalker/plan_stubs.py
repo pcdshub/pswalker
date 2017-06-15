@@ -10,6 +10,7 @@ from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list
+from .utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
 
@@ -253,6 +254,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
 
+    Raises RecoverDone upon completion.
+
     Parameters
     ----------
     signal: Signal
@@ -304,7 +307,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                     timeout=timeout)
     if ok:
         logger.debug("Recovery was successful")
-        return True
+        raise RecoverDone
     else:
         if try_reverse:
             logger.debug("First direction failed, trying reverse...")
@@ -317,4 +320,4 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  ceil=ceil))
         else:
             logger.debug("Recovery failed")
-            return False
+            raise RecoverFail
