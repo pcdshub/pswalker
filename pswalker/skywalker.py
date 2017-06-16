@@ -13,8 +13,7 @@ from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import recover_threshold, prep_img_motors
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender,
-                         FeeSpecSuspendFloor)
+                         PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,6 @@ def lcls_RE(alarming_pvs=None, RE=None):
     """
     RE = RE or RunEngine({})
     RE.install_suspender(BeamEnergySuspendFloor(0.01))
-    #RE.install_suspender(FeeSpecSuspendFloor(30))
     RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
@@ -245,6 +243,12 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                     detector_fields=det_fields, motor_fields=mot_fields,
                     system=detectors + motors)
     return (yield from branching_plan(walk, branches, branch_choice))
+
+
+def get_lightpath_suspender(yags):
+    # TODO initialize lightpath
+    # Make the suspender to go to the last yag and exclude prev yags
+    return LightpathSuspender(yags[-1], exclude=yags[:-1])
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
