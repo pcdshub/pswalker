@@ -454,6 +454,10 @@ class YAG(TestBase):
         else:
             super().__repr__()
 
+    @property
+    def position(self):
+        return self.y_state
+
 
 def _x_to_pixel(x, yag):
     logger.debug("Converting x position to pixel on yag '{0}'.".format(yag.name))
