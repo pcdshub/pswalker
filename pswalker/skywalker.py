@@ -170,13 +170,14 @@ def get_thresh_signal(yag):
     return yag.detector.stats2.centroid.y
 
 
-def make_homs_recover(yags, yag_index, motor, threshold, center=0):
+def make_homs_recover(yags, yag_index, motor, threshold, center=0,
+                      get_signal=get_thresh_signal):
     """
     Make a recovery plan for a particular yag/motor combination in the homs
     system.
     """
     def homs_recover():
-        sig = get_thresh_signal(yags[yag_index])
+        sig = get_signal(yags[yag_index])
         dir_init = np.sign(motor.position) or 1
         if motor.position < center:
             dir_init = 1
@@ -238,7 +239,8 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     """
     Iterwalk as a base, with arguments for branching
     """
-    walk = iterwalk(detectors, motors, goals, gradients=gradients,
+    walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
+                    gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout,
                     detector_fields=det_fields, motor_fields=mot_fields,
                     system=detectors + motors)
