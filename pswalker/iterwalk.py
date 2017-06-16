@@ -9,6 +9,7 @@ from bluesky.plans import checkpoint
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
 from .utils.argutils import as_list
+from .utils.exceptions import RecoverDone
 
 logger = logging.getLogger(__name__)
 
@@ -121,97 +122,118 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     finished = [False] * num
     done_pos = [0] * num
     while True:
-        for i in range(num):
-            logger.debug("putting imager in")
-            ok = (yield from prep_img_motors(i, detectors, timeout=15))
-            yag_cycles += 1
-
-            # Be loud if the yags fail to move! Operator should know!
-            if not ok:
-                err = "Detector motion timed out!"
-                logger.error(err)
-                raise RuntimeError(err)
-
-            # Only choose a start position for the first move if it was given
-            if n_steps == 0 and starts[i] is not None:
-                firstpos = starts[i]
-            else:
-                firstpos = None
-
-            # Give higher-level a chance to suspend before measuring centroid
-            yield from checkpoint()
-
-            # Set up the system to not include the redundant objects
-            full_system = copy(system)
+        index = 0
+        while index < num:
             try:
-                full_system.remove(motors[i])
-            except ValueError:
-                pass
-            try:
-                full_system.remove(detectors[i])
-            except ValueError:
-                pass
+                logger.debug("putting imager in")
+                ok = (yield from prep_img_motors(index, detectors, timeout=15))
+                yag_cycles += 1
 
-            # Check if we're already done
-            logger.debug("measure_average on det=%s, mot=%s, sys=%s",
-                         detectors[i], motors[i], full_system)
-            pos = (yield from measure_average([detectors[i], motors[i]] + full_system,
-                                              [detector_fields[i]],
-                                              num=averages[i]))
-            logger.debug("recieved %s from measure_average on %s", pos,
-                         detectors[i])
-            try:
-                pos = pos[0]
-            except IndexError:
-                pass
-            if abs(pos - goals[i]) < tolerances[i]:
-                logger.debug("beam aligned on %s without move", detectors[i])
-                finished[i] = True
-                done_pos[i] = pos
-                if all(finished):
-                    logger.debug("beam aligned on all yags")
+                # Be loud if the yags fail to move! Operator should know!
+                if not ok:
+                    err = "Detector motion timed out!"
+                    logger.error(err)
+                    raise RuntimeError(err)
+
+                # Choose a start position for the first move if it was given
+                if n_steps == 0 and starts[index] is not None:
+                    firstpos = starts[index]
+                else:
+                    firstpos = None
+
+                # Give higher-level a chance to recover or suspend
+                yield from checkpoint()
+
+                # Set up the system to not include the redundant objects
+                full_system = copy(system)
+                try:
+                    full_system.remove(motors[index])
+                except ValueError:
+                    pass
+                try:
+                    full_system.remove(detectors[index])
+                except ValueError:
+                    pass
+
+                # Check if we're already done
+                logger.debug("measure_average on det=%s, mot=%s, sys=%s",
+                             detectors[index], motors[index], full_system)
+                pos = (yield from measure_average([detectors[index],
+                                                   motors[index]]
+                                                  + full_system,
+                                                  [detector_fields[index]],
+                                                  num=averages[index]))
+                logger.debug("recieved %s from measure_average on %s", pos,
+                             detectors[index])
+                try:
+                    pos = pos[0]
+                except IndexError:
+                    pass
+                if abs(pos - goals[index]) < tolerances[index]:
+                    logger.debug("beam aligned on %s without move",
+                                 detectors[index])
+                    finished[index] = True
+                    done_pos[index] = pos
+                    if all(finished):
+                        logger.debug("beam aligned on all yags")
+                        break
+                    # Increment index before restarting loop
+                    index += 1
+                    continue
+                else:
+                    # If any of the detectors were wrong, reset finished flags
+                    logger.debug("reset alignment flags before move")
+                    finished = [False] * num
+
+                # Modify goal to use overshoot
+                if index == 0:
+                    goal = goals[index]
+                else:
+                    goal = (goals[index] - pos) * (1 + overshoot) + pos
+
+                # Core walk
+                logger.debug(('Start walk from %s to %s on %s using %s, '
+                              'system=%s'), pos, goal,
+                             detectors[index].name, motors[index].name,
+                             full_system)
+                pos = (yield from walk_to_pixel(detectors[index],
+                                                motors[index],
+                                                goal, firstpos,
+                                                gradient=gradients[index],
+                                                target_fields=[
+                                                    detector_fields[index],
+                                                    motor_fields[index]],
+                                                first_step=first_steps[index],
+                                                tolerance=tolerances[index],
+                                                system=full_system,
+                                                average=averages[index],
+                                                max_steps=10))
+                logger.debug("Walk reached pos %s on %s", pos,
+                             detectors[index].name)
+                mirror_walks += 1
+
+                # Be loud if the walk fails to reach the pixel!
+                if abs(pos - goal) > tolerances[index]:
+                    err = "walk_to_pixel failed to reach the goal"
+                    logger.error(err)
+                    raise RuntimeError(err)
+
+                finished[index] = True
+                done_pos[index] = pos
+
+                # After each walk, check the global timeout.
+                if timeout is not None and time.time() - start_time > timeout:
+                    logger.warning("Iterwalk has timed out")
+                    timeout_error = True
                     break
-                continue
-            else:
-                # If any of the detectors were wrong, reset all finished flags
-                logger.debug("reset alignment flags before move")
+
+                # Increment index before restarting loop
+                index += 1
+            except RecoverDone:
+                # Reset the finished tag because we recovered
                 finished = [False] * num
-
-            # Modify goal to use overshoot
-            if i == 0:
-                goal = goals[i]
-            else:
-                goal = (goals[i] - pos) * (1 + overshoot) + pos
-
-            # Core walk
-            logger.debug("Start walk from %s to %s on %s using %s, system=%s",
-                         pos, goal, detectors[i].name, motors[i].name,
-                         full_system)
-            pos = (yield from walk_to_pixel(detectors[i], motors[i], goal,
-                                            firstpos, gradient=gradients[i],
-                                            target_fields=[detector_fields[i],
-                                                           motor_fields[i]],
-                                            first_step=first_steps[i],
-                                            tolerance=tolerances[i],
-                                            system=full_system,
-                                            average=averages[i], max_steps=10))
-            logger.debug("Walk reached pos %s on %s", pos, detectors[i].name)
-            mirror_walks += 1
-
-            # Be loud if the walk fails to reach the pixel!
-            if abs(pos - goal) > tolerances[i]:
-                err = "walk_to_pixel failed to reach the goal"
-                logger.error(err)
-                raise RuntimeError(err)
-
-            finished[i] = True
-            done_pos[i] = pos
-
-            # After each walk, check the global timeout.
-            if timeout is not None and time.time() - start_time > timeout:
-                logger.warning("Iterwalk has timed out")
-                timeout_error = True
-                break
+                # Do not increment index so we stay on same yag
+                continue
 
         if timeout_error:
             break

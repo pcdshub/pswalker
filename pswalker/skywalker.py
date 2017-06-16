@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from threading import Lock
 
 import numpy as np
 from bluesky import RunEngine
@@ -49,25 +50,27 @@ def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
             logger.debug("Switching to branch %s", choice)
             yield from branch()
 
-    is_branching = False
+    # No nested branches
+    branch_lock = Lock()
 
     def branch_handler(msg):
-        nonlocal is_branching
-        if not is_branching and msg.command == branch_msg:
-            is_branching = True
-
-            def new_gen():
-                if branch_choice() is not None:
-                    yield from checkpoint()
-                    yield from do_branch()
-                    logger.debug("Resuming plan after branch")
-                yield msg
-                nonlocal is_branching
-                is_branching = False
-
-            return new_gen(), None
-        else:
-            return None, None
+        if msg.command == branch_msg:
+            nonlocal branch_lock
+            has_lock = branch_lock.acquire(blocking=False)
+            if has_lock:
+                try:
+                    def new_gen():
+                        nonlocal branch_lock
+                        with branch_lock:
+                            if branch_choice() is not None:
+                                yield from checkpoint()
+                                yield from do_branch()
+                                logger.debug("Resuming plan after branch")
+                            yield msg
+                finally:
+                    branch_lock.release()
+                    return new_gen(), None
+        return None, None
 
     brancher = plan_mutator(plan, branch_handler)
     return (yield from brancher)
