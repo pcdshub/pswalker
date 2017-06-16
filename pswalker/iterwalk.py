@@ -111,9 +111,13 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     system = as_list(system)
     averages = as_list(averages, num)
 
+    logger.debug("iterwalk aligning %s to %s on %s",
+                 motors, goals, detectors)
+
     # Debug counters
     mirror_walks = 0
     yag_cycles = 0
+    recoveries = 0
 
     # Set up end conditions
     n_steps = 0
@@ -125,6 +129,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         index = 0
         while index < num:
             try:
+                # Before each walk, check the global timeout.
+                if timeout is not None and time.time() - start_time > timeout:
+                    logger.warning("Iterwalk has timed out")
+                    timeout_error = True
+                    break
+
                 logger.debug("putting imager in")
                 ok = (yield from prep_img_motors(index, detectors, timeout=15))
                 yag_cycles += 1
@@ -221,18 +231,13 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 finished[index] = True
                 done_pos[index] = pos
 
-                # After each walk, check the global timeout.
-                if timeout is not None and time.time() - start_time > timeout:
-                    logger.warning("Iterwalk has timed out")
-                    timeout_error = True
-                    break
-
                 # Increment index before restarting loop
                 index += 1
             except RecoverDone:
                 # Reset the finished tag because we recovered
                 finished = [False] * num
-                # Do not increment index so we stay on same yag
+                index += 1
+                recoveries += 1
                 continue
 
         if timeout_error:
@@ -246,8 +251,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    logger.debug("Finished in %.2fs after %s mirror walks and %s yag cycles",
-                 time.time() - start_time, mirror_walks, yag_cycles)
+    logger.debug(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
+                  "and %s recoveries"),
+                  time.time() - start_time, mirror_walks, yag_cycles,
+                  recoveries)
     logger.debug("Aligned to %s", done_pos)
     logger.debug("Goals were %s", goals)
     logger.debug("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
