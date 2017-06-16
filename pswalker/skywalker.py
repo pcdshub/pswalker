@@ -11,10 +11,9 @@ from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
-from .plan_stubs import recover_threshold
+from .plan_stubs import recover_threshold, prep_img_motors
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender,
-                         FeeSpecSuspendFloor)
+                         PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,6 @@ def lcls_RE(alarming_pvs=None, RE=None):
     """
     RE = RE or RunEngine({})
     RE.install_suspender(BeamEnergySuspendFloor(0.01))
-    #RE.install_suspender(FeeSpecSuspendFloor(30))
     RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
@@ -172,36 +170,40 @@ def get_thresh_signal(yag):
     return yag.detector.stats2.centroid.y
 
 
-#def make_homs_recover(yag, motor, threshold, center=0):
-#    """
-#    Make a recovery plan for a particular yag/motor combination in the homs
-#    system.
-#    """
-#    #def homs_recover():
-#    #    sig = get_thresh_signal(yag)
-#    #    dir_init = np.sign(motor.position) or 1
-#    #    if motor.position < center:
-#    #        dir_init = 1
-#    #    else:
-#    #        dir_init = -1
-#    #    plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
-#    #    return (yield from plan)
+def make_homs_recover(yags, yag_index, motor, threshold, center=0):
+    """
+    Make a recovery plan for a particular yag/motor combination in the homs
+    system.
+    """
+    def homs_recover():
+        sig = get_thresh_signal(yags[yag_index])
+        dir_init = np.sign(motor.position) or 1
+        if motor.position < center:
+            dir_init = 1
+        else:
+            dir_init = -1
+
+        def plan():
+            yield from prep_img_motors(yag_index, yags, timeout=10)
+            yield from recover_threshold(sig, threshold, motor, dir_init,
+                                         timeout=30, has_stop=False)
+        return (yield from plan())
+
+    #def homs_recover():
+    #    logger.debug("running backup recovery plan")
+    #    return (yield from abs_set(motor, center))
+
+    return homs_recover
+
+
+#def make_homs_recover(m1, m2, c1, c2):
 #
 #    def homs_recover():
 #        logger.debug("running backup recovery plan")
-#        return (yield from abs_set(motor, center))
+#        yield from abs_set(m1, c1)
+#        yield from abs_set(m2, c2)
 #
 #    return homs_recover
-
-
-def make_homs_recover(m1, m2, c1, c2):
-
-    def homs_recover():
-        logger.debug("running backup recovery plan")
-        yield from abs_set(m1, c1)
-        yield from abs_set(m2, c2)
-
-    return homs_recover
 
 
 def make_pick_recover(yag1, yag2, threshold):
@@ -243,6 +245,12 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     return (yield from branching_plan(walk, branches, branch_choice))
 
 
+def get_lightpath_suspender(yags):
+    # TODO initialize lightpath
+    # Make the suspender to go to the last yag and exclude prev yags
+    return LightpathSuspender(yags[-1], exclude=yags[:-1])
+
+
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
                    averages=250, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
                    first_steps=1):
@@ -260,8 +268,10 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
     m2h = system['m2h']
     m1 = m1h
     m2 = m2h
-    recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
-    recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    #recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.058)
+    #recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.0504)
     #xrtm2 is 0.0354
     choice = make_pick_recover(y1, y2, has_beam_floor)
 
