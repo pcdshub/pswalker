@@ -77,9 +77,8 @@ def test_multi_fit():
 
 
 def test_apply_filters():
-    mock_doc = {'data' : {'a' : 4,
-                          'b' : -1}
-               }
+    mock_doc = {'a' : 4, 'b' : -1}
+               
     #Passing filters
     assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0}
             )

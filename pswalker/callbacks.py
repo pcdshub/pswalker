@@ -54,18 +54,16 @@ def apply_filters(doc, filters=None, drop_missing=True):
     """
     resp    = []
     filters = filters or dict()
-
     #Iterate through filters
     for key, func in filters.items(): 
         try:
             #Handle NaN
-            if pd.isnull(doc['data'][key]):
+            if pd.isnull(doc[key]):
                 resp.append(not drop_missing)
 
             #Evaluate filter
             else:
-                resp.append(bool(func(doc['data'][key])))
-
+                resp.append(bool(func(doc[key])))
         #Handle missing information
         except KeyError:
             resp.append(not drop_missing)
@@ -75,7 +73,6 @@ def apply_filters(doc, filters=None, drop_missing=True):
             logger.critical('Filter associated with event_key {}'\
                             'reported exception "{}"'\
                             ''.format(key, e))
-
     #Summarize
     return all(resp)
 
@@ -109,7 +106,7 @@ def rank_models(models, target, **kwargs):
         try:
             estimates.append(np.abs(model.eval(**kwargs)-target))
 
-        except RuntimeError:
+        except RuntimeError as e:
             estimates.append(np.inf)
             logger.info("Unable to yield estimate from model {}"
                         "".format(model.name))
@@ -153,9 +150,6 @@ class LiveBuild(LiveFit):
         self.drop_missing = drop_missing
         self._avg_cache   = list()
 
-        #Install filters for all function variables
-        self.install_filters(dict((k, lambda x : True)
-                             for k in self.field_names))
 
 
     @property
@@ -190,7 +184,7 @@ class LiveBuild(LiveFit):
 
     def event(self, doc):
         #Run event through filters
-        if not apply_filters(doc):
+        if not apply_filters(doc['data']):
             return
 
         #Add doc to average cache
@@ -198,6 +192,9 @@ class LiveBuild(LiveFit):
 
         #Check we have the right number of shots to average
         if len(self._avg_cache) >= self.average:
+            #Overwrite event number
+            #This can be removed with an update to Bluesky Issue #684
+            doc['seq_num'] = len(self.ydata) +1 
             #Rewrite document with averages
             for key in self.field_names:
                 doc['data'][key] = np.mean([d['data'][key]
@@ -258,7 +255,9 @@ class LinearFit(LiveBuild):
         computed at the end of the run. By default, this is set to 1 i.e
         update on every new event
     """
-    def __init__(self, y, x, init_guess=None, update_every=1, name=None):
+    def __init__(self, y, x, init_guess=None,
+                 update_every=1, name=None,
+                 average=1):
         #Create model
         model = LinearModel(missing='drop', name=name)
 
@@ -271,7 +270,8 @@ class LinearFit(LiveBuild):
         #Initialize fit
         super().__init__(model, y, {'x': x},
                          init_guess=init,
-                         update_every=update_every)
+                         update_every=update_every,
+                         average=average)
 
 
     def eval(self, x=0., **kwargs):
@@ -320,6 +320,9 @@ class LinearFit(LiveBuild):
         (m, b) = (self.result.values['slope'],
                   self.result.values['intercept'])
         #Return x position
+        if m == 0 and b != target:
+            raise ValueError("Unable to backsolve, because fit is horizontal")
+
         return {'x' : (target-b)/m}
 
 
@@ -348,7 +351,9 @@ class MultiPitchFit(LiveBuild):
         computed at the end of the run. By default, this is set to 1 i.e
         update on every new event
     """
-    def __init__(self, centroid, alphas, name=None, init_guess=None, update_every=1):
+    def __init__(self, centroid, alphas,
+                 name=None, init_guess=None,
+                 update_every=1, average=1):
 
         #Simple model of two-bounce system
         def two_bounce(a0, a1, x0, x1, x2):
@@ -370,7 +375,8 @@ class MultiPitchFit(LiveBuild):
         super().__init__(model, centroid,
                          independent_vars={'a0' : alphas[0],
                                            'a1' : alphas[1]},
-                         init_guess=init, update_every=update_every)
+                         init_guess=init, update_every=update_every,
+                         average=average)
 
 
     def eval(self, a0=0., a1=0., **kwargs):
