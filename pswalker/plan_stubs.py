@@ -9,7 +9,7 @@ from bluesky.plans import wait as plan_wait, abs_set, create, read, save
 from bluesky.utils import FailedStatus
 
 from .plans import measure_average
-from .utils.argutils import as_list
+from .utils.argutils import as_list, field_prepend
 
 logger = logging.getLogger(__name__)
 
@@ -156,11 +156,8 @@ def verify_all(detectors, target_fields, target_values, tolerances,
         avgs = yield from measure_average([det] + other_readers,
                                           [fld] + other_fields,
                                           num=average, delay=delay)
-        try:
-            avg = avgs[0]
-        except:
-            avg = avgs
-        ok_list.append(abs(avg - val) < tol)
+        #Check the tolerance of detector measurement
+        ok_list.append(abs(avgs[field_prepend(fld,det)] - val) < tol)
 
     # Output for yield from
     output = all(ok_list)

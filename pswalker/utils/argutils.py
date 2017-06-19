@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from .. import examples
+from ophyd import Signal, Device
 
 
 def as_list(obj, length=None, tp=None):
@@ -40,47 +42,6 @@ def group_sorted(sort_param, *args):
     return [as_list(z) for z in unzip]
 
 
-'''
-    # Cause havoc if we didn't give equal length lists
-    num = None
-    for arg in (detectors, motors, goals):
-        err = "detectors, motors, and goals must be equal length lists."
-        try:
-            n = len(arg)
-        except:
-            logger.exception(err)
-            raise
-        if num is None:
-            num = n
-        elif num != n:
-            logger.error(err)
-            raise TypeError(err)
-
-    # Cause havoc if any of these aren't the right length
-    for arg in (starts, first_steps, gradients, detector_fields, motor_fields,
-                tolerances, averages):
-        err = "If provided, each list argument must be the same length."
-        if num != len(arg):
-            logger.error(err)
-            raise TypeError(err)
-
-    # Sort list arguments on detector "sort" field.
-    sort_parameters = [get_field(d, sort) for d in detectors]
-    if all(s is not None for s in sort_parameters):
-        sorts = group_sorted(sort_parameters, detectors, motors, goals, starts,
-                             first_steps, gradients, detector_fields,
-                             motor_fields, tolerances, averages)
-        detectors = sorts[1]
-        motors = sorts[2]
-        goals = sorts[3]
-        starts = sorts[4]
-        first_steps = sorts[5]
-        gradients = sorts[6]
-        detector_fields = sorts[7]
-        motor_fields = sorts[8]
-        tolerances = sorts[9]
-        averages = sorts[10]
-'''
 def get_field(device, field):
     try:
         return device.db[field]
@@ -88,5 +49,26 @@ def get_field(device, field):
         logger.debug("Cannot get field %s from device %s", field, device)
         return None
 
+def field_prepend(field, obj):
+    """
+    Prepend the name of the Ophyd object to the field name
 
+    Parameters
+    ----------
+    field : str
+        Field name
 
+    obj : object
+        Object with :attr:`.name`
+    
+    Returns
+    -------
+    target_field : str
+        The field maybe prepended with the object name
+    """
+    if isinstance(obj, (Device, examples.TestBase)) and obj.name not in field:
+        field = "{}_{}".format(obj.name, field)
+    elif isinstance(obj, Signal):
+        field = obj.name
+    
+    return field
