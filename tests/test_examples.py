@@ -20,48 +20,48 @@ from pcdsdevices.sim import (source, mirror, pim)
 
 def test_patch_pims_with_no_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    yag_1 = [YAG('test_yag', z=3)]
-    yag_2 = [YAG('test_yag', z=5)]
-    yag_3 = [YAG('test_yag', z=7)]
+    pim_1 = [pim.PIM('test_pim', z=3)]
+    pim_2 = [pim.PIM('test_pim', z=5)]
+    pim_3 = [pim.PIM('test_pim', z=7)]
     
-    yag_1 = patch_pims(yag_1)
-    assert yag_1.detector.stats2.centroid.x.value == _calc_cent_x(s, yag_1)
+    pim_1 = patch_pims(pim_1)
+    assert pim_1.detector.stats2.centroid.x.value == _calc_cent_x(s, pim_1)
 
-    yag_2 = patch_pims(yag_2, m1)
-    assert yag_2.detector.stats2.centroid.x.value == _calc_cent_x(s, yag_2)
+    pim_2 = patch_pims(pim_2, m1)
+    assert pim_2.detector.stats2.centroid.x.value == _calc_cent_x(s, pim_2)
 
-    yag_3 = patch_pims(yag_3, [m1,m2])
-    assert yag_3.detector.stats2.centroid.x.value == _calc_cent_x(s, yag_3)
+    pim_3 = patch_pims(pim_3, [m1,m2])
+    assert pim_3.detector.stats2.centroid.x.value == _calc_cent_x(s, pim_3)
 
 def test_patch_pims_with_one_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    yag_1 = [YAG('test_yag', z=13)]
-    yag_2 = [YAG('test_yag', z=15)]
+    pim_1 = [pim.PIM('test_pim', z=13)]
+    pim_2 = [pim.PIM('test_pim', z=15)]
     
-    yag_1 = patch_pims(yag_1, [m1,m2])
-    assert yag_1.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, m1, 
-                                                                        yag_1)
+    pim_1 = patch_pims(pim_1, [m1,m2])
+    assert pim_1.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, m1, 
+                                                                     pim_1)
     
-    yag_2 = patch_pims(yag_2, m1)
-    assert yag_2.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, m1, 
-                                                                        yag_2)
+    pim_2 = patch_pims(pim_2, m1)
+    assert pim_2.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, m1, 
+                                                                     pim_2)
 
 def test_patch_pims_with_two_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    yag_1 = [YAG('test_yag', z=25)]    
-    yag_1 = patch_pims(yag_1, [m1,m2])
-    assert yag_1.detector.stats2.centroid.x.value == _m1_m2_calc_cent_x(
-        s, m1, m2, yag_1)
+    pim_1 = [pim.PIM('test_pim', z=25)]    
+    pim_1 = patch_pims(pim_1, [m1,m2])
+    assert pim_1.detector.stats2.centroid.x.value == _m1_m2_calc_cent_x(
+        s, m1, m2, pim_1)
 
-def test_yag_set_and_read(one_bounce_system):
-    s, mot, yag = one_bounce_system
+def test_pim_set_and_read(one_bounce_system):
+    s, mot, pim = one_bounce_system
     set_x = 100
     set_z = 10
-    yag.sim_x.put(set_x)
-    yag.sim_z.put(set_z)
-    yag = patch_pims(yag, [mot])    
-    assert yag.sim_x.value == set_x
-    assert yag.sim_x.value == set_z
-    assert yag.detector.stats.centroid.x.value == _m1_calc_cent_x(s, mot, yag)
+    pim.sim_x.put(set_x)
+    pim.sim_z.put(set_z)
+    pim = patch_pims(pim, [mot])    
+    assert pim.sim_x.value == set_x
+    assert pim.sim_z.value == set_z
+    assert pim.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, mot, pim)
     
 
