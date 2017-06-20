@@ -11,7 +11,6 @@ def test_branching_plan(RE, lcls_two_bounce_system):
     s, m1, m2, y1, y2 = lcls_two_bounce_system
 
     reads = []
-    m1.parent = None
 
     def test_plan():
         yield from mv(m1, 0)
