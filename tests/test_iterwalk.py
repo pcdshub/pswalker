@@ -37,22 +37,22 @@ def test_iterwalk(RE, lcls_two_bounce_system,
                  max_walks)
     s, m1, m2, y1, y2 = lcls_two_bounce_system
 
-    goal1 += y1.pix[0]/2
-    goal2 += y2.pix[0]/2
+    goal1 += y1.size[0]/2
+    goal2 += y2.size[0]/2
 
     goal = [goal1, goal2]
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=first_steps, gradients=gradients,
-                                detector_fields='centroid_x',
-                                motor_fields='alpha',
+                                detector_fields='detector_stats2_centroid_x',
+                                motor_fields='pitch',
                                 tolerances=tolerances, system=[m1, m2, y1, y2],
                                 averages=1, overshoot=overshoot,
                                 max_walks=max_walks, timeout=None))
     RE(plan)
-    assert np.isclose(y1.read()[y1.name + '_centroid_x']['value'], goal[0],
+    assert np.isclose(y1.read()[y1.name + '_detector_stats2_centroid_x']['value'], goal[0],
                       atol=tolerances)
-    assert np.isclose(y2.read()[y2.name + '_centroid_x']['value'], goal[1],
+    assert np.isclose(y2.read()[y2.name + '_detector_stats2_centroid_x']['value'], goal[1],
                       atol=tolerances)
 
     # Make sure we actually read all the groups as we went
@@ -85,7 +85,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
     s, m1, m2, y1, y2 = lcls_two_bounce_system
 
     # Center pixels of yag
-    center_pix = [y1.pix[0]/2] * 2
+    center_pix = [y1.size[0]/2] * 2
     goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
@@ -99,7 +99,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='centroid_x', motor_fields='alpha',
+                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
@@ -113,7 +113,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='centroid_x', motor_fields='alpha',
+                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
@@ -125,7 +125,7 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
     s, m1, m2, y1, y2 = lcls_two_bounce_system
 
     # Center pixels of yag
-    center_pix = [y1.pix[0]/2] * 2
+    center_pix = [y1.size[0]/2] * 2
     goal = [p + 300 for p in center_pix]
 
     # Define a bad set command
@@ -139,11 +139,11 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
         elif cmd is not None:
             # Here is where we move the pitch motor if a value is set
             cmd += err
-            mirror._alpha = cmd
-            return mirror.alpha.set(cmd)
-        mirror._x = kwargs.get('x', mirror._x)
-        mirror._z = kwargs.get('z', mirror._z)
-        mirror._alpha = kwargs.get('alpha', mirror._alpha)
+            mirror.sim_pitch = cmd
+            return mirror.pitch.set(cmd)
+        mirror.sim_x = kwargs.get('x', mirror.sim_x)
+        mirror.sim_z = kwargs.get('z', mirror.sim_z)
+        mirror.sim_pitch = kwargs.get('pitch', mirror.sim_pitch)
         for motor in mirror.motors:
             motor_params = motor.read()            
             for key in kwargs.keys():
@@ -156,7 +156,7 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='centroid_x', motor_fields='alpha',
+                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised

@@ -10,7 +10,7 @@ from ophyd.ophydobj import OphydObject
 from ophyd.positioner import SoftPositioner
 from bluesky.plans import sleep, checkpoint
 
-from pswalker.examples import YAG
+from pcdsdevices.sim import pim
 
 logger=logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class FakePath(OphydObject):
     _default_sub = SUB_PTH_CHNG
 
     def __init__(self, *devices):
-        self.devices = sorted(devices, key=lambda d: d.read()[d.name + "_z"]["value"])
+        self.devices = sorted(devices, key=lambda d: d.sim_z.value)
         super().__init__()
 
     def clear(self, *args, **kwargs):
@@ -130,7 +130,7 @@ class FakePath(OphydObject):
 
 
 def ruin_my_path(path):
-    choices = [d for d in path.devices if isinstance(d, YAG)]
+    choices = [d for d in path.devices if isinstance(d, pim.PIM)]
     device = random.choice(choices)
     device.set("IN")
 

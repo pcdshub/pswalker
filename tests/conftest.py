@@ -10,11 +10,12 @@ import logging
 import pytest
 from bluesky import RunEngine
 from bluesky.tests.utils import MsgCollector
+from pcdsdevices.sim import source, mirror, pim
 
 ##########
 # Module #
 ##########
-from pswalker.examples import YAG, Mirror, Source, patch_yags
+from pswalker.examples import patch_pims
 from .utils import FakePath
 
 logfile = os.path.join(os.path.dirname(__file__), "log.txt")
@@ -42,9 +43,9 @@ def simple_two_bounce_system():
     """
     Simple system that consists of a source and two mirrors.
     """
-    s = Source('test_source', 0, 0)
-    m1 = Mirror('test_mirror_1', 0, 10, 0)
-    m2 = Mirror('test_mirror_2', 5, 20, 0)
+    s = source.Undulator('test_source')
+    m1 = mirror.OffsetMirror('test_mirror_1', z=10)
+    m2 = mirror.OffsetMirror('test_mirror_2', x=5, z=20)
     return s, m1, m2
 
 
@@ -54,10 +55,10 @@ def one_bounce_system():
     Generic single bounce system consisting one mirror with a linear
     relationship with YAG centroid
     """
-    s = Source('test_source', 0, 0)
-    mot = Mirror('mirror', 0, 50, 0)
-    det = YAG('yag', 0, 60, pix=(500,500))
-    det = patch_yags(det, mot)
+    s = source.Undulator('test_source')
+    mot = mirror.OffsetMirror('mirror', z=50)
+    det = pim.PIM('yag', z=60, size=(500,500))
+    det = patch_pims(det, mot)
     return s, mot, det
 
 
@@ -68,17 +69,17 @@ def fake_path_two_bounce():
     the HOMS system.
     """
     
-    p1h = YAG("p1h", 0, 0)
-    feem1 = Mirror("feem1", 0, 10, 0)
-    p2h = YAG("p2h", 0, 20)
-    feem2 = Mirror("feem2", 0, 30, 0)
-    p3h = YAG("p3h", 0, 40)
-    hx2_pim = YAG("hx2_pim", 0, 50)
-    um6_pim = YAG("um6_pim", 0, 60)
-    dg3_pim = YAG("dg3_pim", 0, 70)
+    p1h = pim.PIM("p1h")
+    feem1 = mirror.OffsetMirror("feem1", z=10)
+    p2h = pim.PIM("p2h", z=20)
+    feem2 = mirror.OffsetMirror("feem2", z=30)
+    p3h = pim.PIM("p3h", z=40)
+    hx2_pim = pim.PIM("hx2_pim", z=50)
+    um6_pim = pim.PIM("um6_pim", z=60)
+    dg3_pim = pim.PIM("dg3_pim", z=70)
 
     yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
-    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags(yags, [feem1, feem2])
+    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_pims(yags, [feem1, feem2])
     
     path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
     return path
@@ -87,10 +88,11 @@ def fake_path_two_bounce():
 @pytest.fixture(scope='function')
 def fake_yags(fake_path_two_bounce):
     path = fake_path_two_bounce
-    yags = [d for d in path.devices if isinstance(d, YAG)]
+    yags = [d for d in path.devices if isinstance(d, pim.PIM)]
 
     # Pretend that the correct values are the current values
-    ans = [y.read()[y.name + '_centroid_x']['value'] for y in yags]
+    ans = [y.read()[y.name + '_detector_stats2_centroid_x']['value'] 
+           for y in yags]
 
     return yags, ans
 
@@ -100,12 +102,12 @@ def lcls_two_bounce_system():
     """
     Simple system that consists of a source, two mirrors, and two imagers.
     """
-    s = Source('test_undulator', 0, 0)
-    m1 = Mirror('test_m1h', 0, 90.510, 0.0014)
-    m2 = Mirror('test_m2h', 0.0317324, 101.843, 0.0014)
-    y1 = YAG('test_p3h', 0.0317324, 103.660)
-    y2 = YAG('test_dg3', 0.0317324, 375.000)    
+    s = source.Undulator('test_undulator')
+    m1 = mirror.OffsetMirror('test_m1h', z=90.510, alpha=0.0014)
+    m2 = mirror.OffsetMirror('test_m2h', x=0.0317324, z=101.843, alpha=0.0014)
+    y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660)
+    y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)    
 
-    patch_yags([y1, y2], mirrors=[m1, m2], source=s)
+    patch_pims([y1, y2], mirrors=[m1, m2], source=s)
 
     return s, m1, m2, y1, y2
