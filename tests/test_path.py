@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from pswalker.examples import YAG
+from pcdsdevices.sim.pim import PIM
 from pswalker.path import prune_path, get_path, clear_lightpath
 
 
@@ -54,7 +54,7 @@ def test_clear_lightpath(fake_path_two_bounce):
     for device in path.devices:
         device.set("IN")
     for device in path.devices:
-        if isinstance(device, YAG):
+        if isinstance(device, PIM):
             exclude_device = device
             break
     clear_lightpath(None, exclude=exclude_device, path=path, wait=True)

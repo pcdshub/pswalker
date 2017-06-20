@@ -13,7 +13,6 @@ from collections import OrderedDict, ChainMap
 # Third Party #
 ###############
 import numpy as np
-from pcdsdevices.sim import (mirror, pim)
 
 ##########
 # Module #
@@ -100,374 +99,307 @@ class TestBase(object):
         return {self.name + "_" + key : value
                 for key, value in d.items()}
 
-class Source(object):
-    """
-    Simulation of the photon source (simplified undulator).
+# class Source(object):
+#     """
+#     Simulation of the photon source (simplified undulator).
 
-    Parameters
-    ----------
-    name : str
-        Alias of Source
+#     Parameters
+#     ----------
+#     name : str
+#         Alias of Source
 
-    x : float
-        Initial position of x-motor
+#     x : float
+#         Initial position of x-motor
 
-    xp : float
-        Initial position of xp-motor
+#     xp : float
+#         Initial position of xp-motor
 
-    noise_x : float, optional
-        Multiplicative noise factor added to x-motor readback
+#     noise_x : float, optional
+#         Multiplicative noise factor added to x-motor readback
 
-    noise_xp : float, optional
-        Multiplicative noise factor added to xp-motor readback
+#     noise_xp : float, optional
+#         Multiplicative noise factor added to xp-motor readback
 
-    fake_sleep_x : float, optional
-        Amount of time to wait after moving x-motor
+#     fake_sleep_x : float, optional
+#         Amount of time to wait after moving x-motor
 
-    fake_sleep_xp : float, optional
-        Amount of time to wait after moving xp-motor    
-    """
-    def __init__(self, name='Source', x=0, xp=0, noise_x=0, noise_xp=0,
-                 fake_sleep_x=0, fake_sleep_xp=0, **kwargs):
-        self.name = name
-        self.noise_x = noise_x
-        self.noise_xp = noise_xp
-        self.fake_sleep_x = fake_sleep_x
-        self.fake_sleep_xp = fake_sleep_xp
-        self.x = Mover('X Motor', OrderedDict(
-                [('x', lambda x: x + np.random.uniform(-1, 1)
-                  * self.noise_x),
-                 ('x_setpoint', lambda x: x)]), {'x': x})
-        self.xp = Mover('XP Motor', OrderedDict(
-                [('xp', lambda xp: xp + np.random.uniform(-1, 1)
-                  * self.noise_xp),
-                 ('xp_setpoint', lambda xp: xp)]), {'xp': xp})
-        self.motors = [self.x, self.xp]        
-        self._x = x
-        self._xp = xp
-        self.log_pref = "{0} (Source) - ".format(self.name)
+#     fake_sleep_xp : float, optional
+#         Amount of time to wait after moving xp-motor    
+#     """
+#     def __init__(self, name='Source', x=0, xp=0, noise_x=0, noise_xp=0,
+#                  fake_sleep_x=0, fake_sleep_xp=0, **kwargs):
+#         self.name = name
+#         self.noise_x = noise_x
+#         self.noise_xp = noise_xp
+#         self.fake_sleep_x = fake_sleep_x
+#         self.fake_sleep_xp = fake_sleep_xp
+#         self.x = Mover('X Motor', OrderedDict(
+#                 [('x', lambda x: x + np.random.uniform(-1, 1)
+#                   * self.noise_x),
+#                  ('x_setpoint', lambda x: x)]), {'x': x})
+#         self.xp = Mover('XP Motor', OrderedDict(
+#                 [('xp', lambda xp: xp + np.random.uniform(-1, 1)
+#                   * self.noise_xp),
+#                  ('xp_setpoint', lambda xp: xp)]), {'xp': xp})
+#         self.motors = [self.x, self.xp]        
+#         self._x = x
+#         self._xp = xp
+#         self.log_pref = "{0} (Source) - ".format(self.name)
         
-    def read(self):
-        result = dict(ChainMap(*[motor.read() for motor in self.motors]))
-        return result
+#     def read(self):
+#         result = dict(ChainMap(*[motor.read() for motor in self.motors]))
+#         return result
 
-    def set(self, **kwargs):
-        logger.info("{0}Setting Attributes.".format(self.log_pref))
-        logger.debug("{0}Setting: {1}".format(self.log_pref, kwargs))
-        self._x = kwargs.get('x', self._x)
-        self._xp = kwargs.get('xp', self._xp)        
-        for motor in self.motors:
-            motor_params = motor.read()
-            for key in kwargs.keys():    
-                if key in motor_params:
-                    motor.set(kwargs[key])
-        return Status(done=True, success=True)
+#     def set(self, **kwargs):
+#         logger.info("{0}Setting Attributes.".format(self.log_pref))
+#         logger.debug("{0}Setting: {1}".format(self.log_pref, kwargs))
+#         self._x = kwargs.get('x', self._x)
+#         self._xp = kwargs.get('xp', self._xp)        
+#         for motor in self.motors:
+#             motor_params = motor.read()
+#             for key in kwargs.keys():    
+#                 if key in motor_params:
+#                     motor.set(kwargs[key])
+#         return Status(done=True, success=True)
 
-    def describe(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.describe(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
+#     def describe(self, *args, **kwargs):
+#         result = dict(ChainMap(*[motor.describe(*args, **kwargs)
+#                                  for motor in self.motors]))
+#         return result
     
-    def describe_configuration(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
+#     def describe_configuration(self, *args, **kwargs):
+#         result = dict(ChainMap(*[motor.describe_configuration(*args, **kwargs)
+#                                  for motor in self.motors]))
+#         return result
     
-    def read_configuration(self, *args, **kwargs):
-        result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
-                                 for motor in self.motors]))
-        return result
+#     def read_configuration(self, *args, **kwargs):
+#         result = dict(ChainMap(*[motor.read_configuration(*args, **kwargs)
+#                                  for motor in self.motors]))
+#         return result
     
-    def subscribe(self, *args, **kwargs):
-        pass
+#     def subscribe(self, *args, **kwargs):
+#         pass
 
-    def trigger(self, *args, **kwargs):
-        return Status(done=True, success=True)
+#     def trigger(self, *args, **kwargs):
+#         return Status(done=True, success=True)
 
-class Mirror(object):
-    # Remove this when beginning to put together higher level tests in conftests
-    pass
+# class YAG(TestBase):
+#     """
+#     Simulation of a yag imager and the assorted motors.
 
+#     Parameters
+#     ----------
+#     name : str
+#         Alias of YAG
 
-class OffsetMirror(mirror.OffsetMirror):
-    # Properties to simplify yag patching
-    @property
-    def _x(self):
-        return self.gan_x_p.user_readback.value
+#     x : float
+#         Initial position of x-motor
 
-    @property
-    def _y(self):
-        return self.gan_y_p.user_readback.value
+#     z : float
+#         Initial position of z-motor
 
-    @property
-    def _z(self):
-        return self.z
+#     noise_x : float, optional
+#         Multiplicative noise factor added to x-motor readback
 
-    @property
-    def _alpha(self):
-        return self.pitch.user_readback.value
+#     noise_z : float, optional
+#         Multiplicative noise factor added to z-motor readback
 
-class PIM(pim.PIM):
-    # Properties to simplify yag patching
-    @property
-    def _x(self):
-        return self.x
+#     fake_sleep_x : float, optional
+#         Amount of time to wait after moving x-motor
 
-    @property
-    def _y(self):
-        return self.y_pos[self.position]
+#     fake_sleep_z : float, optional
+#         Amount of time to wait after moving z-motor
 
-    @property
-    def _z(self):
-        return self.z
+#     pix : tuple, optional
+#         Dimensions of imager in pixels
+
+#     size : tuple, optional
+#         Dimensions of imager in meters
+#     """
+#     SUB_VALUE = "value"
+#     _default_sub = SUB_VALUE
+
+#     def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
+#                  fake_sleep_z=0, **kwargs):
+#         self.name = name
+#         self.noise_x = noise_x
+#         self.noise_z = noise_z
+#         self.fake_sleep_x = fake_sleep_x
+#         self.fake_sleep_z = fake_sleep_z
+#         self.x = Mover('X Motor', OrderedDict(
+#                 [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
+#                  ('x_setpoint', lambda x: x)]), {'x': x},
+#                        fake_sleep=self.fake_sleep_x)
+#         self.z = Mover('Z Motor', OrderedDict(
+#                 [('z', lambda z: z + np.random.uniform(-1, 1)*self.noise_z),
+#                  ('z_setpoint', lambda z: z)]), {'z': z},
+#                        fake_sleep=self.fake_sleep_z)
+
+#         self.y_state = "OUT"
+#         self._subs = []
+#         self.pix = kwargs.get("pix", (1392, 1040))
+#         self.size = kwargs.get("size", (0.0076, 0.0062))
+#         self.invert = kwargs.get("invert", False)
+#         self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
+#                                          'centroid_y' : self.cent_y,
+#                                          'centroid' : self.cent,
+#                                          'centroid_x_abs' : self.cent_x_abs})
+#         self.devices = [self.x, self.z, self.reader]
+#         self._x = x
+#         self._z = z
+#         self.log_pref = "{0} (YAG) - ".format(self.name)
+
+#     def _cent_x(self):
+#         return np.floor(self.pix[0]/2)
+
+#     def _cent_y(self):
+#         return np.floor(self.pix[1]/2)
+
+#     def cent_x(self):
+#         return self._cent_x()
     
-
-class YAG(TestBase):
-    """
-    Simulation of a yag imager and the assorted motors.
-
-    Parameters
-    ----------
-    name : str
-        Alias of YAG
-
-    x : float
-        Initial position of x-motor
-
-    z : float
-        Initial position of z-motor
-
-    noise_x : float, optional
-        Multiplicative noise factor added to x-motor readback
-
-    noise_z : float, optional
-        Multiplicative noise factor added to z-motor readback
-
-    fake_sleep_x : float, optional
-        Amount of time to wait after moving x-motor
-
-    fake_sleep_z : float, optional
-        Amount of time to wait after moving z-motor
-
-    pix : tuple, optional
-        Dimensions of imager in pixels
-
-    size : tuple, optional
-        Dimensions of imager in meters
-    """
-    SUB_VALUE = "value"
-    _default_sub = SUB_VALUE
-
-    def __init__(self, name, x, z, noise_x=0, noise_z=0, fake_sleep_x=0,
-                 fake_sleep_z=0, **kwargs):
-        self.name = name
-        self.noise_x = noise_x
-        self.noise_z = noise_z
-        self.fake_sleep_x = fake_sleep_x
-        self.fake_sleep_z = fake_sleep_z
-        self.x = Mover('X Motor', OrderedDict(
-                [('x', lambda x: x + np.random.uniform(-1, 1)*self.noise_x),
-                 ('x_setpoint', lambda x: x)]), {'x': x},
-                       fake_sleep=self.fake_sleep_x)
-        self.z = Mover('Z Motor', OrderedDict(
-                [('z', lambda z: z + np.random.uniform(-1, 1)*self.noise_z),
-                 ('z_setpoint', lambda z: z)]), {'z': z},
-                       fake_sleep=self.fake_sleep_z)
-
-        self.y_state = "OUT"
-        self._subs = []
-        self.pix = kwargs.get("pix", (1392, 1040))
-        self.size = kwargs.get("size", (0.0076, 0.0062))
-        self.invert = kwargs.get("invert", False)
-        self.reader = Reader(self.name, {'centroid_x' : self.cent_x,
-                                         'centroid_y' : self.cent_y,
-                                         'centroid' : self.cent,
-                                         'centroid_x_abs' : self.cent_x_abs})
-        self.devices = [self.x, self.z, self.reader]
-        self._x = x
-        self._z = z
-        self.log_pref = "{0} (YAG) - ".format(self.name)
-
-    def _cent_x(self):
-        return np.floor(self.pix[0]/2)
-
-    def _cent_y(self):
-        return np.floor(self.pix[1]/2)
-
-    def cent_x(self):
-        return self._cent_x()
+#     def cent_y(self):
+#         return self._cent_y()
     
-    def cent_y(self):
-        return self._cent_y()
-    
-    def cent(self):
-        return (self.cent_x(), self.cent_y())
+#     def cent(self):
+#         return (self.cent_x(), self.cent_y())
 
-    def cent_x_abs(self):
-        return (self._x + (1 - 2*self.invert) * \
-                (self.cent_x() - np.floor(self.pix[0]/2)) * \
-                self.size[0]/self.pix[0])
+#     def cent_x_abs(self):
+#         return (self._x + (1 - 2*self.invert) * \
+#                 (self.cent_x() - np.floor(self.pix[0]/2)) * \
+#                 self.size[0]/self.pix[0])
                                      
-    def read(self, *args, **kwargs):
-        result = dict(ChainMap(*[dev.read(*args, **kwargs)
-                                 for dev in self.devices]))
-        return self.nameify_keys(result)
+#     def read(self, *args, **kwargs):
+#         result = dict(ChainMap(*[dev.read(*args, **kwargs)
+#                                  for dev in self.devices]))
+#         return self.nameify_keys(result)
     
-    def set(self, cmd=None, **kwargs):
-        logger.info("{0}Setting Attributes.".format(self.log_pref))
-        logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
-        if cmd == "OUT":
-            self.y_state = "OUT"
-        elif cmd == "IN":
-            self.y_state = "IN"
-        if cmd is not None:
-            self.run_subs()
-            return Status(done=True, success=True)
-        self._x = kwargs.get('x', self._x)
-        self._z = kwargs.get('z', self._z)
-        for dev in self.devices:
-            dev_params = dev.read()
-            for key in kwargs.keys():
-                if key in dev_params:
-                    dev.set(kwargs[key])
-        return Status(done=True, success=True)
+#     def set(self, cmd=None, **kwargs):
+#         logger.info("{0}Setting Attributes.".format(self.log_pref))
+#         logger.debug("{0}Setting: CMD:{1}, {2}".format(self.log_pref, cmd, kwargs))
+#         if cmd == "OUT":
+#             self.y_state = "OUT"
+#         elif cmd == "IN":
+#             self.y_state = "IN"
+#         if cmd is not None:
+#             self.run_subs()
+#             return Status(done=True, success=True)
+#         self._x = kwargs.get('x', self._x)
+#         self._z = kwargs.get('z', self._z)
+#         for dev in self.devices:
+#             dev_params = dev.read()
+#             for key in kwargs.keys():
+#                 if key in dev_params:
+#                     dev.set(kwargs[key])
+#         return Status(done=True, success=True)
     
-    def trigger(self, *args, **kwargs):
-        result = self.reader.trigger(*args, **kwargs)
-        return result
+#     def trigger(self, *args, **kwargs):
+#         result = self.reader.trigger(*args, **kwargs)
+#         return result
 
-    def describe(self, *args, **kwargs):
-        result = self.reader.describe(*args, **kwargs)
-        return self.nameify_keys(result)
+#     def describe(self, *args, **kwargs):
+#         result = self.reader.describe(*args, **kwargs)
+#         return self.nameify_keys(result)
     
-    def describe_configuration(self, *args, **kwargs):
-        result = self.reader.describe_configuration(*args, **kwargs)
-        return self.nameify_keys(result)
+#     def describe_configuration(self, *args, **kwargs):
+#         result = self.reader.describe_configuration(*args, **kwargs)
+#         return self.nameify_keys(result)
     
-    def read_configuration(self, *args, **kwargs):
-        result = self.reader.read_configuration(*args, **kwargs)
-        return self.nameify_keys(result)
+#     def read_configuration(self, *args, **kwargs):
+#         result = self.reader.read_configuration(*args, **kwargs)
+#         return self.nameify_keys(result)
     
-    @property
-    def blocking(self):
-        result = self.y_state == "IN"
-        return result
+#     @property
+#     def blocking(self):
+#         result = self.y_state == "IN"
+#         return result
 
-    def subscribe(self, function):
-        """
-        Get subs to run on demand
-        """
-        self.reader.subscribe(function)
-        self._subs.append(function)
+#     def subscribe(self, function):
+#         """
+#         Get subs to run on demand
+#         """
+#         self.reader.subscribe(function)
+#         self._subs.append(function)
 
-    def run_subs(self):
-        logger.debug("{0}Running subscribed functions".format(self.log_pref))
-        for sub in self._subs:
-            sub()
+#     def run_subs(self):
+#         logger.debug("{0}Running subscribed functions".format(self.log_pref))
+#         for sub in self._subs:
+#             sub()
 
-    def __repr__(self):
-        if self.name:
-            return self.name
-        else:
-            super().__repr__()
+#     def __repr__(self):
+#         if self.name:
+#             return self.name
+#         else:
+#             super().__repr__()
 
 
-def _x_to_pixel(x, yag):
-    logger.debug("Converting x position to pixel on yag '{0}'.".format(yag.name))
-    result = np.round(np.floor(yag.pix[0]/2) + \
-                    (1 - 2*yag.invert)*(x - yag._x) * \
-                    yag.pix[0]/yag.size[0])
+def _x_to_pixel(x, pim):
+    logger.debug("Converting x position to pixel on pim '{0}'.".format(pim.name))
+    cam = pim.detector.cam
+    result = np.round(np.floor(cam.resolution.resolution_x.value / 2) + \
+                      (x - pim.sim_x.value) * \
+                      cam.resolution.resolution_x.value / cam.size.size_x.value)
     logger.debug("Result: {0}".format(result))
     return result
 
-def _calc_cent_x(source, yag):
-    logger.debug("Calculating no bounce beam position on '{0}' yag. ".format(
-            yag.name))    
-    x = source._x + source._xp*yag._z
-    return _x_to_pixel(x, yag)
+def _calc_cent_x(source, pim):
+    logger.debug("Calculating no bounce beam position on '{0}' pim.".format(
+            pim.name))
+    x = source.sim_x.value + source.sim_xp.value*pim.sim_z.value
+    return _x_to_pixel(x, pim)
 
-def _m1_calc_cent_x(source, mirror_1, yag):
-    logger.debug("Calculating one bounce beam position on '{0}' yag. ".format(
-            yag.name))        
-    x = one_bounce(mirror_1._alpha,
-                   source._x,
-                   source._xp,
-                   mirror_1._x,
-                   mirror_1._z,
-                   yag._z)
-    return _x_to_pixel(x, yag)
+def _m1_calc_cent_x(source, mirror_1, pim):
+    logger.debug("Calculating one bounce beam position on '{0}' pim. ".format(
+            pim.name))        
+    x = one_bounce(mirror.sim_alpha.value,
+                   source.sim_x.value,
+                   source.sim_xp.value,
+                   mirror.sim_x.value,
+                   mirror.sim_z.value,
+                   pim.sim_z.value)
+    return _x_to_pixel(x, pim)
 
-def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, yag):
-    logger.debug("Calculating two bounce beam position on '{0}' yag. ".format(
-            yag.name))            
-    x = two_bounce((mirror_1._alpha, mirror_2._alpha),
-                   source._x,
-                   source._xp,
-                   mirror_1._x,
-                   mirror_1._z,
-                   mirror_2._x,
-                   mirror_2._z,
-                   yag._z)
-    return _x_to_pixel(x, yag)
+def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
+    logger.debug("Calculating two bounce beam position on '{0}' pim. ".format(
+            pim.name))            
+    x = two_bounce((mirror_1.sim_alpha.value, mirror_2.sim_alpha.value),
+                   source.sim_x.value,
+                   source.sim_xp.value,
+                   mirror_1.sim_x.value,
+                   mirror_1.sim_z.value,
+                   mirror_2.sim_x.value,
+                   mirror_2.sim_z.value,
+                   pim.sim_z.value)
+    return _x_to_pixel(x, pim)
 
-def patch_yags(*args, **kwargs):
-    pass
-
-# def patch_yags(yags, mirrors=Mirror('Inf Mirror', 0, float('Inf'), 0),
-#                source=Source('Zero Source', 0, 0)):
-#     if not isiterable(mirrors):
-#         mirrors = [mirrors]
-#     if not isiterable(yags):
-#         yags = [yags]
-#     logger.info("Patching {0} yag(s)".format(len(yags)))            
-#     for yag in yags:
-#         if yag._z <= mirrors[0]._z:
-#             logger.debug("Patching '{0}' with no bounce equation.".format(
-#                     yag.name))
-#             yag._cent_x = partial(_calc_cent_x, source, yag)
-#         elif mirrors[0]._z < yag._z:
-#             if len(mirrors) == 1:
-#                 logger.debug("Patching '{0}' with one bounce equation.".format(
-#                         yag.name))
-#                 yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
-#             elif yag._z <= mirrors[1]._z:
-#                 logger.debug("Patching '{0}' with one bounce equation.".format(
-#                         yag.name))
-#                 yag._cent_x = partial(_m1_calc_cent_x, source, mirrors[0], yag)
-#             elif mirrors[1]._z < yag._z:
-#                 logger.debug("Patching '{0}' with two bounce equation.".format(
-#                         yag.name))
-#                 yag._cent_x = partial(_m1_m2_calc_cent_x, source, mirrors[0],
-#                                       mirrors[1], yag)
-#     if len(yags) == 1:
-#         return yags[0]
-#     return yags
-            
-if __name__ == "__main__":
-    p1h = YAG("p1h", 0, 0)
-    feem1 = Mirror("feem1", 0, 90.510, 0)
-    p2h = YAG("p2h", 0.015000, 95.000)
-    feem2 = Mirror("feem2", 0.0317324, 101.843, 0)
-    p3h = YAG("p3h", 0.0317324, 103.6600)
-    hx2_pim = YAG("hx2_pim", 0.0317324, 150.0000)
-    um6_pim = YAG("um6_pim", 0.0317324, 200.0000)
-    dg3_pim = YAG("dg3_pim", 0.0317324, 375.0000)
-
-
-    yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
-    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_yags(yags, [feem1, feem2])
-
-    # print(p3h.cent_x())
-    
-    feem1.set(alpha=0.0013644716418)
-
-    # print(p3h.cent_x())
-    
-    feem2.set(alpha=0.0013674199723)
-    
-    # print(p3h.cent_x())
-
-    
-    pprint(p3h.read()['centroid_x']['value'])
-    # import ipdb; ipdb.set_trace()
-    pprint(dg3_pim.read()['centroid_x']['value'])
+def patch_pims(pims, mirrors, source):
+    if not isiterable(mirrors):
+        mirrors = [mirrors]
+    if not isiterable(pims):
+        pims = [pims]
+    logger.info("Patching {0} pim(s)".format(len(pims)))
+    for pim in pims:
+        if pim.sim_z.value <= mirrors[0].sim_z.value:
+            logger.debug("Patching '{0}' with no bounce equation.".format(
+                    pim.name))
+            pim.detector._get_readback_centroid_x = partial(
+                _calc_cent_x, source, pim)
+        elif mirrors[0].sim_z.value < pim.sim_z.value:
+            if len(mirrors) == 1:
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        pim.name))
+                pim.detector._get_readback_centroid_x = partial(
+                    _m1_calc_cent_x, source, mirrors[0], pim)
+            elif pim.sim_z.value <= mirrors[1].sim_z.value:
+                logger.debug("Patching '{0}' with one bounce equation.".format(
+                        pim.name))
+                pim.detector._get_readback_centroid_x = partial(
+                    _m1_calc_cent_x, source, mirrors[0], pim)
+            elif mirrors[1].sim_z.value < pim.sim_z.value:
+                logger.debug("Patching '{0}' with two bounce equation.".format(
+                        pim.name))
+                pim.detector._get_readback_centroid_x = partial(
+                    _m1_m2_calc_cent_x, source, mirrors[0], mirrors[1], pim)
+    if len(pims) == 1:
+        return pims[0]
+    return pims

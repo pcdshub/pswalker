@@ -10,7 +10,7 @@ from ophyd.ophydobj import OphydObject
 from ophyd.positioner import SoftPositioner
 from bluesky.plans import sleep, checkpoint
 
-from pswalker.examples import YAG
+from pcdsdevices.sim import pim
 
 logger=logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class FakePath(OphydObject):
 
 
 def ruin_my_path(path):
-    choices = [d for d in path.devices if isinstance(d, YAG)]
+    choices = [d for d in path.devices if isinstance(d, pim.PIM)]
     device = random.choice(choices)
     device.set("IN")
 
