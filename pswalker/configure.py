@@ -20,8 +20,8 @@ def named_configure(obj, **cfg):
 
 
 def pim_configure(pim, event_code=140, width=300000, delay_ticks=94096,
-                  polarity='Inverted', trigger_mode='Pulse',
-                  image_mode='Continuous'):
+                  polarity=1, trigger_mode=2,
+                  image_mode=2):
     """
     Macro for doing standard pim configuration.
     """
