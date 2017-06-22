@@ -166,7 +166,6 @@ def get_thresh_signal(yag):
     Given a yag object, return the signal we'll be using to determine if the
     yag has beam on it.
     """
-    #return yag.detector.stats2.mean_value
     return yag.detector.stats2.centroid.y
 
 
@@ -190,21 +189,7 @@ def make_homs_recover(yags, yag_index, motor, threshold, center=0,
                                          timeout=30, has_stop=False)
         return (yield from plan())
 
-    #def homs_recover():
-    #    logger.debug("running backup recovery plan")
-    #    return (yield from abs_set(motor, center))
-
     return homs_recover
-
-
-#def make_homs_recover(m1, m2, c1, c2):
-#
-#    def homs_recover():
-#        logger.debug("running backup recovery plan")
-#        yield from abs_set(m1, c1)
-#        yield from abs_set(m2, c2)
-#
-#    return homs_recover
 
 
 def make_pick_recover(yag1, yag2, threshold):
@@ -225,9 +210,6 @@ def make_pick_recover(yag1, yag2, threshold):
                 return 1
             else:
                 return None
-
-    #def pick_recover():
-    #    return None
 
     return pick_recover
 
@@ -254,13 +236,13 @@ def get_lightpath_suspender(yags):
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
-                   averages=250, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
-                   first_steps=1):
+                   averages=100, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
+                   first_steps=0.0001):
     """
     Skywalker with homs-specific devices and recovery methods
     """
     if gradients is None:
-        gradients = [-8000, 64000]
+        gradients = [-4000, 32000]
     system = homs_system()
     if isinstance(y1, str):
         y1 = system[y1]
@@ -270,11 +252,8 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
     m2h = system['m2h']
     m1 = m1h
     m2 = m2h
-    #recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
     recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.058)
-    #recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
     recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.0504)
-    #xrtm2 is 0.0354
     choice = make_pick_recover(y1, y2, has_beam_floor)
 
     _md = {'goals': goals,
@@ -292,6 +271,9 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
 
     @run_decorator(md=_md)
     def letsgo():
+        for yag in (y1, y2):
+            if not np.isclose(yag.zoom.position, 25):
+                yield from abs_set(yag.zoom, 25)
         return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
                                      pitch_key, goals,
                                      gradients=gradients,
@@ -301,13 +283,3 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
                                      branch_choice=choice,
                                      first_steps=first_steps))
     return (yield from letsgo())
-
-
-def run_homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
-                       averages=20, timeout=600, has_beam_floor=100):
-    RE = homs_RE()
-    walk = homs_skywalker(goals, y1=y1, y2=y2, gradients=gradients,
-                          tolerances=tolerances,
-                          averages=averages, timeout=timeout,
-                          has_beam_floor=has_beam_floor)
-    RE(walk)
