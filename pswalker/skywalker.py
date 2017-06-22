@@ -272,8 +272,12 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
     @run_decorator(md=_md)
     def letsgo():
         for yag in (y1, y2):
-            if not np.isclose(yag.zoom.position, 25):
-                yield from abs_set(yag.zoom, 25)
+            try:
+                if not np.isclose(yag.zoom.position, 25):
+                    yield from abs_set(yag.zoom, 25)
+            except AttributeError:
+                logger.error()
+                pass
         return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
                                      pitch_key, goals,
                                      gradients=gradients,
