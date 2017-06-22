@@ -28,15 +28,15 @@ def test_measure_average(RE, one_bounce_system):
     #Fake event storage 
     centroids = []
     readbacks = []
-    col_c = collector(det.name + '_centroid_x', centroids)
-    col_r = collector(mot.name + '_alpha',    readbacks)
+    col_c = collector(det.name + '_detector_stats2_centroid_x', centroids)
+    col_r = collector(mot.name + '_pitch',    readbacks)
     #Run plan
     RE(run_wrapper(measure_average([det, mot],
-                                   ['centroid_x','alpha'],
+                                   ['detector_stats2_centroid_x','pitch'],
                                    delay=0.1, num=5)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [250.,250.,250.,250.,250.]
+    assert centroids == [320.,320.,320.,320.,320.]
     assert readbacks == [0.,0.,0.,0.,0.]
 
     #Clear from last test
@@ -44,17 +44,17 @@ def test_measure_average(RE, one_bounce_system):
     readbacks.clear()
     #Run with array of delays
     RE(run_wrapper(measure_average([det, mot],
-                                   ['centroid_x','alpha'],
+                                   ['detector_stats2_centroid_x','pitch'],
                                    delay=[0.1], num=2)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [250., 250.]
+    assert centroids == [320., 320.]
     assert readbacks == [0., 0.]
 
     #Invalid delay settings
     with pytest.raises(ValueError):
         RE(run_wrapper(measure_average([det, mot],
-                                       ['centroid_x','alpha'],
+                                       ['detector_stats2_centroid_x','pitch'],
                                        delay=[0.1], num=3)))
 
 def test_measure_average_system(RE, lcls_two_bounce_system):
@@ -63,15 +63,15 @@ def test_measure_average_system(RE, lcls_two_bounce_system):
 
     centroids = []
     readbacks = []
-    col_c = collector(y1.name + '_centroid_x', centroids)
-    col_r = collector(m1.name + '_alpha',    readbacks)
+    col_c = collector(y1.name + '_detector_stats2_centroid_x', centroids)
+    col_r = collector(m1.name + '_pitch',    readbacks)
 
     RE(run_wrapper(measure_average([y1, m1, y2, m2],
-                                   ['centroid_x','alpha'],
+                                   ['detector_stats2_centroid_x','pitch'],
                                    delay=0.1, num=5)),
        subs={'event':[col_c, col_r]})
 
-    assert centroids == [y1.cent_x()] * 5
+    assert centroids == [y1.detector._get_readback_centroid_x()] * 5
     assert readbacks == [m1.position] * 5
 
     # RE.msg_hook is a message collector
@@ -102,13 +102,14 @@ def test_measure_centroid(RE, one_bounce_system):
     _, mot, det = one_bounce_system
     #Fake event storage 
     centroids = []
-    col_c = collector(det.name + '_centroid_x', centroids)
+    col_c = collector(det.name + '_detector_stats2_centroid_x', centroids)
     #Run plan
     # assert 0
-    RE(run_wrapper(measure_centroid(det, average=5, target_field='centroid_x')),
+    RE(run_wrapper(measure_centroid(det, average=5, 
+                                    target_field='detector_stats2_centroid_x')),
        subs={'event':[col_c]})
     #Check events
-    assert centroids == [250.,250.,250.,250.,250.]
+    assert centroids == [320.,320.,320.,320.,320.]
 
 
 def test_walk_to_pixel(RE, one_bounce_system):
@@ -117,14 +118,18 @@ def test_walk_to_pixel(RE, one_bounce_system):
     #Walk to the pixel using dumb first step
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1e-6,
                                      tolerance=10, average=None,
-                                     target_fields=['centroid_x', 'alpha'],
-                                     max_steps=3))
+                                     target_fields=['detector_stats2_centroid_x', 
+                                                    'pitch'], max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()[det.name + '_centroid_x']['value'], 200, atol=10)
+    assert np.isclose(det.read()[det.name + 
+                                 '_detector_stats2_centroid_x']['value'], 200, 
+                      atol=10)
     #Walk to pixel using intial guess at gradient
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, gradient=200,
                                      tolerance=10, average=None,
-                                     target_fields=['centroid_x', 'alpha'],
-                                     max_steps=3))
+                                     target_fields=['detector_stats2_centroid_x', 
+                                                    'pitch'], max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()[det.name + '_centroid_x']['value'], 200, atol=10)
+    assert np.isclose(det.read()[det.name + 
+                                 '_detector_stats2_centroid_x']['value'], 200, 
+                      atol=10)

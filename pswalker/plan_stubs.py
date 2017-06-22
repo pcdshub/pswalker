@@ -10,6 +10,7 @@ from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
+from .utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
 
 
 def match_condition(signal, condition, mover, setpoint, timeout=None,
-                    sub_type=None):
+                    sub_type=None, has_stop=True):
     """
     Plan to adjust mover until condition() returns True. Read and save both the
     signal and the mover after the move.
@@ -204,6 +205,12 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     sub_type: str, optional
         Use a different subscription than the signal's default.
 
+    has_stop: bool, optional
+        Boolean to indicate whether or not we can stop the motor. We usually
+        use the motor's stop command to stop at the signal. If this is set to
+        False (e.g. we can't stop it), go back to center of the largest range
+        with the condition satisfied after reaching the end.
+
     Returns
     -------
     ok: bool
@@ -213,10 +220,20 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     # done = threading.Event()
     success = threading.Event()
 
-    def condition_cb(*args, value, **kwargs):
-        if condition(value):
-            success.set()
-            mover.stop()
+    if has_stop:
+        def condition_cb(*args, value, **kwargs):
+            if condition(value):
+                success.set()
+                mover.stop()
+    else:
+        pts = []
+
+        def condition_cb(*args, value, **kwargs):
+            nonlocal pts
+            if condition(value):
+                pts.append((mover.position, True))
+            else:
+                pts.append((mover.position, False))
 
     if sub_type is not None:
         signal.subscribe(condition_cb, sub_type=sub_type)
@@ -226,8 +243,53 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     try:
         yield from abs_set(mover, setpoint, wait=True, timeout=timeout)
     except FailedStatus:
-        if not condition(signal.value):
-            logger.warning("Timeout on motor %s", mover)
+        logger.warning("Timeout on motor %s", mover)
+
+    if not has_stop:
+        best_start = -1
+        best_end = -1
+        curr_start = -1
+        curr_end = -1
+
+        def new_best(best_start, best_end, curr_start, curr_end):
+            if -1 in (best_start, best_end):
+                return curr_start, curr_end
+            elif -1 in (curr_start, curr_end):
+                return best_start, best_end
+            else:
+                curr_dist = abs(pts[curr_end][0] - pts[curr_start][0])
+                best_dist = abs(pts[best_end][0] - pts[best_start][0])
+                if curr_dist > best_dist:
+                    return curr_start, curr_end
+                else:
+                    return best_start, best_end
+
+        for i, (pos, ok) in enumerate(pts):
+            if ok:
+                if curr_start == -1:
+                    curr_start = i
+                curr_end = i
+            else:
+                best_start, best_end = new_best(best_start, best_end,
+                                                curr_start, curr_end)
+                curr_start = -1
+                curr_end = -1
+        best_start, best_end = new_best(best_start, best_end,
+                                        curr_start, curr_end)
+        if -1 in (best_start, best_end):
+            logger.debug('did not find any valid points: %s', pts)
+        else:
+            logger.debug('found valid points, moving back')
+            start = pts[best_start][0]
+            end = pts[best_end][0]
+            try:
+                yield from abs_set(mover, (end+start)/2, wait=True,
+                                   timeout=timeout)
+            except FailedStatus:
+                logger.warning("Timeout on motor %s", mover)
+            if condition(signal.value):
+                success.set()
+
     yield from create()
     yield from read(mover)
     yield from read(signal)
@@ -236,19 +298,22 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
     ok = success.is_set()
     if ok:
-        logger.debug("condition met in match_condition, mover=%s setpt=%s",
-                     mover.name, setpoint)
+        logger.debug(('condition met in match_condition, '
+                      'mover=%s setpt=%s cond value=%s'),
+                     mover.name, setpoint, signal.value)
     else:
         logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
-                     mover.name, setpoint)
+                     mover.name, setpoint, signal.value)
     return ok
 
 
 def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
-                      try_reverse=True, ceil=True, off_limit=0.001):
+                      try_reverse=True, ceil=True, off_limit=0, has_stop=True):
     """
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
+
+    Raises RecoverDone upon completion.
 
     Parameters
     ----------
@@ -283,7 +348,14 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     off_limit: float, optional
         The distance from the limit to aim for. This is included because some
         motor implementations do not allow us to move exactly to the limit. If
-        this is not the case, you can set it to zero. The default is 0.001.
+        this is the case, set it to some small value compared to your move
+        sizes.
+
+    has_stop: bool, optional
+        Boolean to indicate whether or not we can stop the motor. We usually
+        use the motor's stop command to stop when recovered. If this is set to
+        False (e.g. we can't stop it), go back to center of the largest range
+        with the signal above the threshold.
     """
     if dir_initial > 0:
         logger.debug("Recovering towards the high limit switch")
@@ -298,10 +370,10 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         else:
             return x <= threshold
     ok = yield from match_condition(signal, condition, motor, setpoint,
-                                    timeout=timeout)
+                                    timeout=timeout, has_stop=has_stop)
     if ok:
         logger.debug("Recovery was successful")
-        return True
+        raise RecoverDone
     else:
         if try_reverse:
             logger.debug("First direction failed, trying reverse...")
@@ -314,4 +386,4 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  ceil=ceil))
         else:
             logger.debug("Recovery failed")
-            return False
+            raise RecoverFail

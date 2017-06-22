@@ -9,6 +9,7 @@ from bluesky.plans import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold)
+from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal
 
 logger = logging.getLogger(__name__)
@@ -51,10 +52,11 @@ def test_verify_all_answers(RE, fake_yags):
 
     # Check that all correct returns True, near correct returns True, and
     # completely wrong returns False.
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x', ans, 1)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x', 
+                                    ans, 1)))
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x',
                                     [a + 5 for a in ans], 6)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x',
                                     [a + 5 for a in ans], 1)))
     assert ok_queue.get() is True, "Exactly correct rejected!"
     assert ok_queue.get() is True, "Within tolerance rejected!"
@@ -65,9 +67,9 @@ def test_verify_all_readers(RE, fake_yags):
     yags, ans = fake_yags
     ok = False
 
-    RE(run_wrapper(verify_all(yags[1:], 'centroid_x', ans, 5,
+    RE(run_wrapper(verify_all(yags[1:], 'detector_stats2_centroid_x', ans, 5,
                               other_readers=yags[0],
-                              other_fields='centroid_y')))
+                              other_fields='detector_stats2_centroid_y')))
     for msg in RE.msg_hook.msgs:
         if msg.command == 'read' and yags[0] is msg.obj:
             ok = True
@@ -82,8 +84,8 @@ def test_verify_all_array(RE, fake_yags):
     # Last let's make sure we can get a list of bools that correspond correctly
     # to the yag that was wrong
     ans[0] = ans[0] + 25
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'centroid_x', ans, 5,
-                                    summary=False)))
+    RE(run_wrapper(verify_and_stash(
+        ok_queue, yags, 'detector_stats2_centroid_x', ans, 5, summary=False)))
     ok_list = ok_queue.get()
     assert not ok_list[0], "Wrong element bool i=0"
     for i in range(1, len(ans)):
@@ -119,6 +121,38 @@ def test_match_condition_success(RE, mot_and_sig):
 
 
 @pytest.mark.timeout(tmo)
+def test_match_condition_success_no_stop(RE, mot_and_sig):
+    logger.debug("test_match_condition_success_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    # Delay has no purpose if we aren't going to stop
+
+    def condition(x):
+        if 5 < x < 7:
+            return True
+        elif 10 < x < 16:
+            return True
+        return False
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 12 < mot.position < 14
+    # Motor should end in the middle of the largest True region
+
+    mot.move(0, wait=True)
+
+    def condition(x):
+        return 10 < x < 16
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 12 < mot.position < 14
+
+    mot.move(0, wait=True)
+
+    def condition(x):
+        return x > 10
+    RE(run_wrapper(match_condition(sig, condition, mot, 20, has_stop=False)))
+    assert 14 < mot.position < 16
+
+
+@pytest.mark.timeout(tmo)
 def test_match_condition_fail(RE, mot_and_sig):
     logger.debug("test_match_condition_fail")
     mot, sig = mot_and_sig
@@ -126,6 +160,18 @@ def test_match_condition_fail(RE, mot_and_sig):
     assert mot.position == 40
     # If the motor did not stop and reached 40, we didn't erroneously match the
     # condition
+
+
+@pytest.mark.timeout(tmo)
+def test_match_condition_fail_no_stop(RE, mot_and_sig):
+    logger.debug("test_match_condition_fail_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    RE(run_wrapper(match_condition(sig, lambda x: x > 50, mot, 40,
+                                   has_stop=False)))
+    assert mot.position == 40
+    # If the motor reached 40 and didn't go back, we didn't erroneously match
+    # the condition
 
 
 @pytest.mark.timeout(tmo)
@@ -141,16 +187,29 @@ def test_match_condition_timeout(RE, mot_and_sig):
 def test_recover_threshold_success(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
     assert mot.position < 21
     # If we stopped right after 20, we recovered
+
+
+@pytest.mark.timeout(tmo)
+def test_recover_threshold_success_no_stop(RE, mot_and_sig):
+    logger.debug("test_recover_threshold_success_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, 20, mot, +1, has_stop=False)))
+    assert 59 < mot.position < 61
+    # If we went halfway between 20 and 100, it worked
 
 
 @pytest.mark.timeout(tmo)
 def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
+    with pytest.raises(RecoverDone):
+        RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
     assert mot.position > -2
     # If we stopped right after -1, we recovered
 
@@ -159,8 +218,20 @@ def test_recover_threshold_success_reverse(RE, mot_and_sig):
 def test_recover_threshold_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
-    assert mot.position == -99.999
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
+    assert mot.position == -100
+    # We got to the end of the negative direction, we failed
+
+
+@pytest.mark.timeout(tmo)
+def test_recover_threshold_failure_no_stop(RE, mot_and_sig):
+    logger.debug("test_recover_threshold_failure_no_stop")
+    mot, sig = mot_and_sig
+    mot.delay = 0
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 101, mot, +1, has_stop=False)))
+    assert mot.position == -100
     # We got to the end of the negative direction, we failed
 
 
@@ -168,6 +239,11 @@ def test_recover_threshold_failure(RE, mot_and_sig):
 def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_timeout_failure")
     mot, sig = mot_and_sig
-    RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.2)))
-    assert mot.position not in (50, 99.999, -99.999)
+    # Make the motor slower to guarantee a timeout
+    mot.n_steps = 5000
+    with pytest.raises(RecoverFail):
+        RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.1)))
+    pos = mot.position
+    assert not 49 < pos < 51
+    assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out

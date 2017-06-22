@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from threading import Lock
 
 import numpy as np
 from bluesky import RunEngine
@@ -10,10 +11,9 @@ from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
-from .plan_stubs import recover_threshold
+from .plan_stubs import recover_threshold, prep_img_motors
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender,
-                         FeeSpecSuspendFloor)
+                         PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 
 logger = logging.getLogger(__name__)
@@ -49,25 +49,27 @@ def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
             logger.debug("Switching to branch %s", choice)
             yield from branch()
 
-    is_branching = False
+    # No nested branches
+    branch_lock = Lock()
 
     def branch_handler(msg):
-        nonlocal is_branching
-        if not is_branching and msg.command == branch_msg:
-            is_branching = True
-
-            def new_gen():
-                if branch_choice() is not None:
-                    yield from checkpoint()
-                    yield from do_branch()
-                    logger.debug("Resuming plan after branch")
-                yield msg
-                nonlocal is_branching
-                is_branching = False
-
-            return new_gen(), None
-        else:
-            return None, None
+        if msg.command == branch_msg:
+            nonlocal branch_lock
+            has_lock = branch_lock.acquire(blocking=False)
+            if has_lock:
+                try:
+                    def new_gen():
+                        nonlocal branch_lock
+                        with branch_lock:
+                            if branch_choice() is not None:
+                                yield from checkpoint()
+                                yield from do_branch()
+                                logger.debug("Resuming plan after branch")
+                            yield msg
+                finally:
+                    branch_lock.release()
+                    return new_gen(), None
+        return None, None
 
     brancher = plan_mutator(plan, branch_handler)
     return (yield from brancher)
@@ -94,7 +96,6 @@ def lcls_RE(alarming_pvs=None, RE=None):
     """
     RE = RE or RunEngine({})
     RE.install_suspender(BeamEnergySuspendFloor(0.01))
-    #RE.install_suspender(FeeSpecSuspendFloor(30))
     RE.install_suspender(BeamRateSuspendFloor(2))
     alarming_pvs = alarming_pvs or []
     for pv in alarming_pvs:
@@ -169,36 +170,41 @@ def get_thresh_signal(yag):
     return yag.detector.stats2.centroid.y
 
 
-#def make_homs_recover(yag, motor, threshold, center=0):
-#    """
-#    Make a recovery plan for a particular yag/motor combination in the homs
-#    system.
-#    """
-#    #def homs_recover():
-#    #    sig = get_thresh_signal(yag)
-#    #    dir_init = np.sign(motor.position) or 1
-#    #    if motor.position < center:
-#    #        dir_init = 1
-#    #    else:
-#    #        dir_init = -1
-#    #    plan = recover_threshold(sig, threshold, motor, dir_init, timeout=10)
-#    #    return (yield from plan)
+def make_homs_recover(yags, yag_index, motor, threshold, center=0,
+                      get_signal=get_thresh_signal):
+    """
+    Make a recovery plan for a particular yag/motor combination in the homs
+    system.
+    """
+    def homs_recover():
+        sig = get_signal(yags[yag_index])
+        dir_init = np.sign(motor.position) or 1
+        if motor.position < center:
+            dir_init = 1
+        else:
+            dir_init = -1
+
+        def plan():
+            yield from prep_img_motors(yag_index, yags, timeout=10)
+            yield from recover_threshold(sig, threshold, motor, dir_init,
+                                         timeout=30, has_stop=False)
+        return (yield from plan())
+
+    #def homs_recover():
+    #    logger.debug("running backup recovery plan")
+    #    return (yield from abs_set(motor, center))
+
+    return homs_recover
+
+
+#def make_homs_recover(m1, m2, c1, c2):
 #
 #    def homs_recover():
 #        logger.debug("running backup recovery plan")
-#        return (yield from abs_set(motor, center))
+#        yield from abs_set(m1, c1)
+#        yield from abs_set(m2, c2)
 #
 #    return homs_recover
-
-
-def make_homs_recover(m1, m2, c1, c2):
-
-    def homs_recover():
-        logger.debug("running backup recovery plan")
-        yield from abs_set(m1, c1)
-        yield from abs_set(m2, c2)
-
-    return homs_recover
 
 
 def make_pick_recover(yag1, yag2, threshold):
@@ -233,11 +239,18 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     """
     Iterwalk as a base, with arguments for branching
     """
-    walk = iterwalk(detectors, motors, goals, gradients=gradients,
+    walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
+                    gradients=gradients,
                     tolerances=tolerances, averages=averages, timeout=timeout,
                     detector_fields=det_fields, motor_fields=mot_fields,
                     system=detectors + motors)
     return (yield from branching_plan(walk, branches, branch_choice))
+
+
+def get_lightpath_suspender(yags):
+    # TODO initialize lightpath
+    # Make the suspender to go to the last yag and exclude prev yags
+    return LightpathSuspender(yags[-1], exclude=yags[:-1])
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
@@ -257,8 +270,10 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
     m2h = system['m2h']
     m1 = m1h
     m2 = m2h
-    recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
-    recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    #recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.058)
+    #recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
+    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.0504)
     #xrtm2 is 0.0354
     choice = make_pick_recover(y1, y2, has_beam_floor)
 
