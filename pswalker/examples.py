@@ -152,24 +152,23 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR"),
         if not mirrors or pim.sim_z.value <= mirrors[0].sim_z.value:
             logger.debug("Patching '{0}' with no bounce equation.".format(
                     pim.name))
-            pim.detector._get_readback_centroid_x = lambda : (
-                _calc_cent_x(source, pim))
+            pim.detector._get_readback_centroid_x = partial(_calc_cent_x, source, pim)
         elif mirrors[0].sim_z.value < pim.sim_z.value:
             if len(mirrors) == 1:
                 logger.debug("Patching '{0}' with one bounce equation.".format(
                         pim.name))
-                pim.detector._get_readback_centroid_x = lambda : (
-                    _m1_calc_cent_x(source, mirrors[0], pim))
+                pim.detector._get_readback_centroid_x = partial(_m1_calc_cent_x, source,
+                                                                mirrors[0], pim)
             elif pim.sim_z.value <= mirrors[1].sim_z.value:
                 logger.debug("Patching '{0}' with one bounce equation.".format(
                         pim.name))
-                pim.detector._get_readback_centroid_x = lambda : (
-                    _m1_calc_cent_x(source, mirrors[0], pim))
+                pim.detector._get_readback_centroid_x = partial(_m1_calc_cent_x, source,
+                                                                mirrors[0], pim)
             elif mirrors[1].sim_z.value < pim.sim_z.value:
                 logger.debug("Patching '{0}' with two bounce equation.".format(
                         pim.name))
-                pim.detector._get_readback_centroid_x = lambda : (
-                    _m1_m2_calc_cent_x(source, mirrors[0], mirrors[1], pim))
+                pim.detector._get_readback_centroid_x = partial(_m1_m2_calc_cent_x , source,
+                                                                mirrors[0], mirrors[1], pim)
     if len(pims) == 1:
         return pims[0]
     return pims
