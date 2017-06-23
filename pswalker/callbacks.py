@@ -160,7 +160,7 @@ class LinearFit(LiveBuild):
         super().eval(x)
         
         #Structure input add past result
-        kwargs = {'x' : np.asarray(x)} 
+        kwargs = {'x' : np.asarray(x)}
         kwargs.update(self.result.values)
 
         #Return prediction
