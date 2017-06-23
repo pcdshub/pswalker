@@ -17,7 +17,7 @@ from pswalker.iterwalk import iterwalk
 TOL = 5
 logger = logging.getLogger(__name__)
 
-tmo = 3
+tmo = 10
 
 
 @pytest.mark.timeout(tmo)
