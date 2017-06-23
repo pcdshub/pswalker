@@ -8,7 +8,7 @@ from bluesky.plans import checkpoint
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
-from .utils.argutils import as_list
+from .utils.argutils import as_list, field_prepend
 from .utils.exceptions import RecoverDone
 
 logger = logging.getLogger(__name__)
@@ -168,17 +168,17 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 # Check if we're already done
                 logger.debug("measure_average on det=%s, mot=%s, sys=%s",
                              detectors[index], motors[index], full_system)
-                pos = (yield from measure_average([detectors[index],
+                avgs = (yield from measure_average([detectors[index],
                                                    motors[index]]
                                                   + full_system,
                                                   [detector_fields[index]],
                                                   num=averages[index]))
+
+                pos = avgs[field_prepend(detector_fields[index],
+                                         detectors[index])]
                 logger.debug("recieved %s from measure_average on %s", pos,
                              detectors[index])
-                try:
-                    pos = pos[0]
-                except IndexError:
-                    pass
+
                 if abs(pos - goals[index]) < tolerances[index]:
                     logger.debug("beam aligned on %s without move",
                                  detectors[index])
@@ -206,18 +206,18 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                               'system=%s'), pos, goal,
                              detectors[index].name, motors[index].name,
                              full_system)
-                pos = (yield from walk_to_pixel(detectors[index],
-                                                motors[index],
-                                                goal, firstpos,
-                                                gradient=gradients[index],
-                                                target_fields=[
-                                                    detector_fields[index],
-                                                    motor_fields[index]],
-                                                first_step=first_steps[index],
-                                                tolerance=tolerances[index],
-                                                system=full_system,
-                                                average=averages[index],
-                                                max_steps=10))
+                pos, model = (yield from walk_to_pixel(detectors[index],
+                                                       motors[index],
+                                                       goal, firstpos,
+                                                       gradient=gradients[index],
+                                                       target_fields=[
+                                                           detector_fields[index],
+                                                           motor_fields[index]],
+                                                       first_step=first_steps[index],
+                                                       tolerance=tolerances[index],
+                                                       system=full_system,
+                                                       average=averages[index],
+                                                       max_steps=10))
                 logger.debug("Walk reached pos %s on %s", pos,
                              detectors[index].name)
                 mirror_walks += 1

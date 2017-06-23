@@ -13,7 +13,7 @@ from bluesky.examples import Mover, Reader
 ##########
 # Module #
 ##########
-from pswalker.callbacks import apply_filters, LinearFit, MultiPitchFit
+from pswalker.callbacks import rank_models, apply_filters, LinearFit, MultiPitchFit
 
 def test_linear_fit():
     #Create RunEngine
@@ -40,7 +40,8 @@ def test_linear_fit():
 
     #Check we create an accurate estimate
     print(cb.result.fit_report())
-    assert np.allclose(cb.eval(10), 52, atol=1e-5)
+    assert np.allclose(cb.eval(x=10), 52, atol=1e-5)
+    assert np.allclose(cb.backsolve(52)['x'], 10, atol=1e-5)
 
 
 def test_multi_fit():
@@ -70,13 +71,14 @@ def test_multi_fit():
         assert np.allclose(cb.result.values[k], v, atol=1e-6)
 
     #Check we create an accurate estimate
-    assert np.allclose(cb.eval(5,10), 55, atol=1e-5)
+    assert np.allclose(cb.eval(a0=5,a1=10), 55, atol=1e-5)
+    assert np.allclose(cb.backsolve(55, a1=10)['a0'], 5, atol=1e-5)
+    assert np.allclose(cb.backsolve(55, a0=5)['a1'], 10, atol=1e-5)
 
 
 def test_apply_filters():
-    mock_doc = {'data' : {'a' : 4,
-                          'b' : -1}
-               }
+    mock_doc = {'a' : 4, 'b' : -1}
+               
     #Passing filters
     assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0}
             )
@@ -93,3 +95,34 @@ def test_apply_filters():
     #Include missing
     assert apply_filters(mock_doc, filters={'c' : lambda x : True},
                              drop_missing=False)
+
+def test_rank_models():
+    RE = RunEngine()
+    
+    #Create accurate fit
+    motor = Mover('motor', {'motor' : lambda x : x}, {'x' :0})
+    det   = Reader('det',
+                   {'centroid' : lambda : 5*motor.read()['motor']['value'] + 2})
+    fit1 = LinearFit('centroid', 'motor',
+                    update_every=None, name='Accurate')
+    RE(scan([det], motor, -1, 1, 50), fit1)
+
+    #Create inaccurate fit
+    det2   = Reader('det',
+                   {'centroid' : lambda : 25*motor.read()['motor']['value'] + 2})
+    fit2 = LinearFit('centroid', 'motor',
+                    update_every=None, name='Inaccurate')
+    RE(scan([det2], motor, -1, 1, 50), fit2)
+    
+    #Create inaccurate fit
+    det3   = Reader('det',
+                   {'centroid' : lambda : 12*motor.read()['motor']['value'] + 2})
+    fit3 = LinearFit('centroid', 'motor',
+                    update_every=None, name='Midly Inaccurate')
+    RE(scan([det3], motor, -1, 1, 50), fit3)
+
+    #Rank models
+    ranking = rank_models([fit2, fit1, fit3],target=22, x=4)
+    assert ranking[0] == fit1
+    assert ranking[1] == fit3
+    assert ranking[2] == fit2
