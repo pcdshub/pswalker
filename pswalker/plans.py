@@ -393,7 +393,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
                     init_guess=init_guess, average=average)
 
     #Fitwalk
-    accurate_model = yield from fitwalk([detector]+system, motor, [fit]+models, target,
+    last_shot, accurate_model = yield from fitwalk([detector]+system, motor, [fit]+models, target,
                                         naive_step=naive_step, average=average,
                                         filters=filters, tolerance=tolerance, delay=delay,
                                         drop_missing=drop_missing, max_steps=max_steps)
@@ -402,7 +402,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
     if not accurate_model:
         logger.info("Reached target without use of model")
 
-    return accurate_model
+    return last_shot, accurate_model
 
 
 def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
@@ -713,4 +713,5 @@ def fitwalk(detectors, motor, models, target,
     #Report a succesfull run
     logger.info("Succesfully walked to value {} (target={}) after {} steps."\
                 "".format(last_shot, target, steps))
-    return accurate_model
+
+    return last_shot, accurate_model
