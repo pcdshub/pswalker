@@ -267,7 +267,7 @@ def test_fitwalk(RE):
 
     #Create plan
     walk = fitwalk([det], motor, [parabola, linear], 89.4,
-                   average=1, tolerance = 0.5 , naive_step=mv(motor, 1))
+                   average=1, tolerance = 0.5)
 
     #Call with RunEngine
     RE(run_wrapper(walk))
