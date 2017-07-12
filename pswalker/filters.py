@@ -13,7 +13,6 @@ import logging
 import cv2
 import numpy as np
 from psbeam.morph import get_opening
-from psbeam.template_images import circle_small
 from psbeam.beamexceptions import NoContoursPresent
 from psbeam.contouring import (get_largest_contour, get_moments, get_centroid,
                                get_circularity)
@@ -29,45 +28,45 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
                       threshold_m00_max=10e4, threshold_circularity=0.15):
     """
     Runs the full pipeline which includes:
-    	- Checks if there is beam by obtaining an image contour
-    	- Checks the sum of all pixels is above and below a threshold
-    	- Checking if the computed centroid is close to the adplugin centroid
-    	- Checks that the beam is above the threshold of circularity
+        - Checks if there is beam by obtaining an image contour
+        - Checks the sum of all pixels is above and below a threshold
+        - Checking if the computed centroid is close to the adplugin centroid
+        - Checks that the beam is above the threshold of circularity
 
     Parameters
     ----------
     image : np.ndarray
-    	Image to process
+        Image to process
 
     centroids_ad : tuple
-    	Centroids obtained from the areadetector stats plugin
+        Centroids obtained from the areadetector stats plugin
 
     resize : float, optional
-    	Resize the image before performing any processing
+        Resize the image before performing any processing
 
     kernel : tuple, optional
-    	Size of kernel to use when running the gaussian filter
+        Size of kernel to use when running the gaussian filter
 
     n_opening : int, optional
-    	Number of times to perform an erosion, followed by the same number of
-    	dilations.
+        Number of times to perform an erosion, followed by the same number of
+        dilations.
 
     cent_rtol : float, optional
-    	Relative tolerance to use when comparing AD's and OpenCV's centroids
+        Relative tolerance to use when comparing AD's and OpenCV's centroids
 
     threshold_m00_min : float, optional
-    	Lower threshold for the sum of pixels in the image
+        Lower threshold for the sum of pixels in the image
 
     threshold_m00_max : float, optional
-    	Upper threshold for the sum of pixels in the image
+        Upper threshold for the sum of pixels in the image
 
     threshold_cicularity : float, optional
-    	Upper threshold for beam circularity score (0.0 is perfectly circular)
+        Upper threshold for beam circularity score (0.0 is perfectly circular)
 
     Returns
     -------
     bool
-    	Bool indicating whether the image passed the tests
+        Bool indicating whether the image passed the tests
     """
     try:
         # # Pipeline
@@ -78,8 +77,8 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
         # Grab the image contours
         _, contours, _ = cv2.findContours(image_morph, 1, 2)
         # Grab the largest contour
-        contour, area = psb.get_largest_contour(image_prep, contours=contours, 
-                                                get_area=True)
+        contour, area = get_largest_contour(image_prep, contours=contours, 
+                                            get_area=True)
         # Image moments
         M = psb.get_moments(contour=contour)
         # Find a centroid
@@ -113,5 +112,5 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
     
     except NoContoursPresent:
         # Failed to get image contours
-        logger.debug("Filter - No contour found on image.")
+        logger.debug("Filter - No contours found on image.")
         return False
