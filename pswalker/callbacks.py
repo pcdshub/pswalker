@@ -592,8 +592,9 @@ class PositionSaving(CallbackBase):
         if self._json_stack:
             with self.json_path.open(mode='w+') as json:            
                 try:
-                    for jdoc in self._json_stack:
-                        sjson.dump(jdoc, json, indent=4)                    
+                    # for jdoc in self._json_stack:
+                    #     sjson.dump(jdoc, json, indent=4)
+                    sjson.dump(self._json_stack, json, indent=4)                        
                 except Exception as e:
                     print(e)
         # print(self.use_csv)

@@ -103,14 +103,26 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE.msg_hook = RE.log.debug
     return RE
 
+
 m1h = "MIRR:FEE1:M1H"
+m1h_xy = "STEP:M1H"
+m1h_gan_x = "STEP:FEE1:611:MOTR"
 m1h_name = "m1h"
 m2h = "MIRR:FEE1:M2H"
+m2h_xy = "STEP:M2H"
+m2h_gan_x = "STEP:FEE1:861:MOTR"
 m2h_name = "m2h"
+m3h = "MIRR:XRT:M2H"
+m3h_xy = "XRT:M2H"
+m3h_gan_x = "GANTRY:XRT:M2H"
+m3h_name = "xrtm2"
 hx2 = "HX2:SB1:PIM"
 hx2_name = "hx2"
 dg3 = "HFX:DG3:PIM"
 dg3_name = "dg3"
+mfxdg1 = "MFX:DG1:PIM"
+mfxdg1_det = "MFX:DG1:P6740"
+mfxdg1_name = "mfxdg1"
 pitch_key = "pitch"
 cent_x_key = "detector_stats2_centroid_y"
 fmt = "{}_{}"
@@ -148,14 +160,15 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror(m1h, section="611", name=m1h_name)
-    system['m1h2'] = OffsetMirror(m1h, section="611", name=m1h_name+"2")
-    system['m2h'] = OffsetMirror(m2h, section="861", name=m2h_name)
-    system['m2h2'] = OffsetMirror(m2h, section="861", name=m2h_name+"2")
-    #system['xrtm2'] = OffsetMirror("MIRR:XRT:M2H", section="")
-    system['xrtm2'] = None
+    system['m1h'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name)
+    system['m1h2'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name+"2")
+    system['m2h'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name)
+    system['m2h2'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name+"2")
+    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name)
+    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name+"2")
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
+    system['mfxdg1'] = PIM(mfxdg1, det_pv=mfxdg1_det, name=mfxdg1_name)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
@@ -166,7 +179,6 @@ def get_thresh_signal(yag):
     Given a yag object, return the signal we'll be using to determine if the
     yag has beam on it.
     """
-    #return yag.detector.stats2.mean_value
     return yag.detector.stats2.centroid.y
 
 
@@ -178,7 +190,6 @@ def make_homs_recover(yags, yag_index, motor, threshold, center=0,
     """
     def homs_recover():
         sig = get_signal(yags[yag_index])
-        dir_init = np.sign(motor.position) or 1
         if motor.position < center:
             dir_init = 1
         else:
@@ -187,24 +198,10 @@ def make_homs_recover(yags, yag_index, motor, threshold, center=0,
         def plan():
             yield from prep_img_motors(yag_index, yags, timeout=10)
             yield from recover_threshold(sig, threshold, motor, dir_init,
-                                         timeout=30, has_stop=False)
+                                         timeout=120, has_stop=False)
         return (yield from plan())
 
-    #def homs_recover():
-    #    logger.debug("running backup recovery plan")
-    #    return (yield from abs_set(motor, center))
-
     return homs_recover
-
-
-#def make_homs_recover(m1, m2, c1, c2):
-#
-#    def homs_recover():
-#        logger.debug("running backup recovery plan")
-#        yield from abs_set(m1, c1)
-#        yield from abs_set(m2, c2)
-#
-#    return homs_recover
 
 
 def make_pick_recover(yag1, yag2, threshold):
@@ -213,21 +210,25 @@ def make_pick_recover(yag1, yag2, threshold):
     needs to be run, and if so, which plan to use.
     """
     def pick_recover():
+        return None
+        num = 25
+        sigs = []
         if yag1.position == "IN":
-            sig = get_thresh_signal(yag1)
-            if sig.value < threshold[0]:
+            for i in range(num):
+                sig = get_thresh_signal(yag1)
+                sigs.append(sig)
+            if max(sigs) < threshold[0]:
                 return 0
             else:
                 return None
         elif yag2.position == "IN":
-            sig = get_thresh_signal(yag2)
-            if sig.value < threshold[1]:
+            for i in range(num):
+                sig = get_thresh_signal(yag2)
+                sigs.append(sig)
+            if max(sigs) < threshold[1]:
                 return 1
             else:
                 return None
-
-    #def pick_recover():
-    #    return None
 
     return pick_recover
 
@@ -254,13 +255,13 @@ def get_lightpath_suspender(yags):
 
 
 def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
-                   averages=250, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
-                   first_steps=1):
+                   averages=100, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
+                   first_steps=0.0001):
     """
     Skywalker with homs-specific devices and recovery methods
     """
     if gradients is None:
-        gradients = [-8000, 64000]
+        gradients = [-4000, 32000]
     system = homs_system()
     if isinstance(y1, str):
         y1 = system[y1]
@@ -268,13 +269,14 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
         y2 = system[y2]
     m1h = system['m1h']
     m2h = system['m2h']
+    m1h.low_limit = -150
+    m1h.high_limit = 250
+    m2h.low_limit = -290
+    m2h.high_limit = 110
     m1 = m1h
     m2 = m2h
-    #recover_m1 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
-    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.058)
-    #recover_m2 = make_homs_recover(m1h, m2h, 0.058, 0.0504)
-    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.0504)
-    #xrtm2 is 0.0354
+    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.1, center=239.98)
+    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.1, center=102.37)
     choice = make_pick_recover(y1, y2, has_beam_floor)
 
     _md = {'goals': goals,
@@ -292,6 +294,13 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
 
     @run_decorator(md=_md)
     def letsgo():
+        #for yag in (y1, y2):
+        #    try:
+        #        if not np.isclose(yag.zoom.position, 25):
+        #            yield from abs_set(yag.zoom, 25)
+        #    except AttributeError:
+        #        logger.error()
+        #        pass
         return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
                                      pitch_key, goals,
                                      gradients=gradients,
@@ -301,13 +310,3 @@ def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
                                      branch_choice=choice,
                                      first_steps=first_steps))
     return (yield from letsgo())
-
-
-def run_homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=20,
-                       averages=20, timeout=600, has_beam_floor=100):
-    RE = homs_RE()
-    walk = homs_skywalker(goals, y1=y1, y2=y2, gradients=gradients,
-                          tolerances=tolerances,
-                          averages=averages, timeout=timeout,
-                          has_beam_floor=has_beam_floor)
-    RE(walk)

@@ -357,6 +357,9 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         False (e.g. we can't stop it), go back to center of the largest range
         with the signal above the threshold.
     """
+    logger.debug(("Recover threshold with signal=%s, threshold=%s, motor=%s, "
+                  "dir_initial=%s, timeout=%s"), signal, threshold, motor,
+                 dir_initial, timeout)
     if dir_initial > 0:
         logger.debug("Recovering towards the high limit switch")
         setpoint = motor.high_limit - off_limit
