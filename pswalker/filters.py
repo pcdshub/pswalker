@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Signal filters used in Skywalker.
 """
@@ -48,7 +49,7 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
     	Size of kernel to use when running the gaussian filter
 
     n_opening : int, optional
-    	Number of times to perform an erosio, followed by the same number of
+    	Number of times to perform an erosion, followed by the same number of
     	dilations.
 
     cent_rtol : float, optional
