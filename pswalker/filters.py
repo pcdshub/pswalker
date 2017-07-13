@@ -110,6 +110,9 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
             return False
         
         # Everything passes
+        logger.debug("Filter - Passed all filters with sum: {0}, OpenCV centroids:"
+                     "{1}, AD Centroids: {2}, and circularity: {3}".format(
+                         M['m00'], cent_cv, cent_ad, circularity))
         return True
     
     except NoContoursPresent:
