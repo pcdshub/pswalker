@@ -13,6 +13,7 @@ import logging
 import cv2
 import numpy as np
 from psbeam.morph import get_opening
+from psbeam.preprocessing import uint_resize_gauss
 from psbeam.beamexceptions import NoContoursPresent
 from psbeam.contouring import (get_largest_contour, get_moments, get_centroid,
                                get_circularity)
@@ -24,8 +25,8 @@ from psbeam.contouring import (get_largest_contour, get_moments, get_centroid,
 logger = logging.getLogger(__name__)
 
 def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
-                      n_opening=2, cent_rtol=0.2, threshold_m00_min=50,
-                      threshold_m00_max=10e4, threshold_circularity=0.15):
+                      n_opening=2, cent_rtol=0.1, threshold_m00_min=50,
+                      threshold_m00_max=10e6, threshold_circularity=0.067):
     """
     Runs the full pipeline which includes:
         - Checks if there is beam by obtaining an image contour
@@ -39,48 +40,49 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
         Image to process
 
     centroids_ad : tuple
-        Centroids obtained from the areadetector stats plugin
+        Centroids obtained from the areadetector stats plugin.
 
     resize : float, optional
-        Resize the image before performing any processing
+        Resize the image before performing any processing.
 
     kernel : tuple, optional
-        Size of kernel to use when running the gaussian filter
+        Size of kernel to use when running the gaussian filter.
 
     n_opening : int, optional
         Number of times to perform an erosion, followed by the same number of
         dilations.
 
     cent_rtol : float, optional
-        Relative tolerance to use when comparing AD's and OpenCV's centroids
+        Relative tolerance to use when comparing AD's and OpenCV's centroids.
 
     threshold_m00_min : float, optional
-        Lower threshold for the sum of pixels in the image
+        Lower threshold for the sum of pixels in the image.
 
     threshold_m00_max : float, optional
-        Upper threshold for the sum of pixels in the image
+        Upper threshold for the sum of pixels in the image.
 
     threshold_cicularity : float, optional
-        Upper threshold for beam circularity score (0.0 is perfectly circular)
+        Upper threshold for beam circularity score (0.0 is perfectly circular).
 
     Returns
     -------
     bool
-        Bool indicating whether the image passed the tests
+        Bool indicating whether the image passed the tests.
     """
     try:
         # # Pipeline
         # Preprocessing
-        image_prep = uint_resize_gauss(image, resize=resize, kernel=kernel)
+        image_prep = uint_resize_gauss(image, fx=resize, fy=resize, 
+                                       kernel=kernel)
         # Morphological Opening
-        image_morph = get_opening(image_prep, erode=n_opening, dilate=n_opening)
+        image_morph = get_opening(image_prep, n_erode=n_opening, 
+                                  n_dilate=n_opening)
         # Grab the image contours
         _, contours, _ = cv2.findContours(image_morph, 1, 2)
         # Grab the largest contour
-        contour, area = get_largest_contour(image_prep, contours=contours, 
-                                            get_area=True)
+        contour, area = get_largest_contour(image_prep, contours=contours)
         # Image moments
-        M = psb.get_moments(contour=contour)
+        M = get_moments(contour=contour)
         # Find a centroid
         centroids_cv = [pos//resize for pos in get_centroid(M)]
         # Get a score for how similar the beam contour is to a circle's contour
