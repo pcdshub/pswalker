@@ -215,6 +215,8 @@ class LiveBuild(LiveFit):
         Estimate a point based on the current fit of the model.
         Reimplemented by subclasses
         """
+        logger.debug("Evaluating model {} with args : {}, kwargs {}"
+                     "".format(self.name, args, kwargs))
         if not self.result:
             raise RuntimeError("Can not evaluate without a saved fit, "\
                                "use .update_fit()")
@@ -229,6 +231,8 @@ class LiveBuild(LiveFit):
             For multivariable functions the user may have to specify which
             variable to solve for, and which to keep fixed
         """
+        logger.debug("Backsolving model {} for target {} and kwargs {}"
+                     "".format(self.name, target, kwargs))
         if not self.result:
             raise RuntimeError("Can not backsolve without a saved fit, "\
                                "use .update_fit()")
@@ -279,23 +283,37 @@ class LinearFit(LiveBuild):
                          average=average)
 
 
-    def eval(self, x=0., **kwargs):
+    def eval(self, **kwargs):
         """
         Evaluate the predicted outcome based on the most recent fit of
-        the given information
+        the given information.
 
         Parameters
         ----------
-        x : float or int
+        x : float or int, optional
             Independent variable to evaluate linear model
 
+        kwargs : 
+            The value for the indepenedent variable can also be given as the
+            field name in the event document
         Returns
         -------
         estimate : float
             Y value as determined by current linear fit
         """
         #Check result
-        super().eval(x)
+        super().eval(**kwargs)
+
+        #Standard x setup
+        if kwargs.get('x'):
+            x = kwargs['x']
+
+        elif self.independent_vars['x'] in kwargs.keys():
+            x = kwargs[self.independent_vars['x']]
+
+        else:
+            raise ValueError("Must supply keyword `x` or use fieldname {}"
+                             "".format(self.independent_vars['x']))
 
         #Structure input add past result
         kwargs = {'x' : np.asarray(x)}
@@ -321,6 +339,7 @@ class LinearFit(LiveBuild):
         """
         #Make sure we have a fit
         super().backsolve(target, **kwargs)
+        
         #Gather line information
         (m, b) = (self.result.values['slope'],
                   self.result.values['intercept'])
