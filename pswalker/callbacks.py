@@ -99,23 +99,24 @@ def rank_models(models, target, **kwargs):
     """
     #Initialize values
     model_ranking = np.asarray(models)
-    estimates     = list()
+    diffs         = list()
     bad_models    = list()
 
     #Calculate error of each model
     for model in models:
         try:
-            estimates.append(np.abs(model.eval(**kwargs)-target))
+            estimate = model.eval(**kwargs)
+            diffs.append(np.abs(estimate-target))
             logger.info("Model {} predicted a value of {}"
-                        "".format(model.name, estimates[-1]))
+                        "".format(model.name, estimate))
         except RuntimeError as e:
             bad_models.append(model)
-            estimates.append(np.inf)
+            diffs.append(np.inf)
             logger.info("Unable to yield estimate from model {}"
                         "".format(model.name))
             logger.debug(e)
     #Rank performances
-    model_ranking = model_ranking[np.argsort(estimates)]
+    model_ranking = model_ranking[np.argsort(diffs)]
     #Remove models who failed to make an estimate
     return [model for model in model_ranking
             if model not in bad_models]
@@ -345,7 +346,8 @@ class LinearFit(LiveBuild):
                   self.result.values['intercept'])
         #Return x position
         if m == 0 and b != target:
-            raise ValueError("Unable to backsolve, because fit is horizontal")
+            raise ValueError("Unable to backsolve, because fit is horizontal " 
+                             " after {} data points".format(len(self.ydata)))
 
         return {'x' : (target-b)/m}
 
