@@ -7,6 +7,7 @@ import time
 import logging
 from pprint import pprint
 from functools import partial
+from collections.abc import Iterable
 from collections import OrderedDict, ChainMap
 
 ###############
@@ -20,10 +21,28 @@ from pcdsdevices.sim.mirror import OffsetMirror
 ##########
 # Module #
 ##########
-from .utils.pyUtils import isiterable
 
 logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.INFO)
+
+def isiterable(obj):
+    """
+    Function that determines if an object is an iterable, not including 
+    str.
+
+    Parameters
+    ----------
+    obj : object
+        Object to test if it is an iterable.
+
+    Returns
+    -------
+    bool : bool
+        True if the obj is an iterable, False if not.
+    """
+    if isinstance(obj, str):
+        return False
+    else:
+        return isinstance(obj, Iterable)
 
 def one_bounce(a1, x0, xp0, x1, z1, z2):
     """
