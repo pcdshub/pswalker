@@ -107,8 +107,8 @@ def rank_models(models, target, **kwargs):
         try:
             estimate = model.eval(**kwargs)
             diffs.append(np.abs(estimate-target))
-            logger.info("Model {} predicted a value of {}"
-                        "".format(model.name, estimate))
+            logger.debug("Model {} predicted a value of {}"
+                         "".format(model.name, estimate))
         except RuntimeError as e:
             bad_models.append(model)
             diffs.append(np.inf)

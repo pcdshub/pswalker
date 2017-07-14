@@ -251,10 +251,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    logger.debug(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
-                  "and %s recoveries"),
-                  time.time() - start_time, mirror_walks, yag_cycles,
-                  recoveries)
-    logger.debug("Aligned to %s", done_pos)
-    logger.debug("Goals were %s", goals)
-    logger.debug("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
+    logger.info(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
+                 "and %s recoveries"),
+                 time.time() - start_time, mirror_walks, yag_cycles,
+                 recoveries)
+    logger.info("Aligned to %s", done_pos)
+    logger.info("Goals were %s", goals)
+    logger.info("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])

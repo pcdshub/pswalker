@@ -218,7 +218,8 @@ def walk_to_pixel(detector, motor, target, filters=None,
 
     #Create fitting callback
     fit = LinearFit(target_fields[0], target_fields[1],
-                    init_guess=init_guess, average=average)
+                    init_guess=init_guess, average=average,
+                    name='Linear')
 
     #Fitwalk
     last_shot, accurate_model = yield from fitwalk([detector]+system, motor, [fit]+models, target,
@@ -364,9 +365,9 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
             raise ValueError
 
     #Report finished
-    logger.info("Finished taking {} measurements, "\
-                "filters removed {} events"\
-                "".format(len(data), dropped))
+    logger.debug("Finished taking {} measurements, "\
+                 "filters removed {} events"\
+                 "".format(len(data), dropped))
 
     return data
 
@@ -540,7 +541,7 @@ def fitwalk(detectors, motor, models, target,
         steps += 1
 
         #Take a new measurement
-        logger.info("Resampling after successfull move")
+        logger.debug("Resampling after successfull move")
         averaged_data, last_shot, accurate_model = yield from model_measure()
 
     #Report a succesfull run
