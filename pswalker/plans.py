@@ -196,17 +196,23 @@ def walk_to_pixel(detector, motor, target, filters=None,
         init_guess = {'slope' : gradient}
         #Take a quick measurement
         def gradient_step():
+            logger.info("Using gradient of {} for naive step..."
+                        "".format(gradient))
             #Take a quick measurement 
             avgs = yield from measure_average([detector, motor] + system,
                                                target_fields,filters=filters,
                                                num=average, delay=delay,
                                                drop_missing=drop_missing)
             #Extract centroid and position
-            center, pos = avgs[target_fields[1]], avgs[target_fields[0]]
+            logger.info(target_fields)
+            logger.info(avgs)
+            center, pos = avgs[target_fields[0]], avgs[target_fields[1]]
             #Calculate corresponding intercept
             intercept = center - gradient*pos
             #Calculate best step on first guess of line
             next_pos = (target - intercept)/gradient
+            logger.debug("Predicting final position using line y = {}*x + {}"
+                         "".format(gradient, intercept))
             #Move to position
             yield from mv(motor, next_pos)
 
