@@ -26,7 +26,9 @@ def benchtest(centroid_noise = 0.,
               infinite_yag=True,
               log_level = 'INFO',
               goal1 = 210,
-              goal2 = 270):
+              goal2 = 270,
+              tolerances = 5,
+              average   = 1):
     """
     Parameters
     ----------
@@ -65,8 +67,8 @@ def benchtest(centroid_noise = 0.,
 
     #Create Skywalker plan
     plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
-                     [goal1, goal2], first_steps=30, tolerances=2,
-                     averages=1, timeout=10)
+                     [goal1, goal2], first_steps=30, tolerances=tolerances,
+                     averages=average, timeout=10)
     
     #Create RunEngine
     RE = RunEngine({})
@@ -93,6 +95,12 @@ if __name__ == '__main__':
     parser.add_argument('--noise', action='store', type=float,
                         dest='centroid_noise', default=5.0,
                         help='Noise level of centroid measurements')
+    parser.add_argument('--tolerance', action='store', type=float,
+                        dest='tolerances', default=2.0,
+                        help='Tolerance of each target')
+    parser.add_argument('--average', action='store', type=int,
+                        dest='average', default=1,
+                        help='Number of shots to average over')
     parser.add_argument('--log', action='store', type=str,
                         dest='log_level', default='INFO',
                         help='Target pixel on second imager')
