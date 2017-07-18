@@ -390,3 +390,67 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         else:
             logger.debug("Recovery failed")
             raise RecoverFail
+
+
+def area_slit_scan( slits, yag, x_width=1.0,y_width=1.0):
+    """
+    1. Send slits to specified position
+    2. Measure pixel dimensions (TALK TO ABDULLAH) 
+        idea is that the width, height values will be pulled straight from the
+        PIMPulnixDetector instance (in epics/pim.py) as an @property
+
+
+    Parameters
+    ----------
+    par : type 
+        description
+
+    slits : Slits
+        Ophyd slits object from pcdsdevices.slits.Slits 
+    
+    yag : PIMPulnixDetector ?????? (may need to change this entry) 
+        Ophyd object of some type, this will allow me to read the x, y, w, h (w,h don't 
+        exist yet but they should shortly)
+
+    x_width : int 
+        Define the target x width of the gap in the slits. Units: mm
+
+    y_width : int 
+        Define the target y width of the gap in the slits. Units: mm
+
+    x_cent : int 
+        Define the x axis of the target position for the gap. This point is 
+        where the center of the gap will be placed. Units: mm
+
+    y_cent : int 
+        Define the y axis of the target position for the gap. This point is 
+        where the center of the gap will be placed. Units: mm
+
+
+    Returns
+    -------
+    par : type
+        description
+    """
+    # place slits then read a value that doesn't exist yet
+    # easy
+    # measure_average()
+    #data = yield from measure_average([yag],['xwidth','ywidth'])
+    
+    yield from abs_set(slits,x=x_width,y = y_width)
+    
+    yag_measured_x_width = yield from measure_average([yag],['xwidth'],num=2)
+    yag_measured_y_width = yield from measure_average([yag],['ywidth'],num=2)
+    #logging.info("Measured x width", datax)
+    #logging.info("Measured y width", datay)
+    #print("Measured x width", yag_measured_x_width)
+    #print("Measured y width", yag_measured_y_width)
+    #Real space / pixel
+    x_scaling = x_width / yag_measured_x_width['xwidth'] 
+    y_scaling = y_width / yag_measured_y_width['ywidth']   
+    return x_scaling, y_scaling
+
+def location_slit_scan():
+    pass
+
+    

@@ -5,12 +5,19 @@ from queue import Queue
 import functools
 import logging
 
-from bluesky.plans import run_wrapper
+from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
-                                 match_condition, recover_threshold)
+                                 match_condition, recover_threshold,
+                                 area_slit_scan)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
-from .utils import plan_stash, SlowSoftPositioner, MotorSignal
+from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
+
+from bluesky.examples import Reader, Mover
+
+from collections import OrderedDict
+from numpy.random import rand
+
 
 logger = logging.getLogger(__name__)
 tmo = 10
@@ -247,3 +254,56 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     assert not 49 < pos < 51
     assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out
+
+    
+@pytest.mark.timeout(tmo)
+def test_pixel_area_calibration(RE):
+    logger = logging.getLogger('test_pixel_area_calibration')
+    logger.setLevel(logging.DEBUG)
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda x,y:x)),
+            ('ywidth',(lambda x,y:y)),
+        ]),
+        {'x':0,'y':0}
+    )
+
+    fake_yag = Reader(
+        'fake_yag',
+        {
+            'xwidth':(lambda:fake_slits.read()['xwidth']['value']),
+            'ywidth':(lambda:fake_slits.read()['ywidth']['value']),
+        }
+    )
+
+    xwidths = []
+    ywidths = []
+    measuredxwidths = collector("xwidth", xwidths)
+    measuredywidths = collector("ywidth", ywidths)
+
+    # specifying 'sub'headings' in the subs= arg of RE means only 1 arg is req. here
+    def getter(doc,doc2):
+        print('*******doc*******\n',doc,"*****",doc2)
+
+    #RE.verbose = True
+    RE(run_wrapper(area_slit_scan(fake_slits,fake_yag,1.0,1.0)),subs={'event':[measuredxwidths,measuredywidths]})
+    RE(run_wrapper(area_slit_scan(fake_slits,fake_yag,1.0,1.0)),subs={'event':getter})
+    print("\n\n\n")
+
+    for msg in RE.msg_hook.msgs:
+       pass
+       #print(msg)
+       #if msg.command == 'read' and yags[0] is msg.obj:
+         #  ok = True
+           #break
+    #print("fake_slits.read()",fake_slits.read())
+    #print("fake_yag.read()",fake_yag.read())
+    print(xwidths) 
+    print(ywidths) 
+    assert False
+    pass
+
+
+
+
