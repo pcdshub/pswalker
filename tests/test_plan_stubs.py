@@ -9,7 +9,7 @@ from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold,
-                                 area_slit_scan)
+                                 slit_scan_area_comp)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
 
@@ -17,6 +17,8 @@ from bluesky.examples import Reader, Mover
 
 from collections import OrderedDict
 from numpy.random import rand
+
+from math import nan, isnan
 
 
 logger = logging.getLogger(__name__)
@@ -255,11 +257,8 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out
 
-    
 @pytest.mark.timeout(tmo)
-def test_pixel_area_calibration(RE):
-    logger = logging.getLogger('test_pixel_area_calibration')
-    logger.setLevel(logging.DEBUG)
+def test_slit_scan_area_compare(RE):
     fake_slits = Mover(
         "slits",
         OrderedDict([
@@ -277,32 +276,52 @@ def test_pixel_area_calibration(RE):
         }
     )
 
+    # collector callbacks aggregate data from 'yield from' in the given lists
     xwidths = []
     ywidths = []
     measuredxwidths = collector("xwidth", xwidths)
     measuredywidths = collector("ywidth", ywidths)
 
-    # specifying 'sub'headings' in the subs= arg of RE means only 1 arg is req. here
-    def getter(doc,doc2):
-        print('*******doc*******\n',doc,"*****",doc2)
+    #test two basic positions
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.0,1.0,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,1.5,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    # excpect error if both measurements <= 0
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,0.0,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
+    # expect error if one measurement <= 0 
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
 
-    #RE.verbose = True
-    RE(run_wrapper(area_slit_scan(fake_slits,fake_yag,1.0,1.0)),subs={'event':[measuredxwidths,measuredywidths]})
-    RE(run_wrapper(area_slit_scan(fake_slits,fake_yag,1.0,1.0)),subs={'event':getter})
-    print("\n\n\n")
-
-    for msg in RE.msg_hook.msgs:
-       pass
-       #print(msg)
-       #if msg.command == 'read' and yags[0] is msg.obj:
-         #  ok = True
-           #break
-    #print("fake_slits.read()",fake_slits.read())
-    #print("fake_yag.read()",fake_yag.read())
+    # logger has bad interactin with pytest? only prints on test failure
+    #logger.debug(xwidths) 
+    #logger.debug(ywidths) 
     print(xwidths) 
     print(ywidths) 
-    assert False
-    pass
+
+    assert xwidths == [
+        1.0, 1.0, 1.0, 1.0, 
+        1.1, 1.1, 1.1, 1.1, 
+        0.0, 0.0, 0.0, 0.0, 
+        1.1, 1.1, 1.1, 1.1
+        ]
+    assert ywidths == [
+        1.0, 1.0, 1.0, 1.0, 
+        1.5, 1.5, 1.5, 1.5, 
+        0.0, 0.0, 0.0, 0.0, 
+        0.0, 0.0, 0.0, 0.0
+        ]
 
 
 

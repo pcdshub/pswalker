@@ -11,6 +11,7 @@ from bluesky.utils import FailedStatus
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
 from .utils.exceptions import RecoverDone, RecoverFail
+from math import nan, isnan
 
 logger = logging.getLogger(__name__)
 
@@ -392,13 +393,21 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
             raise RecoverFail
 
 
-def area_slit_scan( slits, yag, x_width=1.0,y_width=1.0):
-    """
-    1. Send slits to specified position
-    2. Measure pixel dimensions (TALK TO ABDULLAH) 
-        idea is that the width, height values will be pulled straight from the
-        PIMPulnixDetector instance (in epics/pim.py) as an @property
+def slit_scan_area_comp( slits, yag, x_width=1.0,y_width=1.0,samples=1):
+    """Find the ratio of real space/pixel in the PIM
 
+    1. Send slits to specified position
+    2. Measure pixel dimensions of passed light. 
+        The idea is that the width, height values will be pulled from 
+        the PIMPulnixDetector instance 
+
+    2b. Should diffraction issues (as observed with the test laser) persist
+        when using the x-ray laser, another method will be necessary  instead 
+        of using the gap dimensions for calibration, we could move the gap in 
+        the slits a small distance and observe the position change of the 
+        passed light. If the light is highly collimated (it should be), the 
+        motion of the gap should be 1:1 with the motion of the passed light on
+        the PIM detector. Only investigate if issues persisit in x-ray. 
 
     Parameters
     ----------
@@ -408,9 +417,9 @@ def area_slit_scan( slits, yag, x_width=1.0,y_width=1.0):
     slits : Slits
         Ophyd slits object from pcdsdevices.slits.Slits 
     
-    yag : PIMPulnixDetector ?????? (may need to change this entry) 
-        Ophyd object of some type, this will allow me to read the x, y, w, h (w,h don't 
-        exist yet but they should shortly)
+    yag : PIMPulnixDetector (Most likely candidate for area detector.
+        May change) Ophyd object of some type, this will allow 
+        me to read the w, h (w,h don't exist yet but they should shortly)
 
     x_width : int 
         Define the target x width of the gap in the slits. Units: mm
@@ -418,19 +427,14 @@ def area_slit_scan( slits, yag, x_width=1.0,y_width=1.0):
     y_width : int 
         Define the target y width of the gap in the slits. Units: mm
 
-    x_cent : int 
-        Define the x axis of the target position for the gap. This point is 
-        where the center of the gap will be placed. Units: mm
-
-    y_cent : int 
-        Define the y axis of the target position for the gap. This point is 
-        where the center of the gap will be placed. Units: mm
+    samples : int
+        number of sampels to use and average over when measuring width, height
 
 
     Returns
     -------
-    par : type
-        description
+    x and y scaling : (float,float)
+        returns a tuple of x and y scaling respectively. Units mm/pixels
     """
     # place slits then read a value that doesn't exist yet
     # easy
@@ -439,15 +443,33 @@ def area_slit_scan( slits, yag, x_width=1.0,y_width=1.0):
     
     yield from abs_set(slits,x=x_width,y = y_width)
     
-    yag_measured_x_width = yield from measure_average([yag],['xwidth'],num=2)
-    yag_measured_y_width = yield from measure_average([yag],['ywidth'],num=2)
-    #logging.info("Measured x width", datax)
-    #logging.info("Measured y width", datay)
-    #print("Measured x width", yag_measured_x_width)
-    #print("Measured y width", yag_measured_y_width)
-    #Real space / pixel
-    x_scaling = x_width / yag_measured_x_width['xwidth'] 
-    y_scaling = y_width / yag_measured_y_width['ywidth']   
+    yag_measured_x_width = yield from measure_average(
+        [yag],
+        ['xwidth'],
+        num=samples
+    )
+    yag_measured_y_width = yield from measure_average(
+        [yag],
+        ['ywidth'],
+        num=samples
+    )
+    logger.debug("Measured x width: {}".format(yag_measured_x_width))
+    logger.debug("Measured y width: {}".format(yag_measured_y_width))
+     
+    #print("Measured x width: ",yag_measured_x_width)
+    #print("Measured y width: ",yag_measured_y_width)
+    
+    if (yag_measured_x_width['xwidth'] <= 0 \
+        or yag_measured_y_width['ywidth'] <=0):
+        raise ValueError("A measurement less than or equal to zero has been"+ 
+            "measured. Unable to calibrate")
+        x_scaling = nan
+        y_scaling = nan
+    else:
+        #data format: Real space / pixel
+        x_scaling = x_width / yag_measured_x_width['xwidth'] 
+        y_scaling = y_width / yag_measured_y_width['ywidth']   
+    
     return x_scaling, y_scaling
 
 def location_slit_scan():
