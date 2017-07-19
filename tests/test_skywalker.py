@@ -63,8 +63,8 @@ def test_branching_plan(RE, lcls_two_bounce_system):
 @pytest.mark.parametrize("use_recover", [False, True])
 @pytest.mark.parametrize("goal1", [0, 5, 100, -100])
 @pytest.mark.parametrize("goal2", [0, 5, 100, -100])
-@pytest.mark.parametrize("start1", [0, 1, -1])
-@pytest.mark.parametrize("start2", [0, 1, -1])
+@pytest.mark.parametrize("start1", [0., 1.0, -1.])
+@pytest.mark.parametrize("start2", [0., 1.0, -1.])
 def test_skywalker(RE, lcls_two_bounce_system,
                    start1, start2, goal1, goal2, use_recover):
     logger.debug(("test_skywalker_main with use_recover=%s, "
@@ -78,7 +78,7 @@ def test_skywalker(RE, lcls_two_bounce_system,
     range1 = [y1.size[0]/2 + x for x in [-500, 500]]
     range2 = [y2.size[0]/2 + x for x in [-500, 500]]
 
-    step = 0.000001
+    step = 100
     def recover(motor, imager, imager_range):
         def recover_plan():
             logger.debug('run recovery plan')
@@ -125,5 +125,7 @@ def test_skywalker(RE, lcls_two_bounce_system,
                          [goal1, goal2], first_steps=step, tolerances=2,
                          averages=1, timeout=tmo)
     RE(run_wrapper(plan))
+    y1.move_in()
+    y2.move_in()
     assert np.isclose(y1.detector.centroid_x, goal1, atol=2)
     assert np.isclose(y2.detector.centroid_x, goal2, atol=2)

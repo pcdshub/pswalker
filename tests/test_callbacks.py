@@ -39,8 +39,8 @@ def test_linear_fit():
         assert np.allclose(cb.result.values[k], v, atol=1e-6)
 
     #Check we create an accurate estimate
-    print(cb.result.fit_report())
     assert np.allclose(cb.eval(x=10), 52, atol=1e-5)
+    assert np.allclose(cb.eval(motor=10), 52, atol=1e-5)
     assert np.allclose(cb.backsolve(52)['x'], 10, atol=1e-5)
 
 
