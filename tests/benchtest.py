@@ -53,8 +53,9 @@ def benchtest(centroid_noise = 0.,
 
     #Instantiate simulation
     s = source.Undulator('test_undulator')
-    m1 = mirror.OffsetMirror('test_m1h', z=90.510, alpha=0.0014)
-    m2 = mirror.OffsetMirror('test_m2h', x=0.0317324, z=101.843, alpha=0.0014)
+    m1 = mirror.OffsetMirror('test_m1h', 'test_m1h_xy', z=90.510, alpha=0.0014)
+    m2 = mirror.OffsetMirror('test_m2h', 'test_m2h_xy', x=0.0317324, z=101.843,
+                             alpha=0.0014)
     y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660,
                  zero_outside_yag= not infinite_yag)
     y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000,
