@@ -9,6 +9,7 @@ import logging
 ###############
 import pytest
 from bluesky import RunEngine
+from lightpath.tests import path
 from bluesky.tests.utils import MsgCollector
 from pcdsdevices.sim import source, mirror, pim
 
@@ -16,7 +17,6 @@ from pcdsdevices.sim import source, mirror, pim
 # Module #
 ##########
 from pswalker.examples import patch_pims
-from .utils import FakePath
 
 #################
 # Logging Setup #
@@ -88,32 +88,19 @@ def one_bounce_system():
 
 
 @pytest.fixture(scope='function')
-def fake_path_two_bounce():
-    """
-    pswalker-compatible lightpath.BeamPath with fake objects. Pretends to be
-    the HOMS system.
-    """
-    
-    p1h = pim.PIM("p1h")
-    feem1 = mirror.OffsetMirror("feem1", "feem1_xy", z=10)
-    p2h = pim.PIM("p2h", z=20)
-    feem2 = mirror.OffsetMirror("feem2", "feem2_xy", z=30)
-    p3h = pim.PIM("p3h", z=40)
-    hx2_pim = pim.PIM("hx2_pim", z=50)
-    um6_pim = pim.PIM("um6_pim", z=60)
-    dg3_pim = pim.PIM("dg3_pim", z=70)
-
-    yags = [p1h, p2h, hx2_pim, um6_pim, dg3_pim]
-    p1h, p2h, hx2_pim, um6_pim, dg3_pim = patch_pims(yags, [feem1, feem2])
-    
-    path = FakePath(p1h, feem1, p2h, feem2, p3h, hx2_pim, um6_pim, dg3_pim)
-    return path
+def lightpath():
+    #Repurpose the simulated lightpath
+    return path()
 
 
 @pytest.fixture(scope='function')
-def fake_yags(fake_path_two_bounce):
-    path = fake_path_two_bounce
-    yags = [d for d in path.devices if isinstance(d, pim.PIM)]
+def fake_yags():
+    yags = [pim.PIM("p1h"),
+            pim.PIM("p2h", z=20),
+            pim.PIM("p3h", z=40),
+            pim.PIM("hx2_pim", z=50),
+            pim.PIM("um6_pim", z=60),
+            pim.PIM("dg3_pim", z=70)]
 
     # Pretend that the correct values are the current values
     ans = [y.read()[y.name + '_detector_stats2_centroid_x']['value'] 

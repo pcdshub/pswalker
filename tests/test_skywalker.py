@@ -61,10 +61,10 @@ def test_branching_plan(RE, lcls_two_bounce_system):
 
 
 @pytest.mark.parametrize("use_recover", [False, True])
-@pytest.mark.parametrize("goal1", [0, 5, 100, -100])
-@pytest.mark.parametrize("goal2", [0, 5, 100, -100])
-@pytest.mark.parametrize("start1", [0., 1.0, -1.])
-@pytest.mark.parametrize("start2", [0., 1.0, -1.])
+@pytest.mark.parametrize("goal1", [0, 100])
+@pytest.mark.parametrize("goal2", [0,-100])
+@pytest.mark.parametrize("start1", [0., 150.0])
+@pytest.mark.parametrize("start2", [0.,-150.0])
 def test_skywalker(RE, lcls_two_bounce_system,
                    start1, start2, goal1, goal2, use_recover):
     logger.debug(("test_skywalker_main with use_recover=%s, "
