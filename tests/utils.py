@@ -98,41 +98,14 @@ class MotorSignal(Signal):
     def put_cb(self, *args, value, **kwargs):
         self.put(value)
 
-
-class FakePath(OphydObject):
-    SUB_VALUE = "value"
-    SUB_PTH_CHNG = SUB_VALUE
-    _default_sub = SUB_PTH_CHNG
-
-    def __init__(self, *devices):
-        self.devices = sorted(devices, key=lambda d: d.sim_z.value)
-        super().__init__()
-
-    def clear(self, *args, **kwargs):
-        for device in self.devices:
-            if device.blocking:
-                device.set("OUT")
-
-    # Looks dumb but I kind of need it because a Reader is subtly different
-    # than an OphydObject
-    def _run_subs(self, *args, sub_type=_default_sub, **kwargs):
-        super()._run_subs(*args, sub_type=sub_type, **kwargs)
-
-    def subscribe(self, *args, **kwargs):
-        # Potential danger if we subscribe multiple times in a test
-        for dev in self.devices:
-            dev.subscribe(self._run_subs)
-        super().subscribe(*args, **kwargs)
-
-    @property
-    def blocking_devices(self):
-        return [d for d in self.devices if d.blocking]
-
-
 def ruin_my_path(path):
-    choices = [d for d in path.devices if isinstance(d, pim.PIM)]
+    #Select a non-passive device
+    choices = [d for d in path.devices
+               if d.transmission < path.minimum_transmission]
+    #Insert it into the beam
     device = random.choice(choices)
-    device.set("IN")
+    logger.debug("Inserting device {}".format(device))
+    device.insert()
 
 
 def sleepy_scan():
