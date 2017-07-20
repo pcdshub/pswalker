@@ -44,14 +44,6 @@ def test_lightpath_suspender(RE, lightpath):
     assert delta < 1.5, "Suspender resumed suspiciously late"
 
 
-def test_beam_suspenders_sanity():
-    """
-    Just instantiate them to check for silly errors. It should work.
-    """
-    energy = BeamEnergySuspendFloor(0.3) # NOQA
-    rate = BeamRateSuspendFloor(0) # NOQA
-
-
 def test_pv_alarm_suspend_sanity():
     minor = PvAlarmSuspend("txt", "MINOR") # NOQA
     major = PvAlarmSuspend("txt", "MAJOR") # NOQA
