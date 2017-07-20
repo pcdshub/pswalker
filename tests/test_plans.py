@@ -79,7 +79,7 @@ def test_measure_average(RE, one_bounce_system):
                                    delay=0.1, num=5)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [320.,320.,320.,320.,320.]
+    assert centroids == [250.,250.,250.,250.,250.]
     assert readbacks == [0.,0.,0.,0.,0.]
 
     #Clear from last test
@@ -91,7 +91,7 @@ def test_measure_average(RE, one_bounce_system):
                                    delay=[0.1], num=2)),
        subs={'event':[col_c, col_r]})
     #Check events
-    assert centroids == [320., 320.]
+    assert centroids == [250., 250.]
     assert readbacks == [0., 0.]
 
     #Invalid delay settings
@@ -154,7 +154,7 @@ def test_measure_centroid(RE, one_bounce_system):
                                     target_field='detector_stats2_centroid_x')),
        subs={'event':[col_c]})
     #Check events
-    assert centroids == [320.,320.,320.,320.,320.]
+    assert centroids == [250.,250.,250.,250.,250.]
 
 
 def test_walk_to_pixel(RE, one_bounce_system):
@@ -267,7 +267,7 @@ def test_fitwalk(RE):
 
     #Create plan
     walk = fitwalk([det], motor, [parabola, linear], 89.4,
-                   average=1, tolerance = 0.5 , naive_step=mv(motor, 1))
+                   average=1, tolerance = 0.5)
 
     #Call with RunEngine
     RE(run_wrapper(walk))
