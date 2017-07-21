@@ -74,10 +74,8 @@ def test_measure_average(RE, one_bounce_system):
     col_c = collector(det.name + '_detector_stats2_centroid_x', centroids)
     col_r = collector(mot.name + '_pitch',    readbacks)
     #Run plan
-    RE(run_wrapper(measure_average([det, mot],
-                                   ['detector_stats2_centroid_x','pitch'],
-                                   delay=0.1, num=5)),
-       subs={'event':[col_c, col_r]})
+    RE(run_wrapper(measure_average([det, mot], delay=0.1, num=5)),
+                   subs={'event':[col_c, col_r]})
     #Check events
     assert centroids == [250.,250.,250.,250.,250.]
     assert readbacks == [0.,0.,0.,0.,0.]
@@ -86,9 +84,7 @@ def test_measure_average(RE, one_bounce_system):
     centroids.clear()
     readbacks.clear()
     #Run with array of delays
-    RE(run_wrapper(measure_average([det, mot],
-                                   ['detector_stats2_centroid_x','pitch'],
-                                   delay=[0.1], num=2)),
+    RE(run_wrapper(measure_average([det, mot], delay=[0.1], num=2)),
        subs={'event':[col_c, col_r]})
     #Check events
     assert centroids == [250., 250.]
@@ -96,9 +92,7 @@ def test_measure_average(RE, one_bounce_system):
 
     #Invalid delay settings
     with pytest.raises(ValueError):
-        RE(run_wrapper(measure_average([det, mot],
-                                       ['detector_stats2_centroid_x','pitch'],
-                                       delay=[0.1], num=3)))
+        RE(run_wrapper(measure_average([det, mot], delay=[0.1], num=3)))
 
 
 def test_measure_average_system(RE, lcls_two_bounce_system):
@@ -111,7 +105,6 @@ def test_measure_average_system(RE, lcls_two_bounce_system):
     col_r = collector(m1.name + '_pitch',    readbacks)
 
     RE(run_wrapper(measure_average([y1, m1, y2, m2],
-                                   ['detector_stats2_centroid_x','pitch'],
                                    delay=0.1, num=5)),
        subs={'event':[col_c, col_r]})
 
