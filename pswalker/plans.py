@@ -196,17 +196,23 @@ def walk_to_pixel(detector, motor, target, filters=None,
         init_guess = {'slope' : gradient}
         #Take a quick measurement
         def gradient_step():
+            logger.info("Using gradient of {} for naive step..."
+                        "".format(gradient))
             #Take a quick measurement 
             avgs = yield from measure_average([detector, motor] + system,
                                                target_fields,filters=filters,
                                                num=average, delay=delay,
                                                drop_missing=drop_missing)
             #Extract centroid and position
-            center, pos = avgs[target_fields[1]], avgs[target_fields[0]]
+            logger.info(target_fields)
+            logger.info(avgs)
+            center, pos = avgs[target_fields[0]], avgs[target_fields[1]]
             #Calculate corresponding intercept
             intercept = center - gradient*pos
             #Calculate best step on first guess of line
             next_pos = (target - intercept)/gradient
+            logger.debug("Predicting final position using line y = {}*x + {}"
+                         "".format(gradient, intercept))
             #Move to position
             yield from mv(motor, next_pos)
 
@@ -218,7 +224,8 @@ def walk_to_pixel(detector, motor, target, filters=None,
 
     #Create fitting callback
     fit = LinearFit(target_fields[0], target_fields[1],
-                    init_guess=init_guess, average=average)
+                    init_guess=init_guess, average=average,
+                    name='Linear')
 
     #Fitwalk
     last_shot, accurate_model = yield from fitwalk([detector]+system, motor, [fit]+models, target,
@@ -364,9 +371,9 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
             raise ValueError
 
     #Report finished
-    logger.info("Finished taking {} measurements, "\
-                "filters removed {} events"\
-                "".format(len(data), dropped))
+    logger.debug("Finished taking {} measurements, "\
+                 "filters removed {} events"\
+                 "".format(len(data), dropped))
 
     return data
 
@@ -439,7 +446,6 @@ def fitwalk(detectors, motor, models, target,
     #Target field
     target_field = models[0].y
 
-
     #Install filters
     filters = filters or {}
     [m.install_filters(filters) for m in models]
@@ -469,9 +475,9 @@ def fitwalk(detectors, motor, models, target,
         last_shot = avg.pop(target_field)
         logger.info("Averaged data yielded {} is at {}"
                     "".format(target_field, last_shot))
+
         #Rank models based on accuracy of fit
-        eval_vars = dict((key, avg[key]) for key in motors.keys())
-        model_ranking = rank_models(models, last_shot, **eval_vars)
+        model_ranking = rank_models(models, last_shot, **avg)
 
         #Determine if any models are accurate enough
         if len(model_ranking):
@@ -507,14 +513,21 @@ def fitwalk(detectors, motor, models, target,
             fixed_motors = dict((key, averaged_data[key])
                                  for key in field_names
                                  if key not in motors.keys())
+
+            #Try and step off model prediction
             try:
                 estimates = accurate_model.backsolve(target, **fixed_motors)
 
+            #Report model faults
             except Exception as e:
                 logger.warning("Accurate model {} was unable to backsolve "
                                "for target {}".format(accurate_model.name,
                                                       target))
+                logger.warning(e)
 
+                #Reuse naive step
+                logger.info("Reusing naive step due to lack of accurate model")
+                yield from naive_step()
             else:
                 #Move system to match estimate
                 for param, pos in estimates.items():
@@ -534,7 +547,7 @@ def fitwalk(detectors, motor, models, target,
         steps += 1
 
         #Take a new measurement
-        logger.info("Resampling after succesfull move")
+        logger.debug("Resampling after successfull move")
         averaged_data, last_shot, accurate_model = yield from model_measure()
 
     #Report a succesfull run
