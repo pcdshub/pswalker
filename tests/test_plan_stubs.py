@@ -9,7 +9,7 @@ from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold,
-                                 slit_scan_area_comp)
+                                 slit_scan_area_comp, slit_scan_fiducialize)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
 
@@ -323,6 +323,63 @@ def test_slit_scan_area_compare(RE):
         0.0, 0.0, 0.0, 0.0
         ]
 
+@pytest.mark.timeout(tmo)
+def test_slit_scan_fiducialize(RE,lcls_two_bounce_system):
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda xwidth,ywidth,xcenter,ycenter:xwidth)),
+            ('ywidth',(lambda xwidth,ywidth,xcenter,ycenter:ywidth)),
+            ('xcenter',(lambda xwidth,ywidth,xcenter,ycenter:xcenter)),
+            ('ycenter',(lambda xwidth,ywidth,xcenter,ycenter:ycenter)),
+        ]),
+        {'xwidth':0,'ywidth':0,'xcenter':0,'ycenter':0}
+    )
+    ''''
+    fake_yag_in = Mover(
+        "slits",
+        OrderedDict([
+            ('in',(lambda x:x)),
+        ]),
+        {'x':False}
+    )
+    
+    fake_yag = Reader(
+        'fake_yag',
+        {
+            'xwidth':(lambda: fake_slits.read()['xwidth']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'ywidth':(lambda: fake_slits.read()['ywidth']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'centroid_x':(lambda: fake_slits.read()['xcenter']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'centroid_y':(lambda: fake_slits.read()['ycenter']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+        }
+    )
+    guess there's some premade yag sims
+    '''
+    _, _, _, fake_yag, _, = lcls_two_bounce_system
 
+    # collector callbacks aggregate data from 'yield from' in the given lists
+    xcenter = []
+    ycenter = []
+    measuredxcenter = collector("xcenter", xcenter)
+    measuredycenter = collector("ycenter", ycenter)
+    
+    #test two basic positions
+    RE(
+        run_wrapper(slit_scan_fiducialize(fake_slits,fake_yag,1.0,1.0)),
+        subs={'event':[measuredxcenter,measuredycenter]}
+    )
+    print(xcenter,ycenter)
+
+    
+
+    assert False
 
 

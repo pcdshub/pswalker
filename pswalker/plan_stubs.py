@@ -393,13 +393,13 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
             raise RecoverFail
 
 
-def slit_scan_area_comp( slits, yag, x_width=1.0,y_width=1.0,samples=1):
+def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     """Find the ratio of real space/pixel in the PIM
 
     1. Send slits to specified position
     2. Measure pixel dimensions of passed light. 
-        The idea is that the width, height values will be pulled from 
-        the PIMPulnixDetector instance 
+        The idea is that the width, height values will be pulled from the
+        PIMPulnixDetector instance.
 
     2b. Should diffraction issues (as observed with the test laser) persist
         when using the x-ray laser, another method will be necessary  instead 
@@ -472,7 +472,12 @@ def slit_scan_area_comp( slits, yag, x_width=1.0,y_width=1.0,samples=1):
     
     return x_scaling, y_scaling
 
-def location_slit_scan():
-    pass
-
-    
+def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
+            x_center=320, y_center=240, samples=1):
+    yield from abs_set(
+        slits,
+        xwidth = x_width,
+        ywidth = y_width,
+        xcenter = x_center,
+        ycenter = y_center
+    )
