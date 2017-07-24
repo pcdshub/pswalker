@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 from psbeam.morph import get_opening
 from psbeam.preprocessing import uint_resize_gauss
-from psbeam.beamexceptions import NoContoursPresent
+from psbeam.beamexceptions import NoContoursDetected
 from psbeam.contouring import (get_largest_contour, get_moments, get_centroid,
                                get_circularity)
 
@@ -115,7 +115,7 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
                          M['m00'], cent_cv, cent_ad, circularity))
         return True
     
-    except NoContoursPresent:
+    except NoContoursDetected:
         # Failed to get image contours
         logger.debug("Filter - No contours found on image.")
         return False
