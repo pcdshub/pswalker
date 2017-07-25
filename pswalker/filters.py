@@ -14,9 +14,9 @@ import cv2
 import numpy as np
 from psbeam.morph import get_opening
 from psbeam.preprocessing import uint_resize_gauss
-from psbeam.beamexceptions import NoContoursPresent
+from psbeam.beamexceptions import NoContoursDetected
 from psbeam.contouring import (get_largest_contour, get_moments, get_centroid,
-                               get_circularity)
+                               get_similarity)
 
 ##########
 # Module #
@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 
 def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
                       n_opening=2, cent_rtol=0.1, threshold_m00_min=50,
-                      threshold_m00_max=10e6, threshold_circularity=0.067):
+                      threshold_m00_max=10e6, threshold_similarity=0.067):
     """
     Runs the full pipeline which includes:
         - Checks if there is beam by obtaining an image contour
         - Checks the sum of all pixels is above and below a threshold
         - Checking if the computed centroid is close to the adplugin centroid
-        - Checks that the beam is above the threshold of circularity
+        - Checks that the beam is above the threshold of similarity
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
         Upper threshold for the sum of pixels in the image.
 
     threshold_cicularity : float, optional
-        Upper threshold for beam circularity score (0.0 is perfectly circular).
+        Upper threshold for beam similarity score (0.0 is perfectly circular).
 
     Returns
     -------
@@ -84,9 +84,9 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
         # Image moments
         M = get_moments(contour=contour)
         # Find a centroid
-        centroids_cv = [pos//resize for pos in get_centroid(M)]
+        centroids_cv2 = [pos//resize for pos in get_centroid(M)]
         # Get a score for how similar the beam contour is to a circle's contour
-        circularity = get_circularity(contour)
+        similarity = get_similarity(contour)
         
         # # Filters
         # Sum of pixel intensities must be between m00_min and m00_max
@@ -103,19 +103,19 @@ def psbeam_full_check(image, centroids_ad, resize=1.0, kernel=(13,13),
                                  centroids_ad, centroids_cv))
                 return False
             
-        # Check that the circularity of the beam is below the inputted threshold
-        if circularity > threshold_circularity:
+        # Check that the similarity of the beam is below the inputted threshold
+        if similarity > threshold_similarity:
             logger.debug("Filter - Beam cicularity too low. Cicularity: "
-                         "{0}".format(circularity))
+                         "{0}".format(similarity))
             return False
         
         # Everything passes
         logger.debug("Filter - Passed all filters with sum: {0}, OpenCV centroids:"
-                     "{1}, AD Centroids: {2}, and circularity: {3}".format(
-                         M['m00'], cent_cv, cent_ad, circularity))
+                     "{1}, AD Centroids: {2}, and similarity: {3}".format(
+                         M['m00'], cent_cv, cent_ad, similarity))
         return True
     
-    except NoContoursPresent:
+    except NoContoursDetected:
         # Failed to get image contours
         logger.debug("Filter - No contours found on image.")
         return False
