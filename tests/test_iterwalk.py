@@ -98,7 +98,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
     y1.set = lambda cmd, **kwargs: bad_set(y1, cmd, **kwargs)
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
-                                first_steps=1e-6, gradients=None,
+                                first_steps=1, gradients=None,
                                 detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
@@ -156,7 +156,7 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
+                                detector_fields='sim_x', motor_fields='pitch',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised

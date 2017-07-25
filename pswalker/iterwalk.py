@@ -118,11 +118,11 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     mirror_walks = 0
     yag_cycles = 0
     recoveries = 0
-
     # Set up end conditions
     n_steps = 0
     start_time = time.time()
     timeout_error = False
+    models   = [None]* num
     finished = [False] * num
     done_pos = [0] * num
     while True:
@@ -206,18 +206,35 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                               'system=%s'), pos, goal,
                              detectors[index].name, motors[index].name,
                              full_system)
-                pos, model = (yield from walk_to_pixel(detectors[index],
-                                                       motors[index],
-                                                       goal, firstpos,
-                                                       gradient=gradients[index],
-                                                       target_fields=[
-                                                           detector_fields[index],
-                                                           motor_fields[index]],
-                                                       first_step=first_steps[index],
-                                                       tolerance=tolerances[index],
-                                                       system=full_system,
-                                                       average=averages[index],
-                                                       max_steps=10))
+                pos, models[index] = (yield from walk_to_pixel(detectors[index],
+                                                               motors[index],
+                                                               goal, firstpos,
+                                                               gradient=gradients[index],
+                                                               target_fields=[
+                                                                   detector_fields[index],
+                                                                   motor_fields[index]],
+                                                               first_step=first_steps[index],
+                                                               tolerance=tolerances[index],
+                                                               system=full_system,
+                                                               average=averages[index],
+                                                               max_steps=10))
+                if models[index]:
+                    try:
+                        gradients[index] = models[index].result.values['slope']
+                        logger.info("Found equation of ({}, {}) between " 
+                                    "linear fit of {} to {}"
+                                    "".format(gradients[index],
+                                              models[index].result.values['intercept'],
+                                              motors[index].name,
+                                              detectors[index].name))
+                    except Exception as e:
+                        logger.warning(e)
+                        logger.warning("Unable to find gradient of " 
+                                       "linear fit of {} to {}"
+                                       "".format(motors[index].name,
+                                                 detectors[index].name))
+
+
                 logger.debug("Walk reached pos %s on %s", pos,
                              detectors[index].name)
                 mirror_walks += 1
@@ -251,10 +268,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    logger.debug(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
-                  "and %s recoveries"),
-                  time.time() - start_time, mirror_walks, yag_cycles,
-                  recoveries)
-    logger.debug("Aligned to %s", done_pos)
-    logger.debug("Goals were %s", goals)
-    logger.debug("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
+    logger.info(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
+                 "and %s recoveries"),
+                 time.time() - start_time, mirror_walks, yag_cycles,
+                 recoveries)
+    logger.info("Aligned to %s", done_pos)
+    logger.info("Goals were %s", goals)
+    logger.info("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])

@@ -129,7 +129,7 @@ def _calc_cent_x(source, pim):
 def _m1_calc_cent_x(source, mirror, pim):
     logger.debug("Calculating one bounce beam position on '{0}' pim. ".format(
             pim.name))        
-    x = one_bounce(mirror.sim_alpha.value,
+    x = one_bounce(mirror.sim_alpha.value*1e-6,
                    source.sim_x.value,
                    source.sim_xp.value,
                    mirror.sim_x.value,
@@ -140,7 +140,8 @@ def _m1_calc_cent_x(source, mirror, pim):
 def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
     logger.debug("Calculating two bounce beam position on '{0}' pim. ".format(
             pim.name))            
-    x = two_bounce((mirror_1.sim_alpha.value, mirror_2.sim_alpha.value),
+    x = two_bounce((mirror_1.sim_alpha.value*1e-6,
+                    mirror_2.sim_alpha.value*1e-6),
                    source.sim_x.value,
                    source.sim_xp.value,
                    mirror_1.sim_x.value,
@@ -164,6 +165,7 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR"),
                source=Undulator("TEST_UND")):
     if not isiterable(mirrors):
         mirrors = [mirrors]
+    #Change unit s 
     if not isiterable(pims):
         pims = [pims]
     logger.info("Patching {0} pim(s)".format(len(pims)))

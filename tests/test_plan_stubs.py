@@ -5,12 +5,21 @@ from queue import Queue
 import functools
 import logging
 
-from bluesky.plans import run_wrapper
+from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
-                                 match_condition, recover_threshold)
+                                 match_condition, recover_threshold,
+                                 slit_scan_area_comp, slit_scan_fiducialize)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
-from .utils import plan_stash, SlowSoftPositioner, MotorSignal
+from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
+
+from bluesky.examples import Reader, Mover
+
+from collections import OrderedDict
+from numpy.random import rand
+
+from math import nan, isnan
+
 
 logger = logging.getLogger(__name__)
 tmo = 10
@@ -247,3 +256,130 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     assert not 49 < pos < 51
     assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out
+
+@pytest.mark.timeout(tmo)
+def test_slit_scan_area_compare(RE):
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda x,y:x)),
+            ('ywidth',(lambda x,y:y)),
+        ]),
+        {'x':0,'y':0}
+    )
+
+    fake_yag = Reader(
+        'fake_yag',
+        {
+            'xwidth':(lambda:fake_slits.read()['xwidth']['value']),
+            'ywidth':(lambda:fake_slits.read()['ywidth']['value']),
+        }
+    )
+
+    # collector callbacks aggregate data from 'yield from' in the given lists
+    xwidths = []
+    ywidths = []
+    measuredxwidths = collector("xwidth", xwidths)
+    measuredywidths = collector("ywidth", ywidths)
+
+    #test two basic positions
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.0,1.0,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,1.5,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    # excpect error if both measurements <= 0
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,0.0,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
+    # expect error if one measurement <= 0 
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
+
+    # logger has bad interactin with pytest? only prints on test failure
+    #logger.debug(xwidths) 
+    #logger.debug(ywidths) 
+    print(xwidths) 
+    print(ywidths) 
+
+    assert xwidths == [
+        1.0, 1.0, 1.0, 1.0, 
+        1.1, 1.1, 1.1, 1.1, 
+        0.0, 0.0, 0.0, 0.0, 
+        1.1, 1.1, 1.1, 1.1
+        ]
+    assert ywidths == [
+        1.0, 1.0, 1.0, 1.0, 
+        1.5, 1.5, 1.5, 1.5, 
+        0.0, 0.0, 0.0, 0.0, 
+        0.0, 0.0, 0.0, 0.0
+        ]
+
+@pytest.mark.timeout(tmo)
+def test_slit_scan_fiducialize(RE,lcls_two_bounce_system):
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda xwidth,ywidth,xcenter,ycenter:xwidth)),
+            ('ywidth',(lambda xwidth,ywidth,xcenter,ycenter:ywidth)),
+            ('xcenter',(lambda xwidth,ywidth,xcenter,ycenter:xcenter)),
+            ('ycenter',(lambda xwidth,ywidth,xcenter,ycenter:ycenter)),
+        ]),
+        {'xwidth':0,'ywidth':0,'xcenter':0,'ycenter':0}
+    )
+    ''''
+    fake_yag_in = Mover(
+        "slits",
+        OrderedDict([
+            ('in',(lambda x:x)),
+        ]),
+        {'x':False}
+    )
+    
+    fake_yag = Reader(
+        'fake_yag',
+        {
+            'xwidth':(lambda: fake_slits.read()['xwidth']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'ywidth':(lambda: fake_slits.read()['ywidth']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'centroid_x':(lambda: fake_slits.read()['xcenter']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+            'centroid_y':(lambda: fake_slits.read()['ycenter']['value'] if 
+                fake_yag_in.read()['in'] else 0.0
+            ),
+        }
+    )
+    guess there's some premade yag sims
+    '''
+    _, _, _, fake_yag, _, = lcls_two_bounce_system
+
+    # collector callbacks aggregate data from 'yield from' in the given lists
+    xcenter = []
+    ycenter = []
+    measuredxcenter = collector("xcenter", xcenter)
+    measuredycenter = collector("ycenter", ycenter)
+    
+    #test two basic positions
+    RE(
+        run_wrapper(slit_scan_fiducialize(fake_slits,fake_yag,1.0,1.0)),
+        subs={'event':[measuredxcenter,measuredycenter]}
+    )
+    print(xcenter,ycenter)
+
+    
+
+    assert False
+
+
