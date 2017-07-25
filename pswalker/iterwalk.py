@@ -169,10 +169,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 logger.debug("measure_average on det=%s, mot=%s, sys=%s",
                              detectors[index], motors[index], full_system)
                 avgs = (yield from measure_average([detectors[index],
-                                                   motors[index]]
-                                                  + full_system,
-                                                  [detector_fields[index]],
-                                                  num=averages[index]))
+                                                    motors[index]]
+                                                    + full_system,
+                                                    num=averages[index]))
 
                 pos = avgs[field_prepend(detector_fields[index],
                                          detectors[index])]

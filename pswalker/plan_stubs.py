@@ -11,6 +11,7 @@ from bluesky.utils import FailedStatus
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
 from .utils.exceptions import RecoverDone, RecoverFail
+from math import nan, isnan
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,6 @@ def verify_all(detectors, target_fields, target_values, tolerances,
             logger.error(err)
             raise RuntimeError(err)
         avgs = yield from measure_average([det] + other_readers,
-                                          [fld] + other_fields,
                                           num=average, delay=delay)
         #Check the tolerance of detector measurement
         ok_list.append(abs(avgs[field_prepend(fld,det)] - val) < tol)
@@ -390,3 +390,97 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         else:
             logger.debug("Recovery failed")
             raise RecoverFail
+
+
+def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
+    """Find the ratio of real space/pixel in the PIM
+
+    1. Send slits to specified position
+    2. Measure pixel dimensions of passed light. 
+        The idea is that the width, height values will be pulled from the
+        PIMPulnixDetector instance.
+
+    2b. Should diffraction issues (as observed with the test laser) persist
+        when using the x-ray laser, another method will be necessary  instead 
+        of using the gap dimensions for calibration, we could move the gap in 
+        the slits a small distance and observe the position change of the 
+        passed light. If the light is highly collimated (it should be), the 
+        motion of the gap should be 1:1 with the motion of the passed light on
+        the PIM detector. Only investigate if issues persisit in x-ray. 
+
+    Parameters
+    ----------
+    par : type 
+        description
+
+    slits : Slits
+        Ophyd slits object from pcdsdevices.slits.Slits 
+    
+    yag : PIMPulnixDetector (Most likely candidate for area detector.
+        May change) Ophyd object of some type, this will allow 
+        me to read the w, h (w,h don't exist yet but they should shortly)
+
+    x_width : int 
+        Define the target x width of the gap in the slits. Units: mm
+
+    y_width : int 
+        Define the target y width of the gap in the slits. Units: mm
+
+    samples : int
+        number of sampels to use and average over when measuring width, height
+
+
+    Returns
+    -------
+    x and y scaling : (float,float)
+        returns a tuple of x and y scaling respectively. Units mm/pixels
+    """
+    # place slits then read a value that doesn't exist yet
+    # easy
+    # measure_average()
+    #data = yield from measure_average([yag],['xwidth','ywidth'])
+    
+    # set slits to specified gap size
+    yield from abs_set(slits,x=x_width,y = y_width)
+    
+    # read profile dimensions from image (width plugin pending)
+    yag_measurements = yield from measure_average(
+        [yag],
+        num=samples
+    )
+    
+    # extract measurements of interest from returned dict
+    yag_measured_x_width = yag_measurements['xwidth'] 
+    yag_measured_y_width = yag_measurements['ywidth'] 
+    
+    logger.debug("Measured x width: {}".format(yag_measured_x_width))
+    logger.debug("Measured y width: {}".format(yag_measured_y_width))
+     
+    # err if image not received or image has 0 width,height 
+    if (yag_measured_x_width <= 0 \
+        or yag_measured_y_width <=0):
+        raise ValueError("A measurement less than or equal to zero has been"+ 
+            "measured. Unable to calibrate")
+        x_scaling = nan
+        y_scaling = nan
+    else:
+        #data format: Real space / pixel
+        x_scaling = x_width / yag_measured_x_width 
+        y_scaling = y_width / yag_measured_y_width   
+    
+    return x_scaling, y_scaling
+
+
+def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
+            x_center=320, y_center=240, samples=1):
+    
+    """
+    PLAN AND TEST STILL UNDER WORK. DO NOT USE.
+    """
+    yield from abs_set(
+        slits,
+        xwidth = x_width,
+        ywidth = y_width,
+        xcenter = x_center,
+        ycenter = y_center
+    )
