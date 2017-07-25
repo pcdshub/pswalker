@@ -123,3 +123,12 @@ def lcls_two_bounce_system():
     patch_pims([y1, y2], mirrors=[m1, m2], source=s)
 
     return s, m1, m2, y1, y2
+
+
+#@pytest.fixture(scope='function')
+#def fake_slit():
+#    """
+#    instantiate fake slit instance akin to MFX:DG2:JAWS (hopefully)
+#    """
+#    s = slits.Slits('slits',xcenter=0.0,ycenter=0.0,xwidth=0.0,ywidth=0.0)
+#    return s
