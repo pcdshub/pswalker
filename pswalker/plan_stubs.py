@@ -440,39 +440,43 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     # measure_average()
     #data = yield from measure_average([yag],['xwidth','ywidth'])
     
+    # set slits to specified gap size
     yield from abs_set(slits,x=x_width,y = y_width)
     
-    yag_measured_x_width = yield from measure_average(
+    # read profile dimensions from image (width plugin pending)
+    yag_measurements = yield from measure_average(
         [yag],
-        ['xwidth'],
         num=samples
     )
-    yag_measured_y_width = yield from measure_average(
-        [yag],
-        ['ywidth'],
-        num=samples
-    )
+    
+    # extract measurements of interest from returned dict
+    yag_measured_x_width = yag_measurements['xwidth'] 
+    yag_measured_y_width = yag_measurements['ywidth'] 
+    
     logger.debug("Measured x width: {}".format(yag_measured_x_width))
     logger.debug("Measured y width: {}".format(yag_measured_y_width))
      
-    #print("Measured x width: ",yag_measured_x_width)
-    #print("Measured y width: ",yag_measured_y_width)
-    
-    if (yag_measured_x_width['xwidth'] <= 0 \
-        or yag_measured_y_width['ywidth'] <=0):
+    # err if image not received or image has 0 width,height 
+    if (yag_measured_x_width <= 0 \
+        or yag_measured_y_width <=0):
         raise ValueError("A measurement less than or equal to zero has been"+ 
             "measured. Unable to calibrate")
         x_scaling = nan
         y_scaling = nan
     else:
         #data format: Real space / pixel
-        x_scaling = x_width / yag_measured_x_width['xwidth'] 
-        y_scaling = y_width / yag_measured_y_width['ywidth']   
+        x_scaling = x_width / yag_measured_x_width 
+        y_scaling = y_width / yag_measured_y_width   
     
     return x_scaling, y_scaling
 
+
 def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
             x_center=320, y_center=240, samples=1):
+    
+    """
+    PLAN AND TEST STILL UNDER WORK. DO NOT USE.
+    """
     yield from abs_set(
         slits,
         xwidth = x_width,
