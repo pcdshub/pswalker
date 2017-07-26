@@ -123,6 +123,9 @@ dg3_name = "dg3"
 mfxdg1 = "MFX:DG1:PIM"
 mfxdg1_det = "MFX:DG1:P6740"
 mfxdg1_name = "mfxdg1"
+mecy1 = "MEC:PIM1"
+mecy1_det = "MEC:HXM:CVV:01"
+mecy1_name = "mecy1"
 pitch_key = "pitch"
 cent_x_key = "detector_stats2_centroid_y"
 fmt = "{}_{}"
@@ -169,6 +172,7 @@ def homs_system():
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
     system['mfxdg1'] = PIM(mfxdg1, det_pv=mfxdg1_det, name=mfxdg1_name)
+    system['mecy1'] = PIM(mecy1, det_pv=mecy1_det, name=mecy1_name)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
