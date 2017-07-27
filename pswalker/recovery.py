@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from threading import Lock
+
+from bluesky.plans import checkpoint, plan_mutator, null
 
 from .plan_stubs import match_condition
 from .utils.exceptions import RecoverDone, RecoverFail
@@ -91,3 +94,59 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         else:
             logger.debug("Recovery failed")
             raise RecoverFail
+
+
+def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
+    """
+    Plan that allows deviations from the original plan at checkpoints.
+
+    Parameters
+    ----------
+    plan: iterable
+        Iterable that returns Msg objects as in a Bluesky plan
+
+    branches: list of functions
+        Functions that return valid plans. These are the deviations we may take
+        when plan yields a checkpoint.
+
+    branch_choice: function
+        Function that tells us which branch to take. This must return None when
+        we want to continue to normal plan and an integer that matches an index
+        in branches when we want to deviate.
+
+    branch_msg: str, optional
+        Which message to branch on. By default, this is checkpoint.
+    """
+    def do_branch():
+        choice = branch_choice()
+        if choice is None:
+            yield null()
+        else:
+            branch = branches[choice]
+            logger.debug("Switching to branch %s", choice)
+            yield from branch()
+
+    # No nested branches
+    branch_lock = Lock()
+
+    def branch_handler(msg):
+        if msg.command == branch_msg:
+            nonlocal branch_lock
+            has_lock = branch_lock.acquire(blocking=False)
+            if has_lock:
+                try:
+                    def new_gen():
+                        nonlocal branch_lock
+                        with branch_lock:
+                            if branch_choice() is not None:
+                                yield from checkpoint()
+                                yield from do_branch()
+                                logger.debug("Resuming plan after branch")
+                            yield msg
+                finally:
+                    branch_lock.release()
+                    return new_gen(), None
+        return None, None
+
+    brancher = plan_mutator(plan, branch_handler)
+    return (yield from brancher)
