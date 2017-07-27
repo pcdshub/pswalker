@@ -74,7 +74,7 @@ def benchtest(centroid_noise = 0.,
     RE = RunEngine({})
     collector = MsgCollector()
     RE.msg_hook = collector
-    RE(run_wrapper(plan))
+    RE(plan)
 
     #Analyze Performance
     print(len(RE.msg_hook.msgs))
