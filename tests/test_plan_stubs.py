@@ -5,12 +5,21 @@ from queue import Queue
 import functools
 import logging
 
-from bluesky.plans import run_wrapper
+from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
-                                 match_condition, recover_threshold)
+                                 match_condition, recover_threshold,
+                                 slit_scan_area_comp)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
-from .utils import plan_stash, SlowSoftPositioner, MotorSignal
+from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
+
+from bluesky.examples import Reader, Mover
+
+from collections import OrderedDict
+from numpy.random import rand
+
+from math import nan, isnan
+
 
 logger = logging.getLogger(__name__)
 tmo = 10
@@ -247,3 +256,67 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     assert not 49 < pos < 51
     assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out
+
+@pytest.mark.timeout(tmo)
+def test_slit_scan_area_compare(RE):
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda x,y:x)),
+            ('ywidth',(lambda x,y:y)),
+        ]),
+        {'x':0,'y':0}
+    )
+
+    fake_yag = Reader(
+        'fake_yag',
+        {
+            'xwidth':(lambda:fake_slits.read()['xwidth']['value']),
+            'ywidth':(lambda:fake_slits.read()['ywidth']['value']),
+        }
+    )
+
+    # collector callbacks aggregate data from 'yield from' in the given lists
+    xwidths = []
+    ywidths = []
+    measuredxwidths = collector("xwidth", xwidths)
+    measuredywidths = collector("ywidth", ywidths)
+
+    #test two basic positions
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.0,1.0,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    RE(
+        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,1.5,2)),
+        subs={'event':[measuredxwidths,measuredywidths]}
+    )
+    # excpect error if both measurements <= 0
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,0.0,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
+    # expect error if one measurement <= 0 
+    with pytest.raises(ValueError):
+        RE(
+            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,0.0,2)),
+            subs={'event':[measuredxwidths,measuredywidths]}
+        )
+
+    logger.debug(xwidths) 
+    logger.debug(ywidths) 
+
+    assert xwidths == [
+        1.0, 1.0, 
+        1.1, 1.1, 
+        0.0, 0.0, 
+        1.1, 1.1,
+        ]
+    assert ywidths == [
+        1.0, 1.0, 
+        1.5, 1.5, 
+        0.0, 0.0, 
+        0.0, 0.0,
+        ]
+
