@@ -28,24 +28,15 @@ from .utils import field_prepend
 
 logger = logging.getLogger(__name__)
 
-#TODO Half assed generalization, should really use count but it has those pesky
-#     run/stage decorators
-
-def measure_average(detectors, target_fields, num=1, filters=None,
+def measure_average(detectors, num=1, filters=None,
                     delay=None, drop_missing=True):
     """
     Gather a series of measurements from a list of detectors and return the
-    average over the number of shots
-
+    average over the number of shots.
     Parameters
     ----------
     detectors : list
         List of detectors to measure at each event
-
-    target_fields : list
-        Fields to average for each detector. If a detector is not supplied
-        target_field, a meausurement is taken at each step, however, the
-        average won't be included in the final tuple
 
     num : int, optional
         Number of samples to average together for each step along the scan
@@ -55,27 +46,27 @@ def measure_average(detectors, target_fields, num=1, filters=None,
 
     Returns
     -------
-    average : tuple
-        Tuple of the average over each event for each target_field
+    average : dict
+        A dictionary of all the measurements taken from the supplied detectors
+        averaged over `num` shots. In the event that a field is a string, or
+        can not be averaged the last shot is returned
+
+    See Also
+    --------
+    :func:`.measure`
     """
-    # Expand fields with device names if from ophyd
-    #TODO
-    #Assumption of single PV per detector needs to be eliminated
-    target_fields = copy(target_fields)
-    for i, fld in enumerate(target_fields):
-        try:
-            target_fields[i] = field_prepend(fld, detectors[i])
-
-        except KeyError:
-            raise ValueError("More target fields given than detectors")
-
     #Gather data
     data = yield from measure(detectors, num=num, delay=delay,
                               filters=filters, drop_missing=drop_missing)
 
-    #Average each target field
-    avg = dict((key, np.mean([d[key] for d in data]))
-                for key in target_fields)
+    #Gather keys
+    avg = dict.fromkeys(set([key for d in data for key in d.keys()]))
+    for key in avg.keys():
+        try:
+            avg[key] = np.mean([d[key] for d in data])
+        except TypeError:
+            avg[key] = data[-1][key]
+
     return avg
 
 
@@ -100,8 +91,7 @@ def measure_centroid(det, target_field='centroid_x',
         Time to wait inbetween images
     """
     logger.debug("Running measure_centroid.") 
-    avgs = yield from measure_average([det],[target_field],
-                                       num=average, delay=delay,
+    avgs = yield from measure_average([det], num=average, delay=delay,
                                        filters=filters, drop_missing=drop_missing)
     return avgs[field_prepend(target_field, det)]
 
@@ -200,12 +190,10 @@ def walk_to_pixel(detector, motor, target, filters=None,
                         "".format(gradient))
             #Take a quick measurement 
             avgs = yield from measure_average([detector, motor] + system,
-                                               target_fields,filters=filters,
+                                               filters=filters,
                                                num=average, delay=delay,
                                                drop_missing=drop_missing)
             #Extract centroid and position
-            logger.info(target_fields)
-            logger.info(avgs)
             center, pos = avgs[target_fields[0]], avgs[target_fields[1]]
             #Calculate corresponding intercept
             intercept = center - gradient*pos
@@ -467,7 +455,6 @@ def fitwalk(detectors, motor, models, target,
     def model_measure():
         #Take average measurement
         avg = yield from measure_average(detectors,
-                                         [target_field]+field_names,
                                          num=average, delay=delay,
                                          drop_missing=drop_missing,
                                          filters=filters)

@@ -155,7 +155,6 @@ def verify_all(detectors, target_fields, target_values, tolerances,
             logger.error(err)
             raise RuntimeError(err)
         avgs = yield from measure_average([det] + other_readers,
-                                          [fld] + other_fields,
                                           num=average, delay=delay)
         #Check the tolerance of detector measurement
         ok_list.append(abs(avgs[field_prepend(fld,det)] - val) < tol)
