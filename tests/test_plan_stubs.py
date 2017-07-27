@@ -259,7 +259,6 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
 
 @pytest.mark.timeout(tmo)
 def test_slit_scan_area_compare(RE):
-    logger = logging.getLogger(__name__)
     fake_slits = Mover(
         "slits",
         OrderedDict([
