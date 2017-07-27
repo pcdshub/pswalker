@@ -106,15 +106,12 @@ def lcls_RE(alarming_pvs=None, RE=None):
 
 m1h = "MIRR:FEE1:M1H"
 m1h_xy = "STEP:M1H"
-m1h_gan_x = "STEP:FEE1:611:MOTR"
 m1h_name = "m1h"
 m2h = "MIRR:FEE1:M2H"
 m2h_xy = "STEP:M2H"
-m2h_gan_x = "STEP:FEE1:861:MOTR"
 m2h_name = "m2h"
 m3h = "MIRR:XRT:M2H"
 m3h_xy = "XRT:M2H"
-m3h_gan_x = "GANTRY:XRT:M2H"
 m3h_name = "xrtm2"
 hx2 = "HX2:SB1:PIM"
 hx2_name = "hx2"
@@ -163,12 +160,12 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name)
-    system['m1h2'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name+"2")
-    system['m2h'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name)
-    system['m2h2'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name+"2")
-    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name)
-    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name+"2")
+    system['m1h'] = OffsetMirror(m1h, m1h_xy, name=m1h_name)
+    system['m1h2'] = OffsetMirror(m1h, m1h_xy, name=m1h_name+"2")
+    system['m2h'] = OffsetMirror(m2h, m2h_xy, name=m2h_name)
+    system['m2h2'] = OffsetMirror(m2h, m2h_xy, name=m2h_name+"2")
+    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, name=m3h_name)
+    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2")
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
     system['mfxdg1'] = PIM(mfxdg1, det_pv=mfxdg1_det, name=mfxdg1_name)
