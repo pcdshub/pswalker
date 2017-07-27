@@ -17,6 +17,7 @@ from pcdsdevices.sim import source, mirror, pim
 # Module #
 ##########
 from pswalker.examples import patch_pims
+from .utils import SlowSoftPositioner, MotorSignal
 
 #################
 # Logging Setup #
@@ -133,3 +134,14 @@ def lcls_two_bounce_system():
 #    """
 #    s = slits.Slits('slits',xcenter=0.0,ycenter=0.0,xwidth=0.0,ywidth=0.0)
 #    return s
+
+
+@pytest.fixture(scope='function')
+def mot_and_sig():
+    """
+    Semi-realistic test motor and a signal that reports the motor's position.
+    """
+    mot = SlowSoftPositioner(n_steps=1000, delay=0.001, position=0,
+                             name='test_mot', limits=(-100, 100))
+    sig = MotorSignal(mot, name='test_sig')
+    return mot, sig
