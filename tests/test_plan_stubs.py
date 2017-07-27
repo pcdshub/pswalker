@@ -259,6 +259,7 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
 
 @pytest.mark.timeout(tmo)
 def test_slit_scan_area_compare(RE):
+    logger = logging.getLogger(__name__)
     fake_slits = Mover(
         "slits",
         OrderedDict([
@@ -304,11 +305,8 @@ def test_slit_scan_area_compare(RE):
             subs={'event':[measuredxwidths,measuredywidths]}
         )
 
-    # logger has bad interactin with pytest? only prints on test failure
-    #logger.debug(xwidths) 
-    #logger.debug(ywidths) 
-    print(xwidths) 
-    print(ywidths) 
+    logger.debug(xwidths) 
+    logger.debug(ywidths) 
 
     assert xwidths == [
         1.0, 1.0, 
