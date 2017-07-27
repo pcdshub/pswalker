@@ -15,6 +15,7 @@ from .plan_stubs import recover_threshold, prep_img_motors
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
+from .utils.argutils import as_list
 
 logger = logging.getLogger(__name__)
 
@@ -240,17 +241,33 @@ def make_pick_recover(yag1, yag2, threshold):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              branches=None, branch_choice=lambda: None):
+              branches=None, branch_choice=lambda: None, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
-    walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
-                    gradients=gradients,
-                    tolerances=tolerances, averages=averages, timeout=timeout,
-                    detector_fields=det_fields, motor_fields=mot_fields,
-                    system=detectors + motors)
-    return (yield from branching_plan(walk, branches, branch_choice))
+    _md = {'goals'     : goals,
+           'detectors' : [det.name for det in as_list(detectors)],
+           'mirrors'   : [mot.name for mot in as_list(motors)],
+           'plan_name' : 'homs_skywalker',
+           'plan_args' : dict(goals=goals, gradients=gradients,
+                              tolerances=tolerances, averages=averages,
+                              timeout=timeout, det_fields=as_list(det_fields),
+                              mot_fields=as_list(mot_fields),
+                              first_steps=first_steps)
+          }
+    _md.update(md or {})
 
+    @run_decorator(md=_md)
+    def letsgo():
+        walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
+                        gradients=gradients,
+                        tolerances=tolerances, averages=averages, timeout=timeout,
+                        detector_fields=det_fields, motor_fields=mot_fields,
+                        system=detectors + motors)
+        return (yield from branching_plan(walk, branches, branch_choice))
+
+
+    return (yield from letsgo())
 
 def get_lightpath_suspender(yags):
     # TODO initialize lightpath
