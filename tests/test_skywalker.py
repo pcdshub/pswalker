@@ -128,5 +128,5 @@ def test_skywalker(RE, lcls_two_bounce_system,
     RE(plan)
     y1.move_in()
     y2.move_in()
-    assert np.isclose(y1.detector.centroid_x, goal1, atol=2)
-    assert np.isclose(y2.detector.centroid_x, goal2, atol=2)
+    assert np.isclose(y1.detector.centroid_x, 480 - goal1, atol=2)
+    assert np.isclose(y2.detector.centroid_x, 480 - goal2, atol=2)
