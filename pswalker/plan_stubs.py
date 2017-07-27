@@ -470,17 +470,3 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     
     return x_scaling, y_scaling
 
-
-def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
-            x_center=320, y_center=240, samples=1):
-    
-    """
-    PLAN AND TEST STILL UNDER WORK. DO NOT USE.
-    """
-    yield from abs_set(
-        slits,
-        xwidth = x_width,
-        ywidth = y_width,
-        xcenter = x_center,
-        ycenter = y_center
-    )
