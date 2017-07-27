@@ -9,7 +9,8 @@ from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
-from .plan_stubs import recover_threshold, prep_img_motors
+from .plan_stubs import prep_img_motors
+from .recovery import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
