@@ -433,7 +433,7 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
 
     Returns
     -------
-    x and y scaling : (float,float)
+    (float,float)
         returns a tuple of x and y scaling respectively. Units mm/pixels
     """
     # place slits then read a value that doesn't exist yet
@@ -473,7 +473,7 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     return x_scaling, y_scaling
 
 def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
-            x_center=320, y_center=240, samples=1):
+                          x_center=320, y_center=240, samples=1):
     yield from abs_set(
         slits,
         xwidth = x_width,
