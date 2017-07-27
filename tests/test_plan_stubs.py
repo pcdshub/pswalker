@@ -11,7 +11,7 @@ from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition,
                                  slit_scan_area_comp)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
-from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
+from .utils import plan_stash, collector
 
 from bluesky.examples import Reader, Mover
 
@@ -19,7 +19,6 @@ from collections import OrderedDict
 from numpy.random import rand
 
 from math import nan, isnan
-
 
 logger = logging.getLogger(__name__)
 tmo = 10
@@ -99,14 +98,6 @@ def test_verify_all_array(RE, fake_yags):
     assert not ok_list[0], "Wrong element bool i=0"
     for i in range(1, len(ans)):
         assert ok_list[i], "Wrong element bool i={}".format(i)
-
-
-@pytest.fixture(scope='function')
-def mot_and_sig():
-    mot = SlowSoftPositioner(n_steps=1000, delay=0.001, position=0,
-                             name='test_mot', limits=(-100, 100))
-    sig = MotorSignal(mot, name='test_sig')
-    return mot, sig
 
 
 @pytest.mark.timeout(tmo)
