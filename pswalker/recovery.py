@@ -5,7 +5,7 @@ from threading import Lock
 
 from bluesky.plans import checkpoint, plan_mutator, null
 
-from .plan_stubs import match_condition
+from .plan_stubs import match_condition, prep_img_motors
 from .utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
@@ -150,3 +150,62 @@ def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
 
     brancher = plan_mutator(plan, branch_handler)
     return (yield from brancher)
+
+
+def get_thresh_signal(yag):
+    """
+    Given a yag object, return the signal we'll be using to determine if the
+    yag has beam on it.
+    """
+    return yag.detector.stats2.centroid.y
+
+
+def make_homs_recover(yags, yag_index, motor, threshold, center=0,
+                      get_signal=get_thresh_signal):
+    """
+    Make a recovery plan for a particular yag/motor combination in the homs
+    system.
+    """
+    def homs_recover():
+        sig = get_signal(yags[yag_index])
+        if motor.position < center:
+            dir_init = 1
+        else:
+            dir_init = -1
+
+        def plan():
+            yield from prep_img_motors(yag_index, yags, timeout=10)
+            yield from recover_threshold(sig, threshold, motor, dir_init,
+                                         timeout=120, has_stop=False)
+        return (yield from plan())
+
+    return homs_recover
+
+
+def make_pick_recover(yag1, yag2, threshold):
+    """
+    Make a function of zero arguments that will determine if a recovery plan
+    needs to be run, and if so, which plan to use.
+    """
+    def pick_recover():
+        return None
+        num = 25
+        sigs = []
+        if yag1.position == "IN":
+            for i in range(num):
+                sig = get_thresh_signal(yag1)
+                sigs.append(sig)
+            if max(sigs) < threshold[0]:
+                return 0
+            else:
+                return None
+        elif yag2.position == "IN":
+            for i in range(num):
+                sig = get_thresh_signal(yag2)
+                sigs.append(sig)
+            if max(sigs) < threshold[1]:
+                return 1
+            else:
+                return None
+
+    return pick_recover
