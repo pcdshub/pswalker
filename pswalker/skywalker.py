@@ -3,10 +3,8 @@
 import logging
 from threading import Lock
 
-import numpy as np
 from bluesky import RunEngine
-from bluesky.plans import (checkpoint, plan_mutator, null, run_decorator,
-                           abs_set)
+from bluesky.plans import (checkpoint, plan_mutator, null, run_decorator)
 from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
@@ -253,6 +251,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                               first_steps=first_steps)
           }
     _md.update(md or {})
+    goals = [480 - g for g in goals]
 
     @run_decorator(md=_md)
     def letsgo():
@@ -270,61 +269,3 @@ def get_lightpath_suspender(yags):
     # TODO initialize lightpath
     # Make the suspender to go to the last yag and exclude prev yags
     return LightpathSuspender(yags[-1], exclude=yags[:-1])
-
-
-def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
-                   averages=100, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
-                   first_steps=0.0001):
-    """
-    Skywalker with homs-specific devices and recovery methods
-    """
-    if gradients is None:
-        gradients = [-4000, 32000]
-    system = homs_system()
-    if isinstance(y1, str):
-        y1 = system[y1]
-    if isinstance(y2, str):
-        y2 = system[y2]
-    m1h = system['m1h']
-    m2h = system['m2h']
-    m1h.low_limit = -150
-    m1h.high_limit = 250
-    m2h.low_limit = -290
-    m2h.high_limit = 110
-    m1 = m1h
-    m2 = m2h
-    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.1, center=239.98)
-    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.1, center=102.37)
-    choice = make_pick_recover(y1, y2, has_beam_floor)
-
-    _md = {'goals': goals,
-           'detectors': [y1.name, y2.name],
-           'mirrors': [m1.name, m2.name],
-           'plan_name': 'homs_skywalker',
-           'plan_args': dict(goals=goals, y1=repr(y1), y2=repr(y2),
-                             gradients=gradients, tolerances=tolerances,
-                             averages=averages, timeout=timeout,
-                             has_beam_floor=has_beam_floor,
-                             first_steps=first_steps)
-          }
-    _md.update(md or {})
-    goals = [480 - g for g in goals]
-
-    @run_decorator(md=_md)
-    def letsgo():
-        #for yag in (y1, y2):
-        #    try:
-        #        if not np.isclose(yag.zoom.position, 25):
-        #            yield from abs_set(yag.zoom, 25)
-        #    except AttributeError:
-        #        logger.error()
-        #        pass
-        return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
-                                     pitch_key, goals,
-                                     gradients=gradients,
-                                     tolerances=tolerances, averages=averages,
-                                     timeout=timeout,
-                                     branches=[recover_m1, recover_m2],
-                                     branch_choice=choice,
-                                     first_steps=first_steps))
-    return (yield from letsgo())
