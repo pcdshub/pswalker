@@ -410,15 +410,12 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
 
     Parameters
     ----------
-    par : type 
-        description
-
-    slits : Slits
+    slits : pcdsdevices.slits.Slits
         Ophyd slits object from pcdsdevices.slits.Slits 
     
-    yag : PIMPulnixDetector (Most likely candidate for area detector.
-        May change) Ophyd object of some type, this will allow 
-        me to read the w, h (w,h don't exist yet but they should shortly)
+    yag : pcdsdevices.sim.pim.PIM (subject to change?)
+        Ophyd object of some type, this will allow me to read the w, h 
+        (w,h don't exist yet but they should shortly)
 
     x_width : int 
         Define the target x width of the gap in the slits. Units: mm
@@ -470,8 +467,59 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     
     return x_scaling, y_scaling
 
-def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0, 
-                          x_center=320, y_center=240, samples=1):
+# is this pixel or spatial positioning? What are my units?
+def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
+                          y_width=1.0, x_center=320, y_center=240, samples=1):
+    """ Assists beam alignment by setting the slits to a w,h and checking,
+    returning the centroid position.
+
+    Parameters
+    ----------
+    par : type 
+        description
+
+    slits : pcdsdevices.slits.Slits
+        Ophyd slits object from pcdsdevices.slits.Slits
+
+    target_yag_idx : int
+        Index of the YAG to be inserted. This selects the yag out of the
+        yag_set argument that needs actuation.
+
+    yag_set : List of pcdsdevices.sim.pim.PIM
+        This list of yags will be moved when this plan is run. The target yag,
+        specified by target_yag_idx, will be dropped into the path of the beam.
+        All yags between the target yag and the undulator will be lifted. All
+        yags past the target yag (opposite side of the undulator) will be
+        dropped into the beamline as well. During alignment between two
+        separate yags. List both yags here so only the first will be repeatedly
+        added and removed. 
+
+    x_width : float
+        x dimensions of the gap in the slits. EGU: mm
+
+    y_width : float
+        y dimensions of the gap in the slits. EGU: mm
+    
+    x_center : float 
+        x location of center of the gap in the slits. EGU: mm
+
+    y_center : float 
+        y location of center of the gap in the slits. EGU: mm
+
+    samples : int
+        Returned measurements are averages over multiple samples. samples arg
+        determines the number of samples to average over for returned data
+
+    Returns
+    -------
+    (float,float)
+        (x,y) coordinates of centroid position in pixel space
+    """
+
+    # moves targeted yag into beam other yags are moved according to last args
+    yield from prep_img_motors( target_yag_idx, yag_set, prev_out=True, tail_in=True) 
+    
+    
     yield from abs_set(
         slits,
         xwidth = x_width,
@@ -479,3 +527,18 @@ def slit_scan_fiducialize(slits, yag, x_width=1.0, y_width=1.0,
         xcenter = x_center,
         ycenter = y_center
     )
+
+    yag_measurements = yield from measure_average(
+        yag_set,
+        num=samples
+    )
+    #print(yag_set[target_yag_idx].name)
+    #print("target:",yag_measurements[yag_set[target_yag_idx].name+"_detector_stats2_centroid_x"])
+    yagname = yag_set[target_yag_idx].name
+    x_centroid = yag_measurements[yagname+"_detector_stats2_centroid_x"]
+    y_centroid = yag_measurements[yagname+"_detector_stats2_centroid_y"]
+    return (x_centroid, y_centroid)
+    
+
+
+

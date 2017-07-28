@@ -9,7 +9,7 @@ from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold,
-                                 slit_scan_area_comp)
+                                 slit_scan_area_comp, slit_scan_fiducialize)
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
 
@@ -321,9 +321,9 @@ def test_slit_scan_area_compare(RE):
         ]
 
 @pytest.mark.timeout(tmo)
-def test_slit_scan_fiducialize(RE,lcls_two_bounce_system):
+def test_slit_scan_fiducialize(RE,fake_yags, lcls_two_bounce_system):
     """
-    PLAN AND TEST STILL UNDER WORK. DO NOT USE.
+    
     """
     fake_slits = Mover(
         "slits",
@@ -335,7 +335,7 @@ def test_slit_scan_fiducialize(RE,lcls_two_bounce_system):
         ]),
         {'xwidth':0,'ywidth':0,'xcenter':0,'ycenter':0}
     )
-    ''''
+    '''
     fake_yag_in = Mover(
         "slits",
         OrderedDict([
@@ -363,21 +363,54 @@ def test_slit_scan_fiducialize(RE,lcls_two_bounce_system):
     )
     guess there's some premade yag sims
     '''
-    _, _, _, fake_yag, _, = lcls_two_bounce_system
+   
+    #quick set of 6? yags, sufficient for testing purposes
+    fake_yag_set = fake_yags[0]
 
-    # collector callbacks aggregate data from 'yield from' in the given lists
+    print(fake_yag_set[3].name)
+    print(fake_yag_set[3].detector)
+    print(fake_yag_set[3].detector.read()['TST:hx2_pim_detector_stats2_centroid_y'])
+    #print(dir(fake_yag_set[3].detector))
+    fake_yag_set[3].detector.stats2.centroid.x.value=1.1
+    print(fake_yag_set[3].detector.stats2.centroid.x.value)
+
+
+    # collector callbacks aggregate data from 'yield from' returns in lists
+    '''
+    names = []
+    for single_yag in fake_yag_set:
+        for axis in ["x","y"]:
+            names.append(single_yag.name + "_pim_detector_stats2_centroid_" +
+            axis)
+    '''
+    '''        
     xcenter = []
     ycenter = []
-    measuredxcenter = collector("xcenter", xcenter)
-    measuredycenter = collector("ycenter", ycenter)
+    measuredxcenter = collector("TST:hx2_pim_detector_stats2_centroid_x", xcenter)
+    measuredycenter = collector("TST:hx2_pim_detector_stats2_centroid_y", ycenter)
     
-    #test two basic positions
+    
     RE(
-        run_wrapper(slit_scan_fiducialize(fake_slits,fake_yag,1.0,1.0)),
+        run_wrapper(slit_scan_fiducialize(fake_slits,0,fake_yag_set,1.0,1.0)),
         subs={'event':[measuredxcenter,measuredycenter]}
     )
+    '''
+    
+    
+       
+    xcenter = []
+    ycenter = []
+    measuredxcenter = collector("TST:hx2_pim_detector_stats2_centroid_x", xcenter)
+    measuredycenter = collector("TST:hx2_pim_detector_stats2_centroid_y", ycenter)
+    
+    
+    RE(
+        run_wrapper(slit_scan_fiducialize(fake_slits,3,fake_yag_set,1.0,1.0)),
+        subs={'event':[measuredxcenter,measuredycenter]}
+    )
+    
     print(xcenter,ycenter)
 
-    
+    assert fake_yag_set[3].blocking
 
-    assert True
+    assert False
