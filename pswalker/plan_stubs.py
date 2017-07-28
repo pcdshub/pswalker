@@ -469,7 +469,7 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
 
 # is this pixel or spatial positioning? What are my units?
 def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
-                          y_width=1.0, x_center=320, y_center=240, samples=1):
+                          y_width=1.0, x_center=None, y_center=None, samples=1):
     """ Assists beam alignment by setting the slits to a w,h and checking,
     returning the centroid position.
 
@@ -500,11 +500,13 @@ def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
     y_width : float
         y dimensions of the gap in the slits. EGU: mm
     
-    x_center : float 
-        x location of center of the gap in the slits. EGU: mm
+    x_center : float or None
+        x location of center of the gap in the slits. EGU: mm. Passing None
+        instructs the slits to retain their current position.
 
-    y_center : float 
-        y location of center of the gap in the slits. EGU: mm
+    y_center : float or None 
+        y location of center of the gap in the slits. EGU: mm. Passing None
+        instructs the slits to retain their curent position.
 
     samples : int
         Returned measurements are averages over multiple samples. samples arg
@@ -517,9 +519,21 @@ def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
     """
 
     # moves targeted yag into beam other yags are moved according to last args
-    yield from prep_img_motors( target_yag_idx, yag_set, prev_out=True, tail_in=True) 
+    yield from prep_img_motors(
+        target_yag_idx,
+        yag_set,
+        prev_out=True,
+        tail_in=True
+    )
     
-    
+    if x_center == None:
+        x_center = slits.read()['xcenter']['value']
+       
+    if y_center == None:
+        y_center = slits.read()['ycenter']['value']
+
+
+    # place slits 
     yield from abs_set(
         slits,
         xwidth = x_width,
@@ -528,15 +542,17 @@ def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
         ycenter = y_center
     )
 
+    #collect data from yags
     yag_measurements = yield from measure_average(
         yag_set,
         num=samples
     )
-    #print(yag_set[target_yag_idx].name)
-    #print("target:",yag_measurements[yag_set[target_yag_idx].name+"_detector_stats2_centroid_x"])
+
+    # extract centroid positions from yag_measurments dict
     yagname = yag_set[target_yag_idx].name
     x_centroid = yag_measurements[yagname+"_detector_stats2_centroid_x"]
     y_centroid = yag_measurements[yagname+"_detector_stats2_centroid_y"]
+    
     return (x_centroid, y_centroid)
     
 

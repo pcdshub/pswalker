@@ -321,10 +321,9 @@ def test_slit_scan_area_compare(RE):
         ]
 
 @pytest.mark.timeout(tmo)
-def test_slit_scan_fiducialize(RE,fake_yags, lcls_two_bounce_system):
-    """
-    
-    """
+def test_slit_scan_fiducialize(RE, fake_yags, lcls_two_bounce_system):
+
+    # instantiate fake slits object
     fake_slits = Mover(
         "slits",
         OrderedDict([
@@ -335,82 +334,67 @@ def test_slit_scan_fiducialize(RE,fake_yags, lcls_two_bounce_system):
         ]),
         {'xwidth':0,'ywidth':0,'xcenter':0,'ycenter':0}
     )
-    '''
-    fake_yag_in = Mover(
-        "slits",
-        OrderedDict([
-            ('in',(lambda x:x)),
-        ]),
-        {'x':False}
-    )
-    
-    fake_yag = Reader(
-        'fake_yag',
-        {
-            'xwidth':(lambda: fake_slits.read()['xwidth']['value'] if 
-                fake_yag_in.read()['in'] else 0.0
-            ),
-            'ywidth':(lambda: fake_slits.read()['ywidth']['value'] if 
-                fake_yag_in.read()['in'] else 0.0
-            ),
-            'centroid_x':(lambda: fake_slits.read()['xcenter']['value'] if 
-                fake_yag_in.read()['in'] else 0.0
-            ),
-            'centroid_y':(lambda: fake_slits.read()['ycenter']['value'] if 
-                fake_yag_in.read()['in'] else 0.0
-            ),
-        }
-    )
-    guess there's some premade yag sims
-    '''
+
    
-    #quick set of 6? yags, sufficient for testing purposes
+    # set of 6? fake yags, sufficient for testing purposes
     fake_yag_set = fake_yags[0]
 
-    print(fake_yag_set[3].name)
-    print(fake_yag_set[3].detector)
-    print(fake_yag_set[3].detector.read()['TST:hx2_pim_detector_stats2_centroid_y'])
-    #print(dir(fake_yag_set[3].detector))
-    fake_yag_set[3].detector.stats2.centroid.x.value=1.1
-    print(fake_yag_set[3].detector.stats2.centroid.x.value)
 
 
-    # collector callbacks aggregate data from 'yield from' returns in lists
-    '''
-    names = []
-    for single_yag in fake_yag_set:
-        for axis in ["x","y"]:
-            names.append(single_yag.name + "_pim_detector_stats2_centroid_" +
-            axis)
-    '''
-    '''        
+
+    # run test with first yag.
+    # test for insertion, removal of proceeding yags
+    # sets slits center location
+    x=1
+    y=2
+    fake_yag_set[3].detector.stats2.centroid.x.value=x
+    fake_yag_set[3].detector.stats2.centroid.y.value=y
+    
+    #collector callbacks aggregate data from 'yield from' returns in lists  
     xcenter = []
     ycenter = []
     measuredxcenter = collector("TST:hx2_pim_detector_stats2_centroid_x", xcenter)
     measuredycenter = collector("TST:hx2_pim_detector_stats2_centroid_y", ycenter)
     
-    
+    #test plan
     RE(
-        run_wrapper(slit_scan_fiducialize(fake_slits,0,fake_yag_set,1.0,1.0)),
+        run_wrapper(slit_scan_fiducialize(fake_slits,3,fake_yag_set,1.0,1.0,2,1)),
         subs={'event':[measuredxcenter,measuredycenter]}
     )
-    '''
     
+    assert (xcenter,ycenter) == ([x],[y]), "wrong centroid"
+    assert fake_yag_set[3].blocking, "target yag not inserted"
+    assert not fake_yag_set[0].blocking, "prior yag not removed"
+    assert not fake_yag_set[1].blocking, "prior yag not removed"
+    assert not fake_yag_set[2].blocking, "prior yag not removed"
+
+
+    # run test with lag further from undulator
+    # test for insertion, removal of proceeding yags
+    # does not set slits center location, checks to see if it has been retained
+    x=3
+    y=2
+    fake_yag_set[3].detector.stats2.centroid.x.value=x
+    fake_yag_set[3].detector.stats2.centroid.y.value=y
     
-       
+    #collector callbacks aggregate data from 'yield from' returns in lists  
     xcenter = []
     ycenter = []
     measuredxcenter = collector("TST:hx2_pim_detector_stats2_centroid_x", xcenter)
     measuredycenter = collector("TST:hx2_pim_detector_stats2_centroid_y", ycenter)
-    
-    
+
+    # exectue plan
     RE(
-        run_wrapper(slit_scan_fiducialize(fake_slits,3,fake_yag_set,1.0,1.0)),
+        run_wrapper(slit_scan_fiducialize(fake_slits,4,fake_yag_set,1.0,1.0)),
         subs={'event':[measuredxcenter,measuredycenter]}
     )
     
-    print(xcenter,ycenter)
+    assert (xcenter,ycenter) == ([x],[y]), "wrong centroid"
+    assert not fake_yag_set[0].blocking, "prior yag not removed"
+    assert not fake_yag_set[1].blocking, "prior yag not removed"
+    assert not fake_yag_set[2].blocking, "prior yag not removed"
+    assert not fake_yag_set[3].blocking, "prior yag not removed"
+    assert fake_yag_set[4].blocking, "target yag not inserted"
+    assert fake_slits.read()['xcenter']['value'] == 2, "position not kept"
+    assert fake_slits.read()['ycenter']['value'] == 1, "position not kept"
 
-    assert fake_yag_set[3].blocking
-
-    assert False
