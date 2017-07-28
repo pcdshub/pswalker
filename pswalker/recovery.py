@@ -4,8 +4,10 @@ import logging
 from threading import Lock
 
 from bluesky.plans import checkpoint, plan_mutator, null
+from ophyd.device import Staged
 
 from .plan_stubs import match_condition, prep_img_motors
+from .utils.argutils import as_list
 from .utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
@@ -209,3 +211,55 @@ def make_pick_recover(yag1, yag2, threshold):
                 return None
 
     return pick_recover
+
+
+def needs_recovery(dets, is_ok_plans, blocking=True):
+    """
+    Plan to determine if a recovery plan needs to be run, and if so, which
+    detectors indicate a problem.
+
+    Parameters
+    ----------
+    dets: Device or list of Devices
+        If a list, these should be in the physical order along the beam line,
+        upstream to downstream. These must implement the stage method and have
+        the _staged enum so we can check if they are active or not.
+
+    is_ok_plans: function or list of functions
+        Function of one argument, taking in a detector and returning a plan
+        that determines if the readback on the corresponding det object needs
+        a recovery. This should use messages like "read", etc. to collect data
+        in the bluesky framework rather than relying on direct function calls
+        (though direct function calls will still work, at the expense of losing
+        the niceness of the RunEngine). Remember that checkpoints are rewind
+        points for suspenders and other interruptions.
+
+    blocking: bool or list of bool
+        If True, the upstream detectors block the downstream detectors, so we
+        will stop after finding the first active detector.
+
+    Returns
+    -------
+    dets_to_recover: list of objects
+        All objects that indicate a recovery. An empty list means that no
+        recovery is needed. If blocking is True, we expect length <= 1 because
+        we'd stop checking after the first active det.
+    """
+    logger.debug("call needs_recovery(dets=%s, is_ok_plans=%s, blocking=%s)",
+                 dets, is_ok_plans, blocking)
+    dets = as_list(dets)
+    num = len(dets)
+    is_ok_plans = as_list(is_ok_plans, length=num)
+    blocking = as_list(blocking, length=num)
+
+    dets_to_recover = []
+    for det, is_ok, block in zip(dets, is_ok_plans, blocking):
+        yield from checkpoint()
+        if det._staged == Staged.yes:
+            ok = yield from is_ok(det)
+            if not ok:
+                dets_to_recover.append(det)
+            if block:
+                break
+
+    return dets_to_recover
