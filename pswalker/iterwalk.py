@@ -102,6 +102,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     num = len(detectors)
 
     # Listify most optional arguments
+    goals = as_list(goals, num)
     starts = as_list(starts, num)
     first_steps = as_list(first_steps, num, float)
     gradients = as_list(gradients, num)

@@ -3,10 +3,8 @@
 import logging
 from threading import Lock
 
-import numpy as np
 from bluesky import RunEngine
-from bluesky.plans import (checkpoint, plan_mutator, null, run_decorator,
-                           abs_set)
+from bluesky.plans import (checkpoint, plan_mutator, null, run_decorator)
 from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
@@ -15,6 +13,7 @@ from .plan_stubs import recover_threshold, prep_img_motors
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
+from .utils.argutils import as_list
 
 logger = logging.getLogger(__name__)
 
@@ -106,15 +105,12 @@ def lcls_RE(alarming_pvs=None, RE=None):
 
 m1h = "MIRR:FEE1:M1H"
 m1h_xy = "STEP:M1H"
-m1h_gan_x = "STEP:FEE1:611:MOTR"
 m1h_name = "m1h"
 m2h = "MIRR:FEE1:M2H"
 m2h_xy = "STEP:M2H"
-m2h_gan_x = "STEP:FEE1:861:MOTR"
 m2h_name = "m2h"
 m3h = "MIRR:XRT:M2H"
 m3h_xy = "XRT:M2H"
-m3h_gan_x = "GANTRY:XRT:M2H"
 m3h_name = "xrtm2"
 hx2 = "HX2:SB1:PIM"
 hx2_name = "hx2"
@@ -123,6 +119,9 @@ dg3_name = "dg3"
 mfxdg1 = "MFX:DG1:PIM"
 mfxdg1_det = "MFX:DG1:P6740"
 mfxdg1_name = "mfxdg1"
+mecy1 = "MEC:PIM1"
+mecy1_det = "MEC:HXM:CVV:01"
+mecy1_name = "mecy1"
 pitch_key = "pitch"
 cent_x_key = "detector_stats2_centroid_y"
 fmt = "{}_{}"
@@ -160,15 +159,16 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name)
-    system['m1h2'] = OffsetMirror(m1h, m1h_xy, m1h_gan_x, name=m1h_name+"2")
-    system['m2h'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name)
-    system['m2h2'] = OffsetMirror(m2h, m2h_xy, m2h_gan_x, name=m2h_name+"2")
-    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name)
-    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, m3h_gan_x, name=m3h_name+"2")
+    system['m1h'] = OffsetMirror(m1h, m1h_xy, name=m1h_name)
+    system['m1h2'] = OffsetMirror(m1h, m1h_xy, name=m1h_name+"2")
+    system['m2h'] = OffsetMirror(m2h, m2h_xy, name=m2h_name)
+    system['m2h2'] = OffsetMirror(m2h, m2h_xy, name=m2h_name+"2")
+    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, name=m3h_name)
+    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2")
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
     system['mfxdg1'] = PIM(mfxdg1, det_pv=mfxdg1_det, name=mfxdg1_name)
+    system['mecy1'] = PIM(mecy1, det_pv=mecy1_det, name=mecy1_name)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
@@ -236,77 +236,36 @@ def make_pick_recover(yag1, yag2, threshold):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              branches=None, branch_choice=lambda: None):
+              branches=None, branch_choice=lambda: None, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
-    walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
-                    gradients=gradients,
-                    tolerances=tolerances, averages=averages, timeout=timeout,
-                    detector_fields=det_fields, motor_fields=mot_fields,
-                    system=detectors + motors)
-    return (yield from branching_plan(walk, branches, branch_choice))
-
-
-def get_lightpath_suspender(yags):
-    # TODO initialize lightpath
-    # Make the suspender to go to the last yag and exclude prev yags
-    return LightpathSuspender(yags[-1], exclude=yags[:-1])
-
-
-def homs_skywalker(goals, y1='y1', y2='y2', gradients=None, tolerances=5,
-                   averages=100, timeout=600, has_beam_floor=[0.1, 0.1], md=None,
-                   first_steps=0.0001):
-    """
-    Skywalker with homs-specific devices and recovery methods
-    """
-    if gradients is None:
-        gradients = [-4000, 32000]
-    system = homs_system()
-    if isinstance(y1, str):
-        y1 = system[y1]
-    if isinstance(y2, str):
-        y2 = system[y2]
-    m1h = system['m1h']
-    m2h = system['m2h']
-    m1h.low_limit = -150
-    m1h.high_limit = 250
-    m2h.low_limit = -290
-    m2h.high_limit = 110
-    m1 = m1h
-    m2 = m2h
-    recover_m1 = make_homs_recover([y1, y2], 0, m1h, 0.1, center=239.98)
-    recover_m2 = make_homs_recover([y1, y2], 1, m2h, 0.1, center=102.37)
-    choice = make_pick_recover(y1, y2, has_beam_floor)
-
-    _md = {'goals': goals,
-           'detectors': [y1.name, y2.name],
-           'mirrors': [m1.name, m2.name],
-           'plan_name': 'homs_skywalker',
-           'plan_args': dict(goals=goals, y1=repr(y1), y2=repr(y2),
-                             gradients=gradients, tolerances=tolerances,
-                             averages=averages, timeout=timeout,
-                             has_beam_floor=has_beam_floor,
-                             first_steps=first_steps)
+    _md = {'goals'     : goals,
+           'detectors' : [det.name for det in as_list(detectors)],
+           'mirrors'   : [mot.name for mot in as_list(motors)],
+           'plan_name' : 'homs_skywalker',
+           'plan_args' : dict(goals=goals, gradients=gradients,
+                              tolerances=tolerances, averages=averages,
+                              timeout=timeout, det_fields=as_list(det_fields),
+                              mot_fields=as_list(mot_fields),
+                              first_steps=first_steps)
           }
     _md.update(md or {})
     goals = [480 - g for g in goals]
 
     @run_decorator(md=_md)
     def letsgo():
-        #for yag in (y1, y2):
-        #    try:
-        #        if not np.isclose(yag.zoom.position, 25):
-        #            yield from abs_set(yag.zoom, 25)
-        #    except AttributeError:
-        #        logger.error()
-        #        pass
-        return (yield from skywalker([y1, y2], [m1h, m2h], cent_x_key,
-                                     pitch_key, goals,
-                                     gradients=gradients,
-                                     tolerances=tolerances, averages=averages,
-                                     timeout=timeout,
-                                     branches=[recover_m1, recover_m2],
-                                     branch_choice=choice,
-                                     first_steps=first_steps))
+        walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
+                        gradients=gradients,
+                        tolerances=tolerances, averages=averages, timeout=timeout,
+                        detector_fields=det_fields, motor_fields=mot_fields,
+                        system=detectors + motors)
+        return (yield from branching_plan(walk, branches, branch_choice))
+
+
     return (yield from letsgo())
+
+def get_lightpath_suspender(yags):
+    # TODO initialize lightpath
+    # Make the suspender to go to the last yag and exclude prev yags
+    return LightpathSuspender(yags[-1], exclude=yags[:-1])

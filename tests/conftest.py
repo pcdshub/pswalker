@@ -69,8 +69,8 @@ def simple_two_bounce_system():
     Simple system that consists of a source and two mirrors.
     """
     s = source.Undulator('test_source')
-    m1 = mirror.OffsetMirror('test_mirror_1', z=10)
-    m2 = mirror.OffsetMirror('test_mirror_2', x=5, z=20)
+    m1 = mirror.OffsetMirror('test_mirror_1', 'test_mirror_1_xy', z=10)
+    m2 = mirror.OffsetMirror('test_mirror_2', 'test_mirror_2_xy', x=5, z=20)
     return s, m1, m2
 
 
@@ -81,7 +81,7 @@ def one_bounce_system():
     relationship with YAG centroid
     """
     s = source.Undulator('test_source')
-    mot = mirror.OffsetMirror('mirror', z=50)
+    mot = mirror.OffsetMirror('mirror', 'mirror_xy', z=50)
     det = pim.PIM('yag', z=60, size=(500,500))
     det = patch_pims(det, mot)
     return s, mot, det
@@ -115,8 +115,9 @@ def lcls_two_bounce_system():
     Simple system that consists of a source, two mirrors, and two imagers.
     """
     s = source.Undulator('test_undulator')
-    m1 = mirror.OffsetMirror('test_m1h', z=90.510, alpha=0.0014)
-    m2 = mirror.OffsetMirror('test_m2h', x=0.0317324, z=101.843, alpha=0.0014)
+    m1 = mirror.OffsetMirror('test_m1h', 'test_m1h_xy', z=90.510, alpha=0.0014)
+    m2 = mirror.OffsetMirror('test_m2h', 'test_m2h_xy', x=0.0317324, z=101.843,
+                             alpha=0.0014)
     y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660)
     y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)    
 
