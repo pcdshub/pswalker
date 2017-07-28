@@ -180,7 +180,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                              detectors[index])
 
                 if abs(pos - goals[index]) < tolerances[index]:
-                    logger.debug("beam aligned on %s without move",
+                    logger.info("Beam was aligned on %s without a move",
                                  detectors[index])
                     finished[index] = True
                     done_pos[index] = pos
