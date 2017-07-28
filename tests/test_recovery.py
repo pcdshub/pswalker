@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 import pytest
 import logging
+from queue import Queue
 
-from bluesky.plans import run_wrapper
+from bluesky.plans import run_wrapper, run_decorator, null
+from ophyd.device import Staged
 
-from pswalker.recovery import recover_threshold
+from pswalker.recovery import recover_threshold, needs_recovery
 from pswalker.utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
@@ -76,3 +78,44 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     assert not 49 < pos < 51
     assert mot.position not in (100, -100)
     # If we didn't reach the goal or either end, we timed out
+
+
+def test_needs_recovery(RE):
+    logger.debug("test_needs_recovery")
+    # Need to make sure the RE runs the plan and that internally it returns the
+    # detectors that need recovering.
+
+    class Det:
+        def __init__(self, value, staged):
+            self.value = value
+            self._staged = staged
+    return_values = Queue()
+
+    def is_ok_det(det):
+        yield from null()
+        return det.value > 2
+
+    @run_decorator()
+    def call_and_stash(plan, plan_args, stash):
+        val = yield from plan(*plan_args)
+        stash.put(val)
+
+    dets = Det(4, Staged.yes)
+    RE(call_and_stash(needs_recovery, [dets, is_ok_det], return_values))
+    assert return_values.get() == []
+
+    dets = Det(0, Staged.yes)
+    RE(call_and_stash(needs_recovery, [dets, is_ok_det], return_values))
+    assert return_values.get() == [dets]
+
+    dets = Det(0, Staged.no)
+    RE(call_and_stash(needs_recovery, [dets, is_ok_det], return_values))
+    assert return_values.get() == []
+
+    dets = [Det(0, Staged.yes), Det(0, Staged.yes)]
+    RE(call_and_stash(needs_recovery, [dets, is_ok_det], return_values))
+    assert return_values.get() == [dets[0]]
+
+    dets = [Det(0, Staged.yes), Det(0, Staged.yes)]
+    RE(call_and_stash(needs_recovery, [dets, is_ok_det, False], return_values))
+    assert return_values.get() == dets
