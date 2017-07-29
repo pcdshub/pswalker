@@ -10,7 +10,7 @@ from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
-from .utils.exceptions import RecoverDone, RecoverFail
+from .utils.exceptions import BeamNotFoundError, RecoverDone, RecoverFail
 from math import nan, isnan
 
 logger = logging.getLogger(__name__)
@@ -436,125 +436,172 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     # easy
     # measure_average()
     #data = yield from measure_average([yag],['xwidth','ywidth'])
-    
+
     # set slits to specified gap size
     yield from abs_set(slits,x=x_width,y = y_width)
-    
+
     # read profile dimensions from image (width plugin pending)
     yag_measurements = yield from measure_average(
         [yag],
         num=samples
     )
-    
+
     # extract measurements of interest from returned dict
-    yag_measured_x_width = yag_measurements['xwidth'] 
-    yag_measured_y_width = yag_measurements['ywidth'] 
-    
+    yag_measured_x_width = yag_measurements['xwidth']
+    yag_measured_y_width = yag_measurements['ywidth']
+
     logger.debug("Measured x width: {}".format(yag_measured_x_width))
     logger.debug("Measured y width: {}".format(yag_measured_y_width))
-     
+
     # err if image not received or image has 0 width,height 
     if (yag_measured_x_width <= 0 \
         or yag_measured_y_width <=0):
-        raise ValueError("A measurement less than or equal to zero has been"+ 
-            "measured. Unable to calibrate")
+        raise ValueError("A measurement less than or equal to zero has been" 
+                         "measured. Unable to calibrate")
         x_scaling = nan
         y_scaling = nan
     else:
         #data format: Real space / pixel
-        x_scaling = x_width / yag_measured_x_width 
-        y_scaling = y_width / yag_measured_y_width   
-    
+        x_scaling = x_width / yag_measured_x_width
+        y_scaling = y_width / yag_measured_y_width
+
     return x_scaling, y_scaling
 
-# is this pixel or spatial positioning? What are my units?
-def slit_scan_fiducialize(slits, target_yag_idx, yag_set, x_width=1.0,
-                          y_width=1.0, x_center=None, y_center=None, samples=1):
-    """ Assists beam alignment by setting the slits to a w,h and checking,
+
+
+def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
+                          samples=10, filters=None,
+                          centroid='detector_stats2_centroid_y'):
+    """
+    Assists beam alignment by setting the slits to a w,h and checking,
     returning the centroid position.
 
     Parameters
     ----------
-    par : type 
-        description
-
     slits : pcdsdevices.slits.Slits
         Ophyd slits object from pcdsdevices.slits.Slits
 
-    target_yag_idx : int
-        Index of the YAG to be inserted. This selects the yag out of the
-        yag_set argument that needs actuation.
-
-    yag_set : List of pcdsdevices.sim.pim.PIM
-        This list of yags will be moved when this plan is run. The target yag,
-        specified by target_yag_idx, will be dropped into the path of the beam.
-        All yags between the target yag and the undulator will be lifted. All
-        yags past the target yag (opposite side of the undulator) will be
-        dropped into the beamline as well. During alignment between two
-        separate yags. List both yags here so only the first will be repeatedly
-        added and removed. 
+    yag : pcdsdevices.pim.PIM
+        Detector to fidicuialize. This plan assumes the detector is stated and
+        inserted
 
     x_width : float
         x dimensions of the gap in the slits. EGU: mm
 
     y_width : float
         y dimensions of the gap in the slits. EGU: mm
-    
-    x_center : float or None
-        x location of center of the gap in the slits. EGU: mm. Passing None
-        instructs the slits to retain their current position.
-
-    y_center : float or None 
-        y location of center of the gap in the slits. EGU: mm. Passing None
-        instructs the slits to retain their curent position.
 
     samples : int
         Returned measurements are averages over multiple samples. samples arg
         determines the number of samples to average over for returned data
+
+    filters : dict, optional
+        Key, callable pairs of event keys and single input functions that
+        evaluate to True or False. For more infromation see
+        :meth:`.apply_filters`
+
+    centroid : str, optional
+        Key to gather centroid information
 
     Returns
     -------
     (float,float)
         (x,y) coordinates of centroid position in pixel space
     """
+    #Set slits
+    yield from abs_set(slits, wait=True,
+                       xwidth = x_width,
+                       ywidth = y_width)
 
-    # moves targeted yag into beam other yags are moved according to last args
-    yield from prep_img_motors(
-        target_yag_idx,
-        yag_set,
-        prev_out=True,
-        tail_in=True
-    )
+    #Collect data from yags
+    yag_measurements = yield from measure_average([yag], num=samples,
+                                                  filters=filters)
+
+    #Extract centroid positions from yag_measurments dict
+    centroid = yag_measurements[field_prepend(centroid, yag)]
+
+    return centroid
+
+
+def fiducialize(slits, yag, start=0.1, step_size=0.5, max_width=5.0,
+                filters=None, centroid='detector_stats2_centroid_y',
+                samples=10):
+    """
+    Fiducialize a detector using upstream slits
+
+    Close the slits to a value specified by `start`. Then measure the centroid
+    of the shadow left on the YAG by the upstream slits. If the beam is
+    misaligned to the point that closing the slits does not give us a
+    measureable beam centroid, we increment the aperature of the slits by
+    `step_size`. The scan will stop and return the calculated `fidicuial` when
+    it receives a non-zero centroid, raising an `BeamNotFoundError` if the
+    slits reach `max_width` without seeing the beam
+
+    Parameters
+    ----------
+    slits : `pcdsdevices.slits.Slits`
+        Upstream slits
+
+    yag : `pcdsdevices.pim.PIM`
+        Detector to measure centroid
+
+    start : float, optional
+        Initial value to set slit widths
+
+    step_size : float, optional
+        Size of each step
+
+    max_width : float, optional
+        Maximum allowed slit aperature before raising an Exception
+
+    samples : int, optional
+        Number of shots to average over
+
+    filters : dict, optional
+        Filters to eliminate shots
+
+    centroid : str, optional
+        Field name of centroid measurement
+
+    Returns
+    -------
+    fiducial : float
+        Measured fiducial
+
+    Raises
+    ------
+    BeamNotFoundError:
+        If the requested slit width exceeds `max_width`
     
-    if x_center == None:
-        x_center = slits.read()['xcenter']['value']
-       
-    if y_center == None:
-        y_center = slits.read()['ycenter']['value']
+    Notes
+    -----
+    This plan makes the following assumptions; the slits are aligned to the
+    xrays in their current center positions, the YAG is inserted and the
+    areaDetector plugins are configured in such a way to accurately return the
+    centroid of the beam
+    """
+    #Repeatedly take fiducials
+    while start < max_width:
+        logger.debug("Measuring fiducial with slit {} at {}"
+                     "".format(slits.name, start))
+        fiducial = yield from slit_scan_fiducialize(slits, yag, x_width=start,
+                                                    y_width=start,
+                                                    filters=filters,
+                                                    centroid=centroid,
+                                                    samples=samples)
+        #If we got a real fiducial return it
+        if fiducial > 0.0:
+            logger.info("Found fiducial of {} on {} using {}"
+                        "".format(fiducial, yag.name, slits.name))
+            return fiducial
 
+        #Increase slit width if we did not get a centroid
+        logger.debug("No centroid measurement found, expanding slit aperature")
+        start += step_size
 
-    # place slits 
-    yield from abs_set(
-        slits,
-        xwidth = x_width,
-        ywidth = y_width,
-        xcenter = x_center,
-        ycenter = y_center
-    )
+    #Next step would exceed max_width
+    raise BeamNotFoundError
 
-    #collect data from yags
-    yag_measurements = yield from measure_average(
-        yag_set,
-        num=samples
-    )
-
-    # extract centroid positions from yag_measurments dict
-    yagname = yag_set[target_yag_idx].name
-    x_centroid = yag_measurements[yagname+"_detector_stats2_centroid_x"]
-    y_centroid = yag_measurements[yagname+"_detector_stats2_centroid_y"]
-    
-    return (x_centroid, y_centroid)
-    
 
 
 
