@@ -21,13 +21,19 @@ class MirrorInputError(WalkerException):
 	pass
 
 ################################################################################
-#                              Component Exceptions                               #
+#                              Component Exceptions                            #
 ################################################################################
 
 class ComponentException(PSWalkerException):
 	"""Base component exception class."""
 	pass
 
+################################################################################
+#                             Plan Exceptions                                  #
+################################################################################
+class BeamNotFoundError(PSWalkerException):
+    """Fiduicial Exception"""
+    pass
 ################################################################################
 #                             ModelWalk Exceptions                             #
 ################################################################################
