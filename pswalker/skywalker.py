@@ -89,7 +89,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
                         system=detectors + motors)
-        return (yield from branching_plan(walk, branches, branch_choice))
+        return (yield from walk())
 
 
     return (yield from letsgo())
