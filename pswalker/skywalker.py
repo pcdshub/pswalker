@@ -9,7 +9,7 @@ from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import prep_img_motors
-from .recovery import recover_threshold, branching_plan
+from .recovery import recover_threshold
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk

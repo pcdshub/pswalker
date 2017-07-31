@@ -6,61 +6,14 @@ import numpy as np
 import pytest
 from bluesky.plans import (open_run, close_run, create, read, save, mv,
                            checkpoint, run_wrapper)
-from pswalker.skywalker import (branching_plan, skywalker)
+from pswalker.skywalker import skywalker
 from pswalker.utils.exceptions import RecoverDone
 from .utils import collector, MotorSignal
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.timeout(10)
-def test_branching_plan(RE, lcls_two_bounce_system):
-    logger.debug("test_branching_plan start")
-    s, m1, m2, y1, y2 = lcls_two_bounce_system
-
-    reads = []
-
-    class TestException(Exception):
-        pass
-
-    def main_plan(det, count):
-        yield from open_run()
-        for i in range(count):
-            yield from create()
-            yield from read(det)
-            yield from save()
-            try:
-                yield from checkpoint()
-            except TestException:
-                yield from mv(det, 0)
-        yield from close_run()
-
-    def test_plan():
-        yield from mv(m1, 0)
-        assert m1.position == 0, 'test init failed'
-
-        plan = main_plan(m1, 10)
-
-        def branch():
-            if m1.position < 5:
-                return (yield from mv(m1, m1.position + 1))
-            else:
-                raise TestException()
-
-        def choice():
-            if len(reads) > m1.position:
-                return 0
-            return None
-
-        yield from branching_plan(plan, [branch], choice, 'checkpoint')
-
-    RE(test_plan(), collector(m1.name + '_pitch', reads))
-
-    assert len(reads) == 10
-    assert reads == [0, 1, 2, 3, 4, 5, 0, 1, 2, 3]
-
-
-@pytest.mark.parametrize("use_recover", [False, True])
+@pytest.mark.parametrize("use_recover", [False])
 @pytest.mark.parametrize("goal1", [0, 100])
 @pytest.mark.parametrize("goal2", [0,-100])
 @pytest.mark.parametrize("start1", [0., 150.0])
@@ -112,18 +65,9 @@ def test_skywalker(RE, lcls_two_bounce_system,
         return choice
 
     tmo = 5
-    if use_recover:
-        plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
-                         [goal1, goal2], first_steps=step, tolerances=2,
-                         averages=1, timeout=tmo,
-                         branches=[recover(m1, y1, range1),
-                                   recover(m2, y2, range2)],
-                         branch_choice=choose_recover([y1, y2],
-                                                      [range1, range2]))
-    else:
-        plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
-                         [goal1, goal2], first_steps=step, tolerances=2,
-                         averages=1, timeout=tmo)
+    plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
+                     [goal1, goal2], first_steps=step, tolerances=2,
+                     averages=1, timeout=tmo)
     #RE(run_wrapper(plan))
     RE(plan)
     y1.move_in()
