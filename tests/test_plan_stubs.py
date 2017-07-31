@@ -10,7 +10,6 @@ from bluesky.plans import run_wrapper, scan
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition,
                                  slit_scan_area_comp)
-from pswalker.utils.exceptions import RecoverDone, RecoverFail
 from .utils import plan_stash, collector
 
 from bluesky.examples import Reader, Mover

@@ -7,7 +7,6 @@ import pytest
 from bluesky.plans import (open_run, close_run, create, read, save, mv,
                            checkpoint, run_wrapper)
 from pswalker.skywalker import skywalker
-from pswalker.utils.exceptions import RecoverDone
 from .utils import collector, MotorSignal
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ def test_skywalker(RE, lcls_two_bounce_system,
             yield from mv(motor, mot_target)
             logger.debug('reached motor=%s, yag=%s',
                          motor.position, imager.detector.centroid_x)
-            raise RecoverDone()
+            return True
         return recover_plan
 
     def choose_recover(imagers, ranges):

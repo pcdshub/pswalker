@@ -7,7 +7,6 @@ from ophyd.device import Staged
 
 from .plan_stubs import match_condition, prep_img_motors
 from .utils.argutils import as_list
-from .utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +16,6 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     """
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
-
-    Raises RecoverDone upon completion.
 
     Parameters
     ----------
@@ -61,6 +58,11 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         use the motor's stop command to stop when recovered. If this is set to
         False (e.g. we can't stop it), go back to center of the largest range
         with the signal above the threshold.
+
+    Returns
+    -------
+    success: bool
+        True if we had a successful recovery, False otherwise.
     """
     logger.debug(("Recover threshold with signal=%s, threshold=%s, motor=%s, "
                   "dir_initial=%s, timeout=%s"), signal, threshold, motor,
@@ -81,7 +83,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                     timeout=timeout, has_stop=has_stop)
     if ok:
         logger.debug("Recovery was successful")
-        raise RecoverDone
+        return True
     else:
         if try_reverse:
             logger.debug("First direction failed, trying reverse...")
@@ -94,7 +96,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  ceil=ceil))
         else:
             logger.debug("Recovery failed")
-            raise RecoverFail
+            return False
 
 
 def get_thresh_signal(yag):
