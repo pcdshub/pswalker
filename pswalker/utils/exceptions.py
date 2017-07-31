@@ -79,10 +79,9 @@ class MonitorException(PSWalkerException):
 #                  Other Exceptions (no reasonable category)                   #
 ################################################################################
 
-class RecoverDone(PSWalkerException):
-    """Raised when a recovery has occured so the encompassing plan can react"""
-    pass
-
-class RecoverFail(PSWalkerException):
-    """Raised when a recovery has failed"""
+class NeedRecover(PSWalkerException):
+    """
+    Raised when a recovery is needed so that we can abandon what we're doing
+    and have the higher-level plan react.
+    """
     pass

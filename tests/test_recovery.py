@@ -8,7 +8,6 @@ from bluesky.plans import run_wrapper, run_decorator, null
 from ophyd.device import Staged
 
 from pswalker.recovery import recover_threshold, needs_recovery
-from pswalker.utils.exceptions import RecoverDone, RecoverFail
 
 logger = logging.getLogger(__name__)
 tmo = 10
@@ -18,8 +17,7 @@ tmo = 10
 def test_recover_threshold_success(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success")
     mot, sig = mot_and_sig
-    with pytest.raises(RecoverDone):
-        RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
+    RE(run_wrapper(recover_threshold(sig, 20, mot, +1)))
     assert mot.position < 21
     # If we stopped right after 20, we recovered
 
@@ -29,8 +27,7 @@ def test_recover_threshold_success_no_stop(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_no_stop")
     mot, sig = mot_and_sig
     mot.delay = 0
-    with pytest.raises(RecoverDone):
-        RE(run_wrapper(recover_threshold(sig, 20, mot, +1, has_stop=False)))
+    RE(run_wrapper(recover_threshold(sig, 20, mot, +1, has_stop=False)))
     assert 59 < mot.position < 61
     # If we went halfway between 20 and 100, it worked
 
@@ -39,8 +36,7 @@ def test_recover_threshold_success_no_stop(RE, mot_and_sig):
 def test_recover_threshold_success_reverse(RE, mot_and_sig):
     logger.debug("test_recover_threshold_success_reverse")
     mot, sig = mot_and_sig
-    with pytest.raises(RecoverDone):
-        RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
+    RE(run_wrapper(recover_threshold(sig, -1, mot, +1)))
     assert mot.position > -2
     # If we stopped right after -1, we recovered
 
@@ -49,8 +45,7 @@ def test_recover_threshold_success_reverse(RE, mot_and_sig):
 def test_recover_threshold_failure(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure")
     mot, sig = mot_and_sig
-    with pytest.raises(RecoverFail):
-        RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
+    RE(run_wrapper(recover_threshold(sig, 101, mot, +1)))
     assert mot.position == -100
     # We got to the end of the negative direction, we failed
 
@@ -60,8 +55,7 @@ def test_recover_threshold_failure_no_stop(RE, mot_and_sig):
     logger.debug("test_recover_threshold_failure_no_stop")
     mot, sig = mot_and_sig
     mot.delay = 0
-    with pytest.raises(RecoverFail):
-        RE(run_wrapper(recover_threshold(sig, 101, mot, +1, has_stop=False)))
+    RE(run_wrapper(recover_threshold(sig, 101, mot, +1, has_stop=False)))
     assert mot.position == -100
     # We got to the end of the negative direction, we failed
 
@@ -72,8 +66,7 @@ def test_recover_threshold_timeout_failure(RE, mot_and_sig):
     mot, sig = mot_and_sig
     # Make the motor slower to guarantee a timeout
     mot.n_steps = 5000
-    with pytest.raises(RecoverFail):
-        RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.1)))
+    RE(run_wrapper(recover_threshold(sig, 50, mot, +1, timeout=0.1)))
     pos = mot.position
     assert not 49 < pos < 51
     assert mot.position not in (100, -100)

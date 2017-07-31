@@ -8,11 +8,10 @@ import logging
 from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
-                                 match_condition
+                                 match_condition,
                                  slit_scan_area_comp, slit_scan_fiducialize,
                                  fiducialize)
-from pswalker.utils.exceptions import (RecoverDone, RecoverFail,
-                                       BeamNotFoundError)
+from pswalker.utils.exceptions import BeamNotFoundError
 from .utils import plan_stash, collector
 from bluesky.examples import Reader, Mover
 
