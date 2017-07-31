@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from threading import Lock
 
-from bluesky.plans import checkpoint, plan_mutator, null
+from bluesky.plans import checkpoint
 from ophyd.device import Staged
 
 from .plan_stubs import match_condition, prep_img_motors
