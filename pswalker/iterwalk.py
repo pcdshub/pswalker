@@ -4,7 +4,7 @@ import time
 import logging
 from copy import copy
 
-from bluesky.plans import checkpoint
+from bluesky.plans import checkpoint, mv
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
              motor_fields='alpha', tolerances=20, system=None, averages=1,
-             overshoot=0, max_walks=None, timeout=None):
+             overshoot=0, max_walks=None, timeout=None, recovery_plan=None):
     """
     Iteratively adjust a system of detectors and motors where each motor
     primarily affects the reading of a single detector but also affects the
@@ -233,7 +233,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                        "".format(motors[index].name,
                                                  detectors[index].name))
 
-
                 logger.debug("Walk reached pos %s on %s", pos,
                              detectors[index].name)
                 mirror_walks += 1
@@ -249,12 +248,30 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 # Increment index before restarting loop
                 index += 1
-            except FilterCountError:
-                # TODO call recovery plan
-                # Reset the finished tag because we recovered
+            except FilterCountError as err:
+                if recovery_plan is None:
+                    logger.error("No recovery plan, not attempting to recover")
+                    raise
+
+                # Get a fallback position for if the recovery fails
+                try:
+                    fallback_pos = motors[index].nominal_position
+                except AttributeError:
+                    fallback_pos = motors[index].position
+
+                ok = yield from recovery_plan()
+
+                # Reset the finished tag because we moved something
                 finished = [False] * num
-                index += 1
                 recoveries += 1
+
+                # Move to nominal and switch to next device if recovery failed
+                if not ok:
+                    logger.info(("Recover failed, using fallback pos and "
+                                 "trying next device alignment."))
+                    yield from mv(motors[index], fallback_pos)
+                    index += 1
+                # Try again
                 continue
 
         if timeout_error:
