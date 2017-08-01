@@ -91,6 +91,9 @@ def measure_centroid(det, target_field='centroid_x',
         Time to wait inbetween images
     """
     logger.debug("Running measure_centroid.") 
+    #Use default filters
+    filters = filters or {field_prepend(target_field, det) : lambda x : x > 0}
+    #Take average measurement
     avgs = yield from measure_average([det], num=average, delay=delay,
                                        filters=filters, drop_missing=drop_missing)
     return avgs[field_prepend(target_field, det)]
