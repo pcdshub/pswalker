@@ -43,10 +43,5 @@ hx2 = system['hx2']
 dg3 = system['dg3']
 mfxdg1 = system['mfxdg1']
 
-m1h.low_limit = -150
-m1h.high_limit = 250
-m2h.low_limit = -290
-m2h.high_limit = 110
-
 xcsdg3 = PIMMotor("XCS:DG3:PIM2")
 xcssb2 = PIMMotor("XCS:SB2:PIM6")
