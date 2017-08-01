@@ -98,6 +98,16 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     timeout: number, optional
         The maximum time to allow for the alignment before aborting. The
         timeout is checked after each walk step.
+
+    recovery_plan: plan, optional
+        A backup plan to run when no there is no readback on the detectors.
+        This plan should expect a complete description of the situation in the
+        form of the following keyword arguments:
+            detectors: a list of all detectors
+            motors: a list of all motors
+            goals: a list of all goals
+            detector_fields: a list of the fields that correspond to the goals
+            index: which index in these equal-length lists is active
     """
     num = len(detectors)
 
@@ -257,13 +267,16 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 except AttributeError:
                     fallback_pos = motors[index].position
 
-                ok = yield from recovery_plan()
+                ok = yield from recovery_plan(detectors=detectors,
+                                              motors=motors, goals=goals,
+                                              detector_fields=detector_fields,
+                                              index=index)
 
                 # Reset the finished tag because we moved something
                 finished = [False] * num
                 recoveries += 1
 
-                # Move to nominal and switch to next device if recovery failed
+                # If recovery failed, move to nominal and switch to next device
                 if not ok:
                     logger.info(("Recover failed, using fallback pos and "
                                  "trying next device alignment."))
