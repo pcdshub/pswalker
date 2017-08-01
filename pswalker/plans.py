@@ -25,6 +25,7 @@ from bluesky.plans import mv, rel_set, trigger_and_read, run_decorator, stage_de
 ##########
 from .callbacks import LinearFit, apply_filters, rank_models
 from .utils import field_prepend
+from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +360,7 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
             logger.debug('Ignoring inadequate measurement, '\
                          'attempting to gather again...')
         if dropped > 50:
-            raise ValueError
+            raise FilterCountError
 
     #Report finished
     logger.debug("Finished taking {} measurements, "\

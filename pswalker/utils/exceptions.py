@@ -70,12 +70,13 @@ class MonitorException(PSWalkerException):
 	pass
 
 ################################################################################
-#                  Other Exceptions (no reasonable category)                   #
+#                               Monitor Exceptions                             #
 ################################################################################
 
-class NeedRecover(PSWalkerException):
-    """
-    Raised when a recovery is needed so that we can abandon what we're doing
-    and have the higher-level plan react.
-    """
+class MeasureException(PSWalkerException):
+    """Base Measure exception class."""
+    pass
+
+class FilterCountError(MeasureException):
+    """Exception to be raised when too many events are filtered."""
     pass

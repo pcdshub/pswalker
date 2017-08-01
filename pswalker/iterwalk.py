@@ -9,7 +9,7 @@ from bluesky.plans import checkpoint
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
 from .utils.argutils import as_list, field_prepend
-from .utils.exceptions import NeedRecover
+from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 # Increment index before restarting loop
                 index += 1
-            except NeedRecover:
+            except FilterCountError:
                 # TODO call recovery plan
                 # Reset the finished tag because we recovered
                 finished = [False] * num
