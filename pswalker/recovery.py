@@ -89,7 +89,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  -dir_initial,
                                                  timeout=timeout,
                                                  try_reverse=False,
-                                                 ceil=ceil))
+                                                 ceil=ceil,
+                                                 off_limit=off_limit))
         else:
             logger.debug("Recovery failed")
             return False
