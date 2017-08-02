@@ -66,7 +66,7 @@ def homs_RE():
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              branches=None, branch_choice=lambda: None, md=None):
+              use_recovery=True, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -85,6 +85,10 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     filters = {}
     for det, fld in zip(detectors, det_fields):
         filters[field_prepend(fld, det)] = lambda x: x > 0
+    if use_recovery:
+        recovery_plan = homs_recovery
+    else:
+        recovery_plan = None
 
     @run_decorator(md=_md)
     def letsgo():
@@ -92,7 +96,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         gradients=gradients,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
-                        system=detectors + motors, recovery_plan=homs_recovery,
+                        system=detectors + motors, recovery_plan=recovery_plan,
                         filters=filters)
         return (yield from walk)
 
