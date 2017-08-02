@@ -109,6 +109,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             goals: a list of all goals
             detector_fields: a list of the fields that correspond to the goals
             index: which index in these equal-length lists is active
+
+    filters: list of dictionaries
+        Each entry in this list should be a valid input to the filters argument
+        in the lower functions, such as walk_to_pixel and measure_average.
     """
     num = len(detectors)
 
@@ -122,6 +126,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     tolerances = as_list(tolerances, num)
     system = as_list(system)
     averages = as_list(averages, num)
+    filters = as_list(filters, num)
 
     logger.debug("iterwalk aligning %s to %s on %s",
                  motors, goals, detectors)
@@ -184,7 +189,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                                     motors[index]]
                                                     + full_system,
                                                     num=averages[index],
-                                                    filters=filters))
+                                                    filters=filters[index]))
 
                 pos = avgs[field_prepend(detector_fields[index],
                                          detectors[index])]
@@ -220,7 +225,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 pos, models[index] = (yield from walk_to_pixel(detectors[index],
                                                                motors[index],
                                                                goal,
-                                                               filters=filters,
+                                                               filters=filters[index],
                                                                start=firstpos,
                                                                gradient=gradients[index],
                                                                target_fields=[
