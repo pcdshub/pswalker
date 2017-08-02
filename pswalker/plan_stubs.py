@@ -176,8 +176,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
 def match_condition(signal, condition, mover, setpoint, timeout=None,
                     sub_type=None, has_stop=True):
     """
-    Plan to adjust mover until condition() returns True. Read and save both the
-    signal and the mover after the move.
+    Plan to adjust mover until condition(signal.value) returns True.
 
     Parameters
     ----------
@@ -289,10 +288,6 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
             if condition(signal.value):
                 success.set()
 
-    yield from create()
-    yield from read(mover)
-    yield from read(signal)
-    yield from save()
     signal.clear_sub(condition_cb)
 
     ok = success.is_set()
