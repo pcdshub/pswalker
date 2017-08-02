@@ -228,7 +228,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                                                tolerance=tolerances[index],
                                                                system=full_system,
                                                                average=averages[index],
-                                                               max_steps=10
+                                                               max_steps=10,
                                                                filters=filters))
                 if models[index]:
                     try:
