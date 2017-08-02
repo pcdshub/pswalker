@@ -19,6 +19,7 @@ from bluesky.examples    import det, motor, Mover, Reader
 from pswalker.plans import measure, measure_average, measure_centroid
 from pswalker.plans import walk_to_pixel, fitwalk
 from pswalker.callbacks import LiveBuild, LinearFit
+from pswalker.utils.exceptions import FilterCountError
 from .utils import collector
 
 logger = logging.getLogger(__name__)
@@ -245,6 +246,15 @@ def test_measure(RE):
     assert shots == [1, 3, 4, 5, 6, 7] #2 is skipped, because read is called
                                        #by `describe`, which is called by RE
                                        #after first read
+
+    # Make sure an exception is raised when we fail too many filter checks
+    counter = Reader('det', {'intensity' : count})
+    plan = run_wrapper(measure([counter],
+                       filters = {'intensity' : lambda x : False},
+                        num=500))
+    with pytest.raises(FilterCountError):
+        RE(plan)
+
 
 def test_fitwalk(RE):
     #Create simulated devices
