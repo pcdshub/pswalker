@@ -9,7 +9,7 @@ from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import prep_img_motors
-from .recovery import recover_threshold
+from .recovery import homs_recovery
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
@@ -88,7 +88,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         gradients=gradients,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
-                        system=detectors + motors)
+                        system=detectors + motors, recovery_plan=homs_recovery)
         return (yield from walk)
 
 
