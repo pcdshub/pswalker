@@ -9,7 +9,7 @@ from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
 from .plan_stubs import prep_img_motors
-from .recovery import homs_recovery
+from .recovery import homs_recovery, sim_recovery
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
@@ -66,7 +66,7 @@ def homs_RE():
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              use_recovery=True, md=None):
+              sim=False, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -85,10 +85,10 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     filters = {}
     for det, fld in zip(detectors, det_fields):
         filters[field_prepend(fld, det)] = lambda x: x > 0
-    if use_recovery:
-        recovery_plan = homs_recovery
+    if sim:
+        recovery_plan = sim_recovery
     else:
-        recovery_plan = None
+        recovery_plan = homs_recovery
 
     @run_decorator(md=_md)
     def letsgo():
