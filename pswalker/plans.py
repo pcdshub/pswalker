@@ -360,6 +360,8 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
             logger.debug('Ignoring inadequate measurement, '\
                          'attempting to gather again...')
         if dropped > 50:
+            logger.debug(('Dropped too many events, raising exception. Latest '
+                          'bad values were %s'), det_reads)
             raise FilterCountError
 
     #Report finished
