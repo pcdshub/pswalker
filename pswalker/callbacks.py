@@ -129,8 +129,8 @@ def rank_models(models, target, **kwargs):
         except RuntimeError as e:
             bad_models.append(model)
             diffs.append(np.inf)
-            logger.info("Unable to yield estimate from model {}"
-                        "".format(model.name))
+            logger.debug("Unable to yield estimate from model {}"
+                         "".format(model.name))
             logger.debug(e)
     #Rank performances
     model_ranking = model_ranking[np.argsort(diffs)]

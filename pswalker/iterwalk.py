@@ -180,7 +180,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                              detectors[index])
 
                 if abs(pos - goals[index]) < tolerances[index]:
-                    logger.debug("beam aligned on %s without move",
+                    logger.info("Beam was aligned on %s without a move",
                                  detectors[index])
                     finished[index] = True
                     done_pos[index] = pos
@@ -202,10 +202,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     goal = (goals[index] - pos) * (1 + overshoot) + pos
 
                 # Core walk
-                logger.debug(('Start walk from %s to %s on %s using %s, '
-                              'system=%s'), pos, goal,
-                             detectors[index].name, motors[index].name,
-                             full_system)
+                logger.info(('Starting walk from {} to {} on {} using {}'
+                             ''.format(pos, goal, detectors[index].name,
+                                       motors[index].name)))
                 pos, models[index] = (yield from walk_to_pixel(detectors[index],
                                                                motors[index],
                                                                goal, firstpos,
@@ -221,12 +220,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 if models[index]:
                     try:
                         gradients[index] = models[index].result.values['slope']
-                        logger.info("Found equation of ({}, {}) between " 
-                                    "linear fit of {} to {}"
-                                    "".format(gradients[index],
-                                              models[index].result.values['intercept'],
-                                              motors[index].name,
-                                              detectors[index].name))
+                        logger.debug("Found equation of ({}, {}) between " 
+                                     "linear fit of {} to {}"
+                                     "".format(gradients[index],
+                                               models[index].result.values['intercept'],
+                                               motors[index].name,
+                                               detectors[index].name))
                     except Exception as e:
                         logger.warning(e)
                         logger.warning("Unable to find gradient of " 

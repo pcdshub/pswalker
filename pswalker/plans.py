@@ -186,7 +186,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
         init_guess = {'slope' : gradient}
         #Take a quick measurement
         def gradient_step():
-            logger.info("Using gradient of {} for naive step..."
+            logger.debug("Using gradient of {} for naive step..."
                         "".format(gradient))
             #Take a quick measurement 
             avgs = yield from measure_average([detector, motor] + system,
@@ -199,7 +199,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
             intercept = center - gradient*pos
             #Calculate best step on first guess of line
             next_pos = (target - intercept)/gradient
-            logger.debug("Predicting final position using line y = {}*x + {}"
+            logger.debug("Predicting position using line y = {}*x + {}"
                          "".format(gradient, intercept))
             #Move to position
             yield from mv(motor, next_pos)
@@ -353,8 +353,8 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
         #Report filtered event
         else:
             dropped += 1
-            logger.info('Ignoring inadequate measurement, '\
-                        'attempting to gather again...')
+            logger.debug('Ignoring inadequate measurement, '\
+                         'attempting to gather again...')
         if dropped > 50:
             raise ValueError
 
@@ -460,8 +460,8 @@ def fitwalk(detectors, motor, models, target,
                                          filters=filters)
         #Save current target position
         last_shot = avg.pop(target_field)
-        logger.info("Averaged data yielded {} is at {}"
-                    "".format(target_field, last_shot))
+        logger.debug("Averaged data yielded {} is at {}"
+                     "".format(target_field, last_shot))
 
         #Rank models based on accuracy of fit
         model_ranking = rank_models(models, last_shot, **avg)
@@ -480,8 +480,12 @@ def fitwalk(detectors, motor, models, target,
     #Begin walk
     while not np.isclose(last_shot, target, atol=tolerance):
         #Log error
-        logger.info("Walking motor, error after step #{} -> {}"\
-                    "".format(steps, target-last_shot))
+        if not steps:
+            logger.info("Initial error before fitwalk is {}"
+                        "".format(int(target-last_shot)))
+        else:
+            logger.info("fitwalk is reporting an error {} of after step #{}"\
+                        "".format(int(target-last_shot), steps))
         #Break on maximum step count
         if steps >= max_steps:
             raise RuntimeError("fitwalk failed to converge after {} steps"\
@@ -523,7 +527,7 @@ def fitwalk(detectors, motor, models, target,
                         raise RuntimeError("Invalid position return by fit")
                     #Attempt to move
                     try:
-                        logger.info("Adjusting motor {} to position {}"\
+                        logger.info("Adjusting motor {} to position {:.1f}"\
                                     "".format(motor.name, pos))
                         yield from mv(motor, pos)
 
@@ -539,6 +543,6 @@ def fitwalk(detectors, motor, models, target,
 
     #Report a succesfull run
     logger.info("Succesfully walked to value {} (target={}) after {} steps."\
-                "".format(last_shot, target, steps))
+                "".format(int(last_shot), target, steps))
 
     return last_shot, accurate_model
