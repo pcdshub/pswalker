@@ -14,6 +14,7 @@ from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 from .utils.argutils import as_list
+from .utils import field_prepend
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,9 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
           }
     _md.update(md or {})
     goals = [480 - g for g in goals]
+    filters = {}
+    for det, fld in zip(detectors, det_fields):
+        filters[field_prepend(fld, det)] = lambda x: x > 0
 
     @run_decorator(md=_md)
     def letsgo():
@@ -88,7 +92,8 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         gradients=gradients,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
-                        system=detectors + motors, recovery_plan=homs_recovery)
+                        system=detectors + motors, recovery_plan=homs_recovery,
+                        filters=filters)
         return (yield from walk)
 
 
