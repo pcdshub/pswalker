@@ -20,6 +20,7 @@ from bluesky.callbacks import (LiveFit, LiveFitPlot, CallbackBase)
 ##########
 # Module #
 ##########
+from .utils.argutils import isiterable
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,8 @@ def apply_filters(doc, filters=None, drop_missing=True):
 
     drop_missing : bool, optional
         Only include documents who have associated data for each filter key.
-        This includes events missing the key entirely or reporting NaN
+        This includes events missing the key entirely, reporting NaN or
+    	reporting Inf.
 
     Returns
     -------
@@ -57,13 +59,28 @@ def apply_filters(doc, filters=None, drop_missing=True):
     #Iterate through filters
     for key, func in filters.items(): 
         try:
-            #Handle NaN
-            if pd.isnull(doc[key]):
-                resp.append(not drop_missing)
+            
+            #Check iterables for nan and inf
+            if isiterable(doc[key]):
+                if any(np.isnan(doc[key])) or any(np.isinf(doc[key])):
+                    resp.append(not drop_missing)
+                    continue
+
+            #Check string entries for nan and inf
+            elif isinstance(doc[key], str):
+                if "inf" == doc[key].lower() or "nan" == doc[key].lower():
+                    resp.append(not drop_missing)
+                    continue
+
+            #Handle all other types
+            else:
+                if np.isnan(doc[key]) or np.isinf(doc[key]):
+                    resp.append(not drop_missing)
+                    continue
 
             #Evaluate filter
-            else:
-                resp.append(bool(func(doc[key])))
+            resp.append(bool(func(doc[key])))
+            
         #Handle missing information
         except KeyError:
             resp.append(not drop_missing)
