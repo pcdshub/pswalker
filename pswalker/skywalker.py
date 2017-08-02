@@ -167,8 +167,8 @@ def homs_system():
     system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2")
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
-    system['mfxdg1'] = PIM(mfxdg1, det_pv=mfxdg1_det, name=mfxdg1_name)
-    system['mecy1'] = PIM(mecy1, det_pv=mecy1_det, name=mecy1_name)
+    system['mfxdg1'] = PIM(mfxdg1, prefix_det=mfxdg1_det, name=mfxdg1_name)
+    system['mecy1'] = PIM(mecy1, prefix_det=mecy1_det, name=mecy1_name)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
