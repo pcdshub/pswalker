@@ -7,7 +7,7 @@ from queue import Queue
 from bluesky.plans import run_wrapper, run_decorator, null
 from ophyd.device import Staged
 
-from pswalker.recovery import recover_threshold, needs_recovery
+from pswalker.recovery import recover_threshold
 
 logger = logging.getLogger(__name__)
 tmo = 10
