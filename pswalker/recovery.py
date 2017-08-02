@@ -95,7 +95,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
             return False
 
 
-def homs_recovery(*, detectors, motors, goals, detector_fields, index):
+def homs_recovery(*, detectors, motors, goals, detector_fields, index,
+                  sim=False):
     """
     Plan to recover the homs system should something go wrong. Is passed
     arguments as defined in iterwalk.
@@ -103,7 +104,10 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index):
     # Interpret args as homs mirrors and areadetector pims
     # Take the active mirror/pim pair
     yag = detectors[index]
-    sig = yag.detector.stats2.centroid.y
+    if sim:
+        sig = yag.detector.stats2.centroid.x
+    else:
+        sig = yag.detector.stats2.centroid.y
     mirror = motors[index]
     try:
         # Try recover_threshold toward nominal position
@@ -126,3 +130,10 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index):
                                       off_limit=0.001, has_stop=False)
     # Pass the return value back out
     return ok
+
+
+def sim_recovery(*, detectors, motors, goals, detector_fields, index):
+    return (yield from homs_recovery(detectors=detectors, motors=motors,
+                                     goals=goals,
+                                     detector_fields=detector_fields,
+                                     index=index, sim=True))

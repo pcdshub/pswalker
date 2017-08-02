@@ -32,7 +32,7 @@ def test_skywalker(RE, lcls_two_bounce_system,
 
     plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
                      [goal1, goal2], first_steps=step, tolerances=2,
-                     averages=1, timeout=tmo)
+                     averages=1, timeout=tmo, sim=True)
 
     RE(plan)
     y1.move_in()
