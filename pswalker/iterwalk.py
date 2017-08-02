@@ -217,7 +217,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                        motors[index].name)))
                 pos, models[index] = (yield from walk_to_pixel(detectors[index],
                                                                motors[index],
-                                                               goal, firstpos,
+                                                               goal,
+                                                               filters=filters,
+                                                               start=firstpos,
                                                                gradient=gradients[index],
                                                                target_fields=[
                                                                    detector_fields[index],
@@ -226,8 +228,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                                                tolerance=tolerances[index],
                                                                system=full_system,
                                                                average=averages[index],
-                                                               max_steps=10,
-                                                               filters=filters))
+                                                               max_steps=10))
                 if models[index]:
                     try:
                         gradients[index] = models[index].result.values['slope']
