@@ -12,16 +12,15 @@ from .utils import collector, MotorSignal
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.parametrize("use_recovery", [False, True])
 @pytest.mark.parametrize("goal1", [0, 100])
 @pytest.mark.parametrize("goal2", [0,-100])
 @pytest.mark.parametrize("start1", [0., 150.0])
 @pytest.mark.parametrize("start2", [0.,-150.0])
-def test_skywalker(RE, lcls_two_bounce_system, use_recovery,
+def test_skywalker(RE, lcls_two_bounce_system,
                    start1, start2, goal1, goal2):
-    logger.debug(("test_skywalker_main with use_recover=%s, "
+    logger.debug(("test_skywalker_main with, "
                   "goal1=%s, goal2=%s, start1=%s, start2=%s"),
-                 use_recovery, goal1, goal2, start1, start2)
+                  goal1, goal2, start1, start2)
     s, m1, m2, y1, y2 = lcls_two_bounce_system
     m1.set(start1)
     m2.set(start2)
@@ -33,7 +32,7 @@ def test_skywalker(RE, lcls_two_bounce_system, use_recovery,
 
     plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
                      [goal1, goal2], first_steps=step, tolerances=2,
-                     averages=1, timeout=tmo, use_recovery=use_recovery)
+                     averages=1, timeout=tmo)
 
     RE(plan)
     y1.move_in()
