@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
              motor_fields='alpha', tolerances=20, system=None, averages=1,
-             overshoot=0, max_walks=None, timeout=None, recovery_plan=None):
+             overshoot=0, max_walks=None, timeout=None, recovery_plan=None,
+             filters=None):
     """
     Iteratively adjust a system of detectors and motors where each motor
     primarily affects the reading of a single detector but also affects the
@@ -182,7 +183,8 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 avgs = (yield from measure_average([detectors[index],
                                                     motors[index]]
                                                     + full_system,
-                                                    num=averages[index]))
+                                                    num=averages[index],
+                                                    filters=filters))
 
                 pos = avgs[field_prepend(detector_fields[index],
                                          detectors[index])]
@@ -226,7 +228,8 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                                                tolerance=tolerances[index],
                                                                system=full_system,
                                                                average=averages[index],
-                                                               max_steps=10))
+                                                               max_steps=10
+                                                               filters=filters))
                 if models[index]:
                     try:
                         gradients[index] = models[index].result.values['slope']
