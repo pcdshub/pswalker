@@ -28,11 +28,11 @@ def test_skywalker(RE, slow_lcls_two_bounce_system,
     goal2 += y2.size[0]/2
 
     step = 100
-    tmo = 5
+    tmo = 600
 
     plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
                      [goal1, goal2], first_steps=step, tolerances=2,
-                     averages=1, timeout=tmo, sim=True)
+                     averages=50, timeout=tmo, sim=True)
 
     RE(plan)
     y1.move_in()

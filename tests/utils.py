@@ -89,7 +89,7 @@ class SlowSoftPositioner(SoftPositioner):
 
 class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
     n_steps = 1000
-    delay = 0.001
+    delay = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,6 +139,8 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
             if not self._stopped:
                 time.sleep(self.delay)
                 self._position = p
+                self._run_subs(sub_type=self.SUB_READBACK,
+                               timestamp=time.time())
         self._done_moving(success=ok)
         logger.debug("test slow offset mirror done moving")
 

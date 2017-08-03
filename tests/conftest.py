@@ -2,6 +2,7 @@
 # Standard #
 ############
 import os
+import time
 import logging
 
 ###############
@@ -141,6 +142,22 @@ def slow_lcls_two_bounce_system():
     y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)
 
     patch_pims([y1, y2], mirrors=[m1, m2], source=s)
+
+    def make_update_pixel(yag):
+        def update_pixel(*args, **kwargs):
+            sig = yag.detector.stats2.centroid.x
+            sig._run_subs(sub_type=sig.SUB_VALUE,
+                          value=sig.value,
+                          timestamp=time.time())
+        return update_pixel
+
+    m1.subscribe(make_update_pixel(y1), m1.SUB_READBACK)
+    m2.subscribe(make_update_pixel(y2), m2.SUB_READBACK)
+
+    m1.high_limit = 50000
+    m1.low_limit = -50000
+    m2.high_limit = 50000
+    m2.low_limit = -50000
 
     return s, m1, m2, y1, y2
 

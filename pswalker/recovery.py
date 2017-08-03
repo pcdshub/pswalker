@@ -82,7 +82,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
         return True
     else:
         if try_reverse:
-            logger.debug("First direction failed, trying reverse...")
+            logger.debug(("First direction failed, value is %s at limit. "
+                          "Trying reverse..."), signal.value)
             if timeout is not None:
                 timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
@@ -92,7 +93,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  ceil=ceil,
                                                  off_limit=off_limit))
         else:
-            logger.debug("Recovery failed")
+            logger.debug("Recovery failed, value is %s at limit.",
+                         signal.value)
             return False
 
 

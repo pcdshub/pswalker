@@ -263,6 +263,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                 else:
                     return best_start, best_end
 
+        logger.debug("Checking a set of %i stored points", len(pts))
         for i, (pos, ok) in enumerate(pts):
             if ok:
                 if curr_start == -1:
@@ -297,7 +298,8 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                       'mover=%s setpt=%s cond value=%s'),
                      mover.name, setpoint, signal.value)
     else:
-        logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
+        logger.debug(('condition fail in match_condition, '
+                      'mover=%s setpt=%s cond value=%s'),
                      mover.name, setpoint, signal.value)
     return ok
 
