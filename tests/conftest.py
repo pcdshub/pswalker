@@ -17,7 +17,7 @@ from pcdsdevices.sim import source, mirror, pim
 # Module #
 ##########
 from pswalker.examples import patch_pims
-from .utils import SlowSoftPositioner, MotorSignal
+from .utils import SlowSoftPositioner, MotorSignal, SlowOffsetMirror
 
 #################
 # Logging Setup #
@@ -124,6 +124,24 @@ def lcls_two_bounce_system():
 
     patch_pims([y1, y2], mirrors=[m1, m2], source=s)
     
+    return s, m1, m2, y1, y2
+
+
+@pytest.fixture(scope='function')
+def slow_lcls_two_bounce_system():
+    """
+    Simple system that consists of a source, two mirrors, and two imagers.
+    """
+    s = source.Undulator('test_undulator')
+    m1 = SlowOffsetMirror('test_m1h', 'test_m1h_xy',
+                          z=90.510, alpha=0.0014)
+    m2 = SlowOffsetMirror('test_m2h', 'test_m2h_xy', x=0.0317324,
+                          z=101.843, alpha=0.0014)
+    y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660)
+    y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)
+
+    patch_pims([y1, y2], mirrors=[m1, m2], source=s)
+
     return s, m1, m2, y1, y2
 
 
