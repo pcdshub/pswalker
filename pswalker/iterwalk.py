@@ -309,3 +309,4 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     logger.info("Aligned to %s", done_pos)
     logger.info("Goals were %s", goals)
     logger.info("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
+    logger.info("Mirror positions are %s", [m.position for m in motors])
