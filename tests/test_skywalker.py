@@ -12,12 +12,11 @@ from .utils import collector, MotorSignal
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.parametrize("goal1", [0, 100])
-@pytest.mark.parametrize("goal2", [0,-100])
-@pytest.mark.parametrize("start1", [0., 150.0])
-@pytest.mark.parametrize("start2", [0.,-150.0])
-def test_skywalker(RE, slow_lcls_two_bounce_system,
-                   start1, start2, goal1, goal2):
+def test_skywalker(RE, slow_lcls_two_bounce_system):
+    goal1 = 0
+    goal2 = 0
+    start1 = 0
+    start2 = 0
     logger.debug(("test_skywalker_main with, "
                   "goal1=%s, goal2=%s, start1=%s, start2=%s"),
                   goal1, goal2, start1, start2)
