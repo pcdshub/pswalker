@@ -63,11 +63,15 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     logger.debug(("Recover threshold with signal=%s, threshold=%s, motor=%s, "
                   "dir_initial=%s, timeout=%s"), signal, threshold, motor,
                  dir_initial, timeout)
+    logger.info("Starting recovery on %s=%s because of %s=%s", motor.name,
+                motor.position, signal.name, signal.value)
     if dir_initial > 0:
-        logger.debug("Recovering towards the high limit switch")
+        logger.info("Recovering towards the high limit switch %s",
+                    motor.high_limit)
         setpoint = motor.high_limit - off_limit
     else:
-        logger.debug("Recovering towards the low limit switch")
+        logger.info("Recovering towards the low limit switch %s",
+                    motor.low_limit)
         setpoint = motor.low_limit + off_limit
 
     def condition(x):
@@ -78,12 +82,14 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     ok = yield from match_condition(signal, condition, motor, setpoint,
                                     timeout=timeout, has_stop=has_stop)
     if ok:
-        logger.debug("Recovery was successful")
+        logger.info(('Recovery was successful! Ended with good values '
+                     '%s=%s, %s=%s'), motor.name, motor.position,
+                    signal.name, signal.value)
         return True
     else:
         if try_reverse:
-            logger.debug(("First direction failed, value is %s at limit. "
-                          "Trying reverse..."), signal.value)
+            logger.info(("First direction failed, %s is %s at limit. "
+                         "Trying reverse..."), signal.name, signal.value)
             if timeout is not None:
                 timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
@@ -93,8 +99,8 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  ceil=ceil,
                                                  off_limit=off_limit))
         else:
-            logger.debug("Recovery failed, value is %s at limit.",
-                         signal.value)
+            logger.info("Recovery failed, signal is %s at limit.",
+                        signal.value)
             return False
 
 
