@@ -86,10 +86,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     filters = []
     for det, fld in zip(detectors, det_fields):
         filters.append({field_prepend(fld, det): lambda x: x > 0})
-    if sim:
-        recovery_plan = sim_recovery
-    else:
-        recovery_plan = homs_recovery
+    recovery_plan = None
 
     @run_decorator(md=_md)
     def letsgo():
