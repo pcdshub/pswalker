@@ -6,6 +6,7 @@
 # Third Party #
 ###############
 import numpy as np
+import pandas as pd
 from bluesky import RunEngine
 from bluesky.plans import outer_product_scan, scan
 from bluesky.examples import Mover, Reader
@@ -75,13 +76,38 @@ def test_multi_fit():
     assert np.allclose(cb.backsolve(55, a1=10)['a0'], 5, atol=1e-5)
     assert np.allclose(cb.backsolve(55, a0=5)['a1'], 10, atol=1e-5)
 
+def test_apply_filters_handles_all_data_types():
+    mock_doc = {"str" : "string",  "int" : 0, "float" : 3.14159, "bool" : True,
+                "ndarray" : np.arange(10), "list" : list(range(10)),
+                "dataframe" : pd.DataFrame(np.arange(10))}
 
-def test_apply_filters():
+    # String
+    assert not apply_filters(mock_doc, filters={"str" : lambda x : False})
+    
+    # Int
+    assert not apply_filters(mock_doc, filters={"int" : lambda x : False})
+    
+    # Float
+    assert not apply_filters(mock_doc, filters={"float" : lambda x : False})
+    
+    # Bool
+    assert not apply_filters(mock_doc, filters={"bool" : lambda x : False})
+    
+    # ndarray
+    assert not apply_filters(mock_doc, filters={"ndarray" : lambda x : False})
+
+    # List
+    assert not apply_filters(mock_doc, filters={"list" : lambda x : False})
+
+    # DataFrame
+    assert not apply_filters(mock_doc, filters={"dataframe" : lambda x : False})    
+
+def test_apply_filters_correctness():
     mock_doc = {'a' : 4, 'b' : -1}
                
     #Passing filters
-    assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0}
-            )
+    assert apply_filters(mock_doc, filters={'a' : lambda x : x > 0})
+    
     #Block non-zero
     assert not apply_filters(mock_doc,  filters={'b' : lambda x : x > 0})
 
@@ -91,11 +117,31 @@ def test_apply_filters():
     #Exclude NaN
     mock_doc['c'] = np.nan
     assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+
+    #Exclude NaN in array
+    mock_doc['c'] = np.ones((10)) * np.nan
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+
+    #Exclude NaN in string
+    mock_doc['c'] = "nan"
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+    
+    #Exclude Inf
+    mock_doc['c'] = np.inf
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})
+
+    #Exclude Inf in array
+    mock_doc['c'] = np.ones((10)) * np.inf
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})    
+
+    #Exclude Inf in string
+    mock_doc['c'] = "inf"
+    assert not apply_filters(mock_doc, filters={'c' : lambda x : True})    
     
     #Include missing
     assert apply_filters(mock_doc, filters={'c' : lambda x : True},
                              drop_missing=False)
-
+        
 def test_rank_models():
     RE = RunEngine()
     

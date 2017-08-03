@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from .. import examples
 from ophyd import Signal, Device
+from collections.abc import Iterable
 
 
 def as_list(obj, length=None, tp=None):
@@ -72,3 +73,24 @@ def field_prepend(field, obj):
         field = obj.name
     
     return field
+
+
+def isiterable(obj):
+    """
+    Function that determines if an object is an iterable, not including 
+    str.
+
+    Parameters
+    ----------
+    obj : object
+        Object to test if it is an iterable.
+
+    Returns
+    -------
+    bool : bool
+        True if the obj is an iterable, False if not.
+    """
+    if isinstance(obj, str):
+        return False
+    else:
+        return isinstance(obj, Iterable)
