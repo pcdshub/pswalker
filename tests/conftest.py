@@ -154,10 +154,10 @@ def slow_lcls_two_bounce_system():
     m1.subscribe(make_update_pixel(y1), m1.SUB_READBACK)
     m2.subscribe(make_update_pixel(y2), m2.SUB_READBACK)
 
-    m1.high_limit = 50000
-    m1.low_limit = -50000
-    m2.high_limit = 50000
-    m2.low_limit = -50000
+    m1.high_limit = 2000
+    m1.low_limit = 1000
+    m2.high_limit = 2000
+    m2.low_limit = 1000
 
     return s, m1, m2, y1, y2
 
