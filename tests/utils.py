@@ -88,7 +88,7 @@ class SlowSoftPositioner(SoftPositioner):
 
 
 class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
-    n_steps = 1000
+    step_size = 100
     delay = 0
 
     def __init__(self, *args, **kwargs):
@@ -115,12 +115,8 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
         self._moving = True
         self._stopped = False
 
-        delta = (position - self.position)/self.n_steps
-        pos_list = [self.position + n * delta for n in range(1, self.n_steps)]
-        pos_list.append(position)
-
         thread = threading.Thread(target=self._move_thread,
-                                  args=(pos_list, status))
+                                  args=(position,))
         logger.debug("test slow offset mirror start moving")
         thread.start()
 
@@ -130,15 +126,20 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
         self._stopped = True
         logger.debug("stop test slow offset mirror")
 
-    def _move_thread(self, pos_list, status):
+    def _move_thread(self, position):
         ok = True
-        for p in pos_list:
+        while self.position != position:
             if self._stopped:
                 ok = False
                 break
             if not self._stopped:
                 time.sleep(self.delay)
-                self._position = p
+                if self.position < position - self.step_size:
+                    self._position = self.position + self.step_size
+                elif self.position > position + self.step_size:
+                    self._position = self.position - self.step_size
+                else:
+                    self._position = position
                 self._run_subs(sub_type=self.SUB_READBACK,
                                timestamp=time.time())
         self._done_moving(success=ok)
