@@ -122,7 +122,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     # Set up end conditions
     n_steps = 0
     start_time = time.time()
-    timeout_error = False
     models   = [None]* num
     finished = [False] * num
     done_pos = [0] * num
@@ -132,9 +131,8 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             try:
                 # Before each walk, check the global timeout.
                 if timeout is not None and time.time() - start_time > timeout:
-                    logger.warning("Iterwalk has timed out")
-                    timeout_error = True
-                    break
+                    raise RuntimeError("Iterwalk has timed out after %s s",
+                                       time.time() - start_time)
 
                 logger.debug("putting imager in")
                 ok = (yield from prep_img_motors(index, detectors, timeout=15))
@@ -255,9 +253,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 index += 1
                 recoveries += 1
                 continue
-
-        if timeout_error:
-            break
 
         if all(finished):
             break
