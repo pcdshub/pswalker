@@ -27,7 +27,7 @@ def test_watcher_report_smoke(RE, lcls_two_bounce_system):
     #simulation system, so instead we spoof the metadata
     plan = skywalker([y1, y2], [m1, m2], 'detector_stats2_centroid_x', 'pitch',
                      goals, first_steps=40.0, tolerances=2,
-                     averages=1, timeout=10)
+                     averages=1, timeout=10, sim=True)
     RE(plan)
     #Report
     w.report()
