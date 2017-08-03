@@ -83,9 +83,12 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     _md.update(md or {})
     goals = [480 - g for g in goals]
     det_fields = as_list(det_fields, length=len(detectors))
-    filters = []
-    for det, fld in zip(detectors, det_fields):
-        filters.append({field_prepend(fld, det): lambda x: x > 0})
+    if sim:
+        filters=None
+    else:
+        filters = []
+        for det, fld in zip(detectors, det_fields):
+            filters.append({field_prepend(fld, det): lambda x: x > 0})
     recovery_plan = None
 
     @run_decorator(md=_md)
