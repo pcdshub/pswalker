@@ -1,77 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from threading import Lock
 
 from bluesky import RunEngine
-from bluesky.plans import (checkpoint, plan_mutator, null, run_decorator)
+from bluesky.plans import run_decorator
 from bluesky.callbacks import LiveTable
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
 
-from .plan_stubs import recover_threshold, prep_img_motors
+from .plan_stubs import prep_img_motors
+from .recovery import homs_recovery, sim_recovery
 from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
                          PvAlarmSuspend, LightpathSuspender)
 from .iterwalk import iterwalk
 from .utils.argutils import as_list
+from .utils import field_prepend
 
 logger = logging.getLogger(__name__)
-
-
-def branching_plan(plan, branches, branch_choice, branch_msg='checkpoint'):
-    """
-    Plan that allows deviations from the original plan at checkpoints.
-
-    Parameters
-    ----------
-    plan: iterable
-        Iterable that returns Msg objects as in a Bluesky plan
-
-    branches: list of functions
-        Functions that return valid plans. These are the deviations we may take
-        when plan yields a checkpoint.
-
-    branch_choice: function
-        Function that tells us which branch to take. This must return None when
-        we want to continue to normal plan and an integer that matches an index
-        in branches when we want to deviate.
-
-    branch_msg: str, optional
-        Which message to branch on. By default, this is checkpoint.
-    """
-    def do_branch():
-        choice = branch_choice()
-        if choice is None:
-            yield null()
-        else:
-            branch = branches[choice]
-            logger.debug("Switching to branch %s", choice)
-            yield from branch()
-
-    # No nested branches
-    branch_lock = Lock()
-
-    def branch_handler(msg):
-        if msg.command == branch_msg:
-            nonlocal branch_lock
-            has_lock = branch_lock.acquire(blocking=False)
-            if has_lock:
-                try:
-                    def new_gen():
-                        nonlocal branch_lock
-                        with branch_lock:
-                            if branch_choice() is not None:
-                                yield from checkpoint()
-                                yield from do_branch()
-                                logger.debug("Resuming plan after branch")
-                            yield msg
-                finally:
-                    branch_lock.release()
-                    return new_gen(), None
-        return None, None
-
-    brancher = plan_mutator(plan, branch_handler)
-    return (yield from brancher)
 
 
 def lcls_RE(alarming_pvs=None, RE=None):
@@ -117,69 +62,11 @@ def homs_RE():
     # TODO include lightpath suspender
     return RE
 
-def get_thresh_signal(yag):
-    """
-    Given a yag object, return the signal we'll be using to determine if the
-    yag has beam on it.
-    """
-    return yag.detector.stats2.centroid.y
-
-
-def make_homs_recover(yags, yag_index, motor, threshold, center=0,
-                      get_signal=get_thresh_signal):
-    """
-    Make a recovery plan for a particular yag/motor combination in the homs
-    system.
-    """
-    def homs_recover():
-        sig = get_signal(yags[yag_index])
-        if motor.position < center:
-            dir_init = 1
-        else:
-            dir_init = -1
-
-        def plan():
-            yield from prep_img_motors(yag_index, yags, timeout=10)
-            yield from recover_threshold(sig, threshold, motor, dir_init,
-                                         timeout=120, has_stop=False)
-        return (yield from plan())
-
-    return homs_recover
-
-
-def make_pick_recover(yag1, yag2, threshold):
-    """
-    Make a function of zero arguments that will determine if a recovery plan
-    needs to be run, and if so, which plan to use.
-    """
-    def pick_recover():
-        return None
-        num = 25
-        sigs = []
-        if yag1.position == "IN":
-            for i in range(num):
-                sig = get_thresh_signal(yag1)
-                sigs.append(sig)
-            if max(sigs) < threshold[0]:
-                return 0
-            else:
-                return None
-        elif yag2.position == "IN":
-            for i in range(num):
-                sig = get_thresh_signal(yag2)
-                sigs.append(sig)
-            if max(sigs) < threshold[1]:
-                return 1
-            else:
-                return None
-
-    return pick_recover
-
 
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              branches=None, branch_choice=lambda: None, md=None):
+              sim=False, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -195,6 +82,14 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
           }
     _md.update(md or {})
     goals = [480 - g for g in goals]
+    det_fields = as_list(det_fields, length=len(detectors))
+    filters = []
+    for det, fld in zip(detectors, det_fields):
+        filters.append({field_prepend(fld, det): lambda x: x > 0})
+    if sim:
+        recovery_plan = sim_recovery
+    else:
+        recovery_plan = homs_recovery
 
     @run_decorator(md=_md)
     def letsgo():
@@ -202,8 +97,9 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         gradients=gradients,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
-                        system=detectors + motors)
-        return (yield from branching_plan(walk, branches, branch_choice))
+                        system=detectors + motors, recovery_plan=recovery_plan,
+                        filters=filters)
+        return (yield from walk)
 
 
     return (yield from letsgo())

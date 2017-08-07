@@ -4,12 +4,12 @@ import time
 import logging
 from copy import copy
 
-from bluesky.plans import checkpoint
+from bluesky.plans import checkpoint, mv
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
 from .utils.argutils import as_list, field_prepend
-from .utils.exceptions import RecoverDone
+from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
              motor_fields='alpha', tolerances=20, system=None, averages=1,
-             overshoot=0, max_walks=None, timeout=None):
+             overshoot=0, max_walks=None, timeout=None, recovery_plan=None,
+             filters=None):
     """
     Iteratively adjust a system of detectors and motors where each motor
     primarily affects the reading of a single detector but also affects the
@@ -98,6 +99,20 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     timeout: number, optional
         The maximum time to allow for the alignment before aborting. The
         timeout is checked after each walk step.
+
+    recovery_plan: plan, optional
+        A backup plan to run when no there is no readback on the detectors.
+        This plan should expect a complete description of the situation in the
+        form of the following keyword arguments:
+            detectors: a list of all detectors
+            motors: a list of all motors
+            goals: a list of all goals
+            detector_fields: a list of the fields that correspond to the goals
+            index: which index in these equal-length lists is active
+
+    filters: list of dictionaries
+        Each entry in this list should be a valid input to the filters argument
+        in the lower functions, such as walk_to_pixel and measure_average.
     """
     num = len(detectors)
 
@@ -111,6 +126,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     tolerances = as_list(tolerances, num)
     system = as_list(system)
     averages = as_list(averages, num)
+    filters = as_list(filters, num)
 
     logger.debug("iterwalk aligning %s to %s on %s",
                  motors, goals, detectors)
@@ -170,7 +186,8 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 avgs = (yield from measure_average([detectors[index],
                                                     motors[index]]
                                                     + full_system,
-                                                    num=averages[index]))
+                                                    num=averages[index],
+                                                    filters=filters[index]))
 
                 pos = avgs[field_prepend(detector_fields[index],
                                          detectors[index])]
@@ -205,7 +222,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                        motors[index].name)))
                 pos, models[index] = (yield from walk_to_pixel(detectors[index],
                                                                motors[index],
-                                                               goal, firstpos,
+                                                               goal,
+                                                               filters=filters[index],
+                                                               start=firstpos,
                                                                gradient=gradients[index],
                                                                target_fields=[
                                                                    detector_fields[index],
@@ -231,7 +250,6 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                                        "".format(motors[index].name,
                                                  detectors[index].name))
 
-
                 logger.debug("Walk reached pos %s on %s", pos,
                              detectors[index].name)
                 mirror_walks += 1
@@ -247,11 +265,33 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 # Increment index before restarting loop
                 index += 1
-            except RecoverDone:
-                # Reset the finished tag because we recovered
+            except FilterCountError as err:
+                if recovery_plan is None:
+                    logger.error("No recovery plan, not attempting to recover")
+                    raise
+
+                # Get a fallback position for if the recovery fails
+                try:
+                    fallback_pos = motors[index].nominal_position
+                except AttributeError:
+                    fallback_pos = motors[index].position
+
+                ok = yield from recovery_plan(detectors=detectors,
+                                              motors=motors, goals=goals,
+                                              detector_fields=detector_fields,
+                                              index=index)
+
+                # Reset the finished tag because we moved something
                 finished = [False] * num
-                index += 1
                 recoveries += 1
+
+                # If recovery failed, move to nominal and switch to next device
+                if not ok:
+                    logger.info(("Recover failed, using fallback pos and "
+                                 "trying next device alignment."))
+                    yield from mv(motors[index], fallback_pos)
+                    index += 1
+                # Try again
                 continue
 
         if all(finished):
@@ -269,3 +309,4 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     logger.info("Aligned to %s", done_pos)
     logger.info("Goals were %s", goals)
     logger.info("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
+    logger.info("Mirror positions are %s", [m.position for m in motors])

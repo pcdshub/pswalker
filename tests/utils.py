@@ -7,10 +7,10 @@ import threading
 
 from ophyd import Signal
 from ophyd.ophydobj import OphydObject
-from ophyd.positioner import SoftPositioner
+from ophyd.positioner import SoftPositioner, PositionerBase
 from bluesky.plans import sleep, checkpoint
 
-from pcdsdevices.sim import pim
+from pcdsdevices.sim import pim, mirror
 
 logger=logging.getLogger(__name__)
 
@@ -87,6 +87,65 @@ class SlowSoftPositioner(SoftPositioner):
         logger.debug("test motor done moving")
 
 
+class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
+    step_size = 100
+    delay = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._position = self.pitch.position
+        self.pitch.user_readback._get_readback = self.get_slow_pitch_pos
+
+        self._started_moving = False
+        self._moving = False
+        self._stopped = True
+        self._timeout = 30
+
+    def get_slow_pitch_pos(self):
+        return self._position
+
+    def move(self, position, wait=True, timeout=None, moved_cb=None,
+             **kwargs):
+        status = PositionerBase.move(self, position, moved_cb=moved_cb,
+                                     timeout=timeout)
+
+        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
+
+        self._started_moving = True
+        self._moving = True
+        self._stopped = False
+
+        thread = threading.Thread(target=self._move_thread,
+                                  args=(position,))
+        logger.debug("test slow offset mirror start moving")
+        thread.start()
+
+        return status
+
+    def stop(self, *, success=False):
+        self._stopped = True
+        logger.debug("stop test slow offset mirror")
+
+    def _move_thread(self, position):
+        ok = True
+        while self.position != position:
+            if self._stopped:
+                ok = False
+                break
+            if not self._stopped:
+                time.sleep(self.delay)
+                if self.position < position - self.step_size:
+                    self._position = self.position + self.step_size
+                elif self.position > position + self.step_size:
+                    self._position = self.position - self.step_size
+                else:
+                    self._position = position
+                self._run_subs(sub_type=self.SUB_READBACK,
+                               timestamp=time.time())
+        self._done_moving(success=ok)
+        logger.debug("test slow offset mirror done moving")
+
+
 class MotorSignal(Signal):
     """
     Signal that reports its value to be that of a given positioner object
@@ -97,6 +156,7 @@ class MotorSignal(Signal):
 
     def put_cb(self, *args, value, **kwargs):
         self.put(value)
+
 
 def ruin_my_path(path):
     #Select a non-passive device

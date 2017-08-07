@@ -10,7 +10,7 @@ from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
-from .utils.exceptions import BeamNotFoundError, RecoverDone, RecoverFail
+from .utils.exceptions import BeamNotFoundError
 from math import nan, isnan
 
 logger = logging.getLogger(__name__)
@@ -177,8 +177,7 @@ def verify_all(detectors, target_fields, target_values, tolerances,
 def match_condition(signal, condition, mover, setpoint, timeout=None,
                     sub_type=None, has_stop=True):
     """
-    Plan to adjust mover until condition() returns True. Read and save both the
-    signal and the mover after the move.
+    Plan to adjust mover until condition(signal.value) returns True.
 
     Parameters
     ----------
@@ -264,6 +263,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                 else:
                     return best_start, best_end
 
+        logger.debug("Checking a set of %i stored points", len(pts))
         for i, (pos, ok) in enumerate(pts):
             if ok:
                 if curr_start == -1:
@@ -290,10 +290,6 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
             if condition(signal.value):
                 success.set()
 
-    yield from create()
-    yield from read(mover)
-    yield from read(signal)
-    yield from save()
     signal.clear_sub(condition_cb)
 
     ok = success.is_set()
@@ -302,94 +298,10 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                       'mover=%s setpt=%s cond value=%s'),
                      mover.name, setpoint, signal.value)
     else:
-        logger.debug("condition FAIL in match_condition, mover=%s setpt=%s",
+        logger.debug(('condition fail in match_condition, '
+                      'mover=%s setpt=%s cond value=%s'),
                      mover.name, setpoint, signal.value)
     return ok
-
-
-def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
-                      try_reverse=True, ceil=True, off_limit=0, has_stop=True):
-    """
-    Plan to move motor towards each limit switch until the signal is above a
-    threshold value.
-
-    Raises RecoverDone upon completion.
-
-    Parameters
-    ----------
-    signal: Signal
-        Object that implements the Bluesky "readable" interface, including the
-        optional subscribe function, sending at least the keyword "value" as in
-        ophyd.Signal.
-
-    threshold: number
-        When signal is equal to or greater than this value, we've recovered.
-
-    motor: Motor
-        Object that implements the "readable" and "movable" interfaces, accepts
-        "moved_cb" as a keyword argument, and has signals at attributes
-        high_limit_switch and low_limit_switch
-
-    dir_initial: int
-        1 if we're going to the positive limit switch, -1 otherwise.
-
-    timeout: float, optional
-        If we don't reach the threshold in this many seconds, try the other
-        direction.
-
-    try_reverse: bool, optional
-        If True, switch and try the other limit switch if the first direction
-        fails.
-
-    ceil: bool, optional
-        If True, we're look for signal >= threshold (default).
-        If False, look for signal <= threshold instead.
-
-    off_limit: float, optional
-        The distance from the limit to aim for. This is included because some
-        motor implementations do not allow us to move exactly to the limit. If
-        this is the case, set it to some small value compared to your move
-        sizes.
-
-    has_stop: bool, optional
-        Boolean to indicate whether or not we can stop the motor. We usually
-        use the motor's stop command to stop when recovered. If this is set to
-        False (e.g. we can't stop it), go back to center of the largest range
-        with the signal above the threshold.
-    """
-    logger.debug(("Recover threshold with signal=%s, threshold=%s, motor=%s, "
-                  "dir_initial=%s, timeout=%s"), signal, threshold, motor,
-                 dir_initial, timeout)
-    if dir_initial > 0:
-        logger.debug("Recovering towards the high limit switch")
-        setpoint = motor.high_limit - off_limit
-    else:
-        logger.debug("Recovering towards the low limit switch")
-        setpoint = motor.low_limit + off_limit
-
-    def condition(x):
-        if ceil:
-            return x >= threshold
-        else:
-            return x <= threshold
-    ok = yield from match_condition(signal, condition, motor, setpoint,
-                                    timeout=timeout, has_stop=has_stop)
-    if ok:
-        logger.debug("Recovery was successful")
-        raise RecoverDone
-    else:
-        if try_reverse:
-            logger.debug("First direction failed, trying reverse...")
-            if timeout is not None:
-                timeout *= 2
-            return (yield from recover_threshold(signal, threshold, motor,
-                                                 -dir_initial,
-                                                 timeout=timeout,
-                                                 try_reverse=False,
-                                                 ceil=ceil))
-        else:
-            logger.debug("Recovery failed")
-            raise RecoverFail
 
 
 def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):

@@ -2,6 +2,7 @@
 # Standard #
 ############
 import os
+import time
 import logging
 
 ###############
@@ -17,6 +18,7 @@ from pcdsdevices.sim import source, mirror, pim
 # Module #
 ##########
 from pswalker.examples import patch_pims
+from .utils import SlowSoftPositioner, MotorSignal, SlowOffsetMirror
 
 #################
 # Logging Setup #
@@ -126,6 +128,40 @@ def lcls_two_bounce_system():
     return s, m1, m2, y1, y2
 
 
+@pytest.fixture(scope='function')
+def slow_lcls_two_bounce_system():
+    """
+    Simple system that consists of a source, two mirrors, and two imagers.
+    """
+    s = source.Undulator('test_undulator')
+    m1 = SlowOffsetMirror('test_m1h', 'test_m1h_xy',
+                          z=90.510, alpha=0.0014)
+    m2 = SlowOffsetMirror('test_m2h', 'test_m2h_xy', x=0.0317324,
+                          z=101.843, alpha=0.0014)
+    y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660)
+    y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)
+
+    patch_pims([y1, y2], mirrors=[m1, m2], source=s)
+
+    def make_update_pixel(yag):
+        def update_pixel(*args, **kwargs):
+            sig = yag.detector.stats2.centroid.x
+            sig._run_subs(sub_type=sig.SUB_VALUE,
+                          value=sig.value,
+                          timestamp=time.time())
+        return update_pixel
+
+    m1.subscribe(make_update_pixel(y1), m1.SUB_READBACK)
+    m2.subscribe(make_update_pixel(y2), m2.SUB_READBACK)
+
+    m1.high_limit = 2000
+    m1.low_limit = 1000
+    m2.high_limit = 2000
+    m2.low_limit = 1000
+
+    return s, m1, m2, y1, y2
+
+
 #@pytest.fixture(scope='function')
 #def fake_slit():
 #    """
@@ -133,3 +169,14 @@ def lcls_two_bounce_system():
 #    """
 #    s = slits.Slits('slits',xcenter=0.0,ycenter=0.0,xwidth=0.0,ywidth=0.0)
 #    return s
+
+
+@pytest.fixture(scope='function')
+def mot_and_sig():
+    """
+    Semi-realistic test motor and a signal that reports the motor's position.
+    """
+    mot = SlowSoftPositioner(n_steps=1000, delay=0.001, position=0,
+                             name='test_mot', limits=(-100, 100))
+    sig = MotorSignal(mot, name='test_sig')
+    return mot, sig
