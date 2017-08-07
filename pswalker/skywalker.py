@@ -19,17 +19,12 @@ from .utils import field_prepend
 logger = logging.getLogger(__name__)
 
 
-def lcls_RE(alarming_pvs=None, RE=None):
+def lcls_RE(RE=None):
     """
-    Instantiate a run engine that pauses when the lcls beam has problems, and
-    optionally when various PVs enter a MAJOR alarm state.
+    Instantiate a run engine that pauses when the lcls beam has problems.
 
     Parameters
     ----------
-    alarming_pvs: list of str, optional
-        If provided, we'll suspend the run engine when any of these PVs report
-        a MAJOR alarm state.
-
     RE: RunEngine, optional
         If provided, we'll add suspenders to and return the provided RunEngine
         instead of creating a new one.
@@ -39,12 +34,8 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(0.01))
-    RE.install_suspender(BeamRateSuspendFloor(2))
-    alarming_pvs = alarming_pvs or []
-    for pv in alarming_pvs:
-        RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
-    RE.msg_hook = RE.log.debug
+    RE.install_suspender(BeamEnergySuspendFloor(1, sleep=5, averages=100))
+    RE.install_suspender(BeamRateSuspendFloor(1, sleep=5))
     return RE
 
 
