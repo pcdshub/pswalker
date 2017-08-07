@@ -71,7 +71,7 @@ class Watcher(CallbackBase):
         self.summary['tolerance'] = doc.get('plan_args',{}).get('tolerances')
         self.mot_fields = doc.get('plan_args', {}).get('mot_fields')
         self.det_fields = doc.get('plan_args', {}).get('det_fields')
-        self.summary['elapsed'] = doc['time']*1e-3#Convert from usec
+        self.summary['elapsed'] = doc['time']
         super().start(doc)
 
 
@@ -84,11 +84,11 @@ class Watcher(CallbackBase):
             if key == 'interruption':
                 #Keep track of suspensions
                 if value in ['suspend', 'pause']:
-                    self.last_suspension = doc['time']*1e-3 #Convert from us
+                    self.last_suspension = doc['time']
                     self.summary['suspension_count'] += 1
                 #Integrate suspension time
                 elif value == 'resume':
-                    self.summary['suspended']+= (doc['time']*1e-3
+                    self.summary['suspended']+= (doc['time']
                                                  - self.last_suspension)
             #Update device state caches
             elif (value and any([field in key
@@ -105,7 +105,7 @@ class Watcher(CallbackBase):
         #Save exit information
         self.summary['successful'] = doc['exit_status']
         self.summary['reason']     = doc['reason']
-        self.summary['elapsed']    = doc['time']*1e-3 - self.summary['elapsed']
+        self.summary['elapsed']    = doc['time'] - self.summary['elapsed']
         #Find 
         self.summary['moves'] = len([msg for msg in self.msgs
                                      if (msg.command == 'set'
