@@ -9,10 +9,11 @@ from bluesky.plans import run_wrapper, scan
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition, recover_threshold,
-                                 slit_scan_area_comp)
-from pswalker.utils.exceptions import RecoverDone, RecoverFail
+                                 slit_scan_area_comp, slit_scan_fiducialize,
+                                 fiducialize)
+from pswalker.utils.exceptions import (RecoverDone, RecoverFail,
+                                       BeamNotFoundError)
 from .utils import plan_stash, SlowSoftPositioner, MotorSignal, collector
-
 from bluesky.examples import Reader, Mover
 
 from collections import OrderedDict
@@ -319,4 +320,85 @@ def test_slit_scan_area_compare(RE):
         0.0, 0.0, 
         0.0, 0.0,
         ]
+
+@pytest.fixture(scope='function')
+def fiducialized_yag():
+    #Instantiate fake slits object
+    fake_slits = Mover(
+        "slits",
+        OrderedDict([
+            ('xwidth',(lambda xwidth,ywidth:xwidth)),
+            ('ywidth',(lambda xwidth,ywidth:ywidth)),
+        ]),
+        {'xwidth':0,'ywidth':0}
+    )
+    #Pretend our beam is 0.3 from the slit center
+    def aperatured_centroid(slits=fake_slits):
+        #Beam is unblocked
+        if (slits.read()['xwidth']['value'] > 0.5
+            and slits.read()['ywidth']['value'] > 0.5):
+               return 0.3
+        #Beam is fully blocked
+        return 0.0
+
+    #Instantiate fake detector object
+    fake_yag = Reader('det', {'centroid': aperatured_centroid})
+
+    return fake_slits, fake_yag
+
+
+def test_slit_scan_fiducialize(RE, fiducialized_yag):
+
+    fake_slits, fake_yag = fiducialized_yag
+
+    #collector callbacks aggregate data from 'yield from' returns in lists  
+    center = []
+    measuredcenter = collector("centroid", center)
+
+    #Run plan with wide slits
+    RE(
+        run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
+                                          x_width=1.0,y_width=1.0,
+                                          centroid='centroid',
+                                          samples=1)),
+        subs={'event':[measuredcenter]}
+    )
+
+    assert center == [0.3]
+
+    
+    #collector callbacks aggregate data from 'yield from' returns in lists  
+    center = []
+    measuredcenter = collector("centroid", center)
+    #Run plan with narrow slits
+    RE(
+        run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
+                                          centroid='centroid',
+                                          samples=1)),
+        subs={'event':[measuredcenter]}
+    )
+
+    assert center == [0.0]
+
+
+def test_fiducialize(RE, fiducialized_yag):
+    fake_slits, fake_yag = fiducialized_yag
+    #collector callbacks aggregate data from 'yield from' returns in lists  
+    center = []
+    measuredcenter = collector("centroid", center)
+
+    #Run plan with sufficiently large max_width
+    RE(
+        run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
+                                centroid='centroid', samples=1)),
+        subs={'event':[measuredcenter]}
+    )
+    #First shot is blocked second is not
+    assert center == [0.0, 0.3]
+
+    #Run plan with insufficiently large max_width
+    with pytest.raises(BeamNotFoundError):
+        RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
+                                    max_width=0.25,centroid='centroid', samples=1)),
+        )
 
