@@ -77,10 +77,4 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         filters=filters)
         return (yield from walk)
 
-
     return (yield from letsgo())
-
-def get_lightpath_suspender(yags):
-    # TODO initialize lightpath
-    # Make the suspender to go to the last yag and exclude prev yags
-    return LightpathSuspender(yags[-1], exclude=yags[:-1])
