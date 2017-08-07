@@ -48,21 +48,6 @@ def lcls_RE(alarming_pvs=None, RE=None):
     return RE
 
 
-def homs_RE():
-    """
-    Instantiate an lcls_RE with the correct alarming pvs and a suspender for
-    lightpath blockage.
-
-    Returns
-    -------
-    RE: RunEngine
-    """
-    RE = lcls_RE()
-    # TODO determine what the correct alarm pvs even are
-    # TODO include lightpath suspender
-    return RE
-
-
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
