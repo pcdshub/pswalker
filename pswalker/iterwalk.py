@@ -103,12 +103,13 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     recovery_plan: plan, optional
         A backup plan to run when no there is no readback on the detectors.
         This plan should expect a complete description of the situation in the
-        form of the following keyword arguments:
-            detectors: a list of all detectors
-            motors: a list of all motors
-            goals: a list of all goals
-            detector_fields: a list of the fields that correspond to the goals
-            index: which index in these equal-length lists is active
+        form of all arguments given to iterwalk, except for recovery_plan. Note
+        that these arguments are listified before being passed to
+        recovery_plan. It will also be passed 'index', which is the index in
+        all of the list arguments that is currently active.
+        Also note that there is no requirement to use all of the provided
+        arguments. A good practice is to have recovery_plan accept and ignore
+        **kwargs while explicitly including desired keywords to use.
 
     filters: list of dictionaries
         Each entry in this list should be a valid input to the filters argument
@@ -278,7 +279,18 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 ok = yield from recovery_plan(detectors=detectors,
                                               motors=motors, goals=goals,
+                                              starts=starts,
+                                              first_steps=first_steps,
+                                              gradients=gradients,
                                               detector_fields=detector_fields,
+                                              motor_fields=motor_fields,
+                                              tolerances=tolerances,
+                                              system=system,
+                                              averages=averages,
+                                              overshoot=overshoot,
+                                              max_walks=max_walks,
+                                              timeout=timeout,
+                                              filters=filters,
                                               index=index)
 
                 # Reset the finished tag because we moved something
