@@ -13,7 +13,8 @@ from copy import copy
 ###############
 import numpy as np
 from bluesky.plans import checkpoint
-from psbeam.plans.characterize import (characterize, signal_tuple)
+from psbeam.utils import signal_tuple
+from psbeam.plans.characterize import characterize
 
 ##########
 # Module #
@@ -31,7 +32,7 @@ def beam_statistics(detectors, array_field="image1.array_data",
                     filter_kernel=(9,9), thresh_mode="otsu", filters=None,
                     image_delay=1, cent_delay=None, md=None, ad_data=True,
                     centroid_field="stats2.centroid", image_data=True,
-                    **kwargs):
+                    pim_timeout=15, **kwargs):
     """
     Obtains statistics of the beam by walking the beam to the center of the
     imager, gathering shots and then returns the computed stats.
@@ -54,16 +55,18 @@ def beam_statistics(detectors, array_field="image1.array_data",
     filters = as_list(filters, N)
     image_delay = as_list(image_delay, N, iter_to_list=False)
     cent_delay = as_list(cent_delay, N, iter_to_list=False)
-    md = as_list(md, N)    
+    md = as_list(md, N)
+    
+    start_time = time.time()
 
-    for index in range(N):
+    for idx in range(N):
         # Before each walk, check the global timeout.
         if timeout is not None and time.time() - start_time > timeout:
             raise RuntimeError("Pre-alignment stats has timed out after "
                                "{0}s".format(time.time() - start_time))
     
         logger.debug("putting imager in")
-        ok = (yield from prep_img_motors(index, detectors, timeout=15))
+        ok = (yield from prep_img_motors(idx, detectors, timeout=pim_timeout))
 
         # Be loud if the yags fail to move! Operator should know!
         if not ok:
@@ -71,33 +74,35 @@ def beam_statistics(detectors, array_field="image1.array_data",
             logger.error(err)
             raise RuntimeError(err)
 
+        # Add the detectors as keys to stats with an empty dict
+        beam_stats[detectors[idx].name] = {}
+
         # Get beam image statistics
         if image_data:            
-            beam_stats[detectors[index].name] = yield from characterize(
-                detectors[index].detector, array_field[index], size_field[index],
-                num=num[index], filters=filters[index], delay=image_delay[index], 
-                drop_missing=drop_missing[index], kernel=kernel[index],
-                uint_mode=uint_mode[index], min_area=min_area[index], 
-                filter_kernel=filter_kernel[index], thresh_mode=thresh_mode[index],
-                md=md[index], resize=resize[index],
-                thresh_factor=thresh_factor[index],**kwargs)
+            beam_stats[detectors[idx].name] = yield from characterize(
+                detectors[idx].detector, array_field[idx], size_field[idx],
+                num=num[idx], filters=filters[idx], delay=image_delay[idx], 
+                drop_missing=drop_missing[idx], kernel=kernel[idx],
+                uint_mode=uint_mode[idx], min_area=min_area[idx], md=md[idx], 
+                filter_kernel=filter_kernel[idx], thresh_mode=thresh_mode[idx],
+                resize=resize[idx], thresh_factor=thresh_factor[idx],**kwargs)
 
         # Gather AD data            
         if ad_data:
-            ad_data = yield from measure([detectors[index]], num=num[index],
-                                         delay=cent_delay[index],
-                                         drop_missing=drop_missing[index])
+            ad_data = yield from measure([detectors[idx]], num=num[idx],
+                                         delay=cent_delay[idx],
+                                         drop_missing=drop_missing[idx])
 
-            # Add the mean centroid position and std
+            # Mean centroid position and std
             for cent in (centroid_field + "_x", centroid_field + "_y"):
-                key = field_prepend(cent,detectors[index].detector).replace(
+                key = field_prepend(cent,detectors[idx].detector).replace(
                     ".","_")
                 cent_data = [data[key] for data in ad_data]
                 
                 # Mean and std of the centroids
-                beam_stats[detectors[index].name]["centroid_{0}_mn_ad".format(
+                beam_stats[detectors[idx].name]["centroid_{0}_mn_ad".format(
                     key[-1])] = np.mean(cent_data)
-                beam_stats[detectors[index].name]["centroid_{0}_std_ad".format(
+                beam_stats[detectors[idx].name]["centroid_{0}_std_ad".format(
                     key[-1])] = np.std(cent_data)
 
     return beam_stats
