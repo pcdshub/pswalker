@@ -125,15 +125,15 @@ def _x_to_pixel(x, pim):
     Parameters
     ----------
     x : float
-    	The x position to be converted
+        The x position to be converted
 
     pim : PIM
-    	The simulated PIM object to convert on
+        The simulated PIM object to convert on
 
     Returns
     -------
     result : int
-    	Pixel the x position corresponds to on the inputted pim.
+        Pixel the x position corresponds to on the inputted pim.
     """
     cam = pim.detector.cam
     result = np.round(np.floor(
@@ -149,15 +149,15 @@ def _calc_cent_x(source, pim):
     Parameters
     ----------
     source : Undulator
-    	The object simulating the source of the beam
+        The object simulating the source of the beam
 
     pim : PIM
-    	The simulated PIM object to convert on
+        The simulated PIM object to convert on
 
     Returns
     -------
     result : int
-    	Pixel of the centroid of the beam at the pim
+        Pixel of the centroid of the beam at the pim
     """
     x = source.sim_x.value + source.sim_xp.value*pim.sim_z.value
     result = _x_to_pixel(x, pim)
@@ -171,18 +171,18 @@ def _m1_calc_cent_x(source, mirror, pim):
     Parameters
     ----------
     source : Undulator
-    	The object simulating the source of the beam
+        The object simulating the source of the beam
 
     mirror : OffsetMirror
-    	The simulated mirror to calculate the reflection with
+        The simulated mirror to calculate the reflection with
 
     pim : PIM
-    	The simulated PIM object to convert on
+        The simulated PIM object to convert on
 
     Returns
     -------
     result : int
-    	Pixel of the centroid of the beam at the pim
+        Pixel of the centroid of the beam at the pim
     """    
     x = one_bounce(mirror.sim_alpha.value*1e-6,
                    source.sim_x.value,
@@ -201,21 +201,21 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
     Parameters
     ----------
     source : Undulator
-    	The object simulating the source of the beam
+        The object simulating the source of the beam
 
     mirror_1 : OffsetMirror
-    	The simulated mirror to calculate the first reflection with
+        The simulated mirror to calculate the first reflection with
 
     mirror_2 : OffsetMirror
-    	The simulated mirror to calculate the second reflection with
+        The simulated mirror to calculate the second reflection with
 
     pim : PIM
-    	The simulated PIM object to convert on
+        The simulated PIM object to convert on
 
     Returns
     -------
     result : int
-    	Pixel of the centroid of the beam at the pim
+        Pixel of the centroid of the beam at the pim
     """    
     x = two_bounce((mirror_1.sim_alpha.value*1e-6,
                     mirror_2.sim_alpha.value*1e-6),
@@ -242,19 +242,19 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY"),
     Parameters
     ----------
     pims : PIM or list
-    	PIMs to patch
+        PIMs to patch
 
     mirrors : OffsetMirror or list, optional
-    	Mirrors to calculate reflections off
+        Mirrors to calculate reflections off
 
     source : Undulator, optional
-    	Object to function as the source of the beam
+        Object to function as the source of the beam
 
     Returns
     -------
     pims : PIM or list
-    	The inputted pim objects but with their centroid readbacks patched with
-    	the ray tracing functions.
+        The inputted pim objects but with their centroid readbacks patched with
+        the ray tracing functions.
     """
     # Make sure the inputted mirrors and pims are iterables
     if not isiterable(mirrors):
@@ -293,6 +293,10 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY"),
                 pim.detector._get_readback_centroid_x = partial(
                     _m1_m2_calc_cent_x , source, mirrors[0], mirrors[1], pim)
 
+        # Patch the y centroid to always be the center of the image
+        pim.detector._get_readback_centroid_y = lambda : (
+            int(pim.detector.cam.size.size_x.value / 2))
+        
     # Return just the pim if there was only one of them
     if len(pims) == 1:
         return pims[0]
