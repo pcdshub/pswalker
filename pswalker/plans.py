@@ -231,7 +231,8 @@ def walk_to_pixel(detector, motor, target, filters=None,
     return last_shot, accurate_model
 
 
-def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
+def measure(detectors, num=1, delay=None, filters=None, drop_missing=True,
+            max_dropped=50):
     """
     Gather a fixed number of measurements from a group of detectors
 
@@ -253,6 +254,9 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
 
     drop_missing : bool, optional
         Choice to include events where event keys are missing
+
+    max_drops : int, optional
+    	Maximum number of events to drop before raising a ValueError
 
     Returns
     -------
@@ -358,7 +362,7 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True):
             dropped += 1
             logger.debug('Ignoring inadequate measurement, '\
                          'attempting to gather again...')
-        if dropped > 50:
+        if dropped > max_dropped:
             raise ValueError
 
     #Report finished
