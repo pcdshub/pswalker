@@ -22,18 +22,19 @@ from psbeam.plans.characterize import characterize
 from .plan_stubs import prep_img_motors
 from .utils.argutils import as_list, field_prepend
 from .plans import walk_to_pixel, measure_average, measure
+from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
 def beam_statistics(detectors, array_field="image1.array_data",
                     size_field="image1.array_size",
                     centroid_field="stats2.centroid", image_data=True,
-                    ad_data=True, image_num=10, cent_num=10, image_delay=1, cent_delay=None,
-                    image_filters=None, cent_filters=None, drop_missing=True,
-                    filter_kernel=(9,9), resize=1.0, uint_mode="scale",
-                    min_area=100, filter_factor=3, min_area_factor=3,
-                    kernel=(9,9), thresh_mode="otsu", thresh_factor=3,
-                    timeout=None, pim_timeout=15, **kwargs):
+                    ad_data=True, image_num=10, cent_num=10, image_delay=1,
+                    cent_delay=None, image_filters=None, cent_filters=None,
+                    drop_missing=True, filter_kernel=(9,9), resize=1.0,
+                    uint_mode="scale", min_area=100, filter_factor=3,
+                    min_area_factor=3, kernel=(9,9), thresh_mode="otsu",
+                    thresh_factor=3, timeout=None, pim_timeout=15, **kwargs):
     """
     Calculates statistics of the beam at each of the detectors by running a
     beam-profile characterization pipeline and/or computing basic statistics of
@@ -235,14 +236,20 @@ def beam_statistics(detectors, array_field="image1.array_data",
 
         # Get beam image statistics
         if image_data:            
-            beam_stats[detectors[idx].name] = yield from characterize(
-                detectors[idx].detector, array_field[idx], size_field[idx],
-                num=image_num[idx], filters=image_filters[idx],
-                delay=image_delay[idx], filter_factor=filter_factor[idx],
-                drop_missing=drop_missing[idx], kernel=kernel[idx],
-                uint_mode=uint_mode[idx], min_area=min_area[idx], 
-                filter_kernel=filter_kernel[idx], thresh_mode=thresh_mode[idx],
-                resize=resize[idx], thresh_factor=thresh_factor[idx],**kwargs)
+            try:
+                beam_stats[detectors[idx].name] = yield from characterize(
+                    detectors[idx].detector, array_field[idx], size_field[idx],
+                    num=image_num[idx], filters=image_filters[idx],
+                    delay=image_delay[idx], filter_factor=filter_factor[idx],
+                    drop_missing=drop_missing[idx], kernel=kernel[idx],
+                    uint_mode=uint_mode[idx], min_area=min_area[idx], 
+                    filter_kernel=filter_kernel[idx],
+                    thresh_mode=thresh_mode[idx], resize=resize[idx],
+                    thresh_factor=thresh_factor[idx],**kwargs)
+            except FilterCountError:
+                logger.warning("FilterCountError encountered when reading "
+                               "image data. No image statistics added for "
+                               "detector '{0}'".format(detectors[idx].name))
 
         # Gather AD data            
         if ad_data:
@@ -258,23 +265,28 @@ def beam_statistics(detectors, array_field="image1.array_data",
                 }
             else:
                 cent_filter = cent_filters[idx]
-            
-            ad_data = yield from measure([detectors[idx]], num=cent_num[idx],
-                                         delay=cent_delay[idx],
-                                         drop_missing=drop_missing[idx],
-                                         filters=cent_filter)
 
-            # Mean centroid position and std
-            for cent in (centroid_field + "_x", centroid_field + "_y"):
-                key = field_prepend(cent, detectors[idx].detector).replace(
-                    ".","_")
-                cent_data = [data[key] for data in ad_data]
-                
-                # Mean and std of the centroids
-                beam_stats[detectors[idx].name]["centroid_{0}_mn_ad".format(
-                    key[-1])] = np.mean(cent_data)
-                beam_stats[detectors[idx].name]["centroid_{0}_std_ad".format(
-                    key[-1])] = np.std(cent_data)
+            try: 
+                ad_data = yield from measure(
+                    [detectors[idx]], num=cent_num[idx], delay=cent_delay[idx],
+                    drop_missing=drop_missing[idx], filters=cent_filter)
+
+                # Mean centroid position and std
+                for cent in (centroid_field + "_x", centroid_field + "_y"):
+                    key = field_prepend(cent, detectors[idx].detector).replace(
+                        ".","_")
+                    cent_data = [data[key] for data in ad_data]
+
+                    # Mean and std of the centroids
+                    beam_stats[detectors[idx].name]["centroid_{}_mn_ad".format(
+                        key[-1])] = np.mean(cent_data)
+                    beam_stats[detectors[idx].name]["centroid_{}_std_ad".format(
+                        key[-1])] = np.std(cent_data)
+
+            except FilterCountError:
+                logger.warning("FilterCountError encountered when reading AD "
+                               "data. No AD statistics added for detector '{0}'"
+                               "".format(detectors[idx].name))
 
     return beam_stats
     
