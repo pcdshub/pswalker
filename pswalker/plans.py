@@ -370,7 +370,6 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True,
             logger.debug(('Dropped too many events, raising exception. Latest '
                           'bad values were %s'), dropped_dict)
             raise FilterCountError
-
     #Report finished
     logger.debug("Finished taking {} measurements, "\
                  "filters removed {} events"\
