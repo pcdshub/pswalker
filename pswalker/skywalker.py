@@ -4,14 +4,9 @@ import logging
 
 from bluesky import RunEngine
 from bluesky.plans import run_decorator
-from bluesky.callbacks import LiveTable
-from pcdsdevices.epics.pim import PIM
-from pcdsdevices.epics.mirror import OffsetMirror
 
-from .plan_stubs import prep_img_motors
 from .recovery import homs_recovery, sim_recovery
-from .suspenders import (BeamEnergySuspendFloor, BeamRateSuspendFloor,
-                         PvAlarmSuspend, LightpathSuspender)
+from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor
 from .iterwalk import iterwalk
 from .utils.argutils import as_list
 from .utils import field_prepend
@@ -19,17 +14,12 @@ from .utils import field_prepend
 logger = logging.getLogger(__name__)
 
 
-def lcls_RE(alarming_pvs=None, RE=None):
+def lcls_RE(RE=None):
     """
-    Instantiate a run engine that pauses when the lcls beam has problems, and
-    optionally when various PVs enter a MAJOR alarm state.
+    Instantiate a run engine that pauses when the lcls beam has problems.
 
     Parameters
     ----------
-    alarming_pvs: list of str, optional
-        If provided, we'll suspend the run engine when any of these PVs report
-        a MAJOR alarm state.
-
     RE: RunEngine, optional
         If provided, we'll add suspenders to and return the provided RunEngine
         instead of creating a new one.
@@ -39,27 +29,8 @@ def lcls_RE(alarming_pvs=None, RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(0.01))
-    RE.install_suspender(BeamRateSuspendFloor(2))
-    alarming_pvs = alarming_pvs or []
-    for pv in alarming_pvs:
-        RE.install_suspender(PvAlarmSuspend(pv, "MAJOR"))
-    RE.msg_hook = RE.log.debug
-    return RE
-
-
-def homs_RE():
-    """
-    Instantiate an lcls_RE with the correct alarming pvs and a suspender for
-    lightpath blockage.
-
-    Returns
-    -------
-    RE: RunEngine
-    """
-    RE = lcls_RE()
-    # TODO determine what the correct alarm pvs even are
-    # TODO include lightpath suspender
+    RE.install_suspender(BeamEnergySuspendFloor(1, sleep=5, averages=100))
+    RE.install_suspender(BeamRateSuspendFloor(1, sleep=5))
     return RE
 
 
@@ -101,10 +72,4 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         filters=filters)
         return (yield from walk)
 
-
     return (yield from letsgo())
-
-def get_lightpath_suspender(yags):
-    # TODO initialize lightpath
-    # Make the suspender to go to the last yag and exclude prev yags
-    return LightpathSuspender(yags[-1], exclude=yags[:-1])
