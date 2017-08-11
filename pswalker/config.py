@@ -49,6 +49,7 @@ dg3_cent_x = fmt.format(dg3_name, cent_x_key)
 m1h_nominal = 283.2
 m2h_nominal = 152.1
 xrtm2_mfx = -558.4
+timeout = 30
 
 def homs_system():
     """
@@ -61,21 +62,27 @@ def homs_system():
     """
     system = {}
     system['m1h'] = OffsetMirror(m1h, m1h_xy, name=m1h_name,
+                                 timeout=timeout,
                                  nominal_position=m1h_nominal)
     system['m1h2'] = OffsetMirror(m1h, m1h_xy, name=m1h_name+"2",
+                                  timeout=timeout,
                                   nominal_position=m1h_nominal)
     system['m2h'] = OffsetMirror(m2h, m2h_xy, name=m2h_name,
+                                 timeout=timeout,
                                  nominal_position=m2h_nominal)
     system['m2h2'] = OffsetMirror(m2h, m2h_xy, name=m2h_name+"2",
+                                  timeout=timeout,
                                   nominal_position=m2h_nominal)
     system['xrtm2'] = OffsetMirror(m3h, m3h_xy, name=m3h_name,
+                                   timeout=timeout,
                                    nominal_position=xrtm2_mfx)
     system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2",
+                                    timeout=timeout,
                                     nominal_position=xrtm2_mfx)
-    system['hx2'] = PIM(hx2, name=hx2_name)
-    system['dg3'] = PIM(dg3, name=dg3_name)
-    system['mfxdg1'] = PIM(mfxdg1, prefix_det=mfxdg1_det, name=mfxdg1_name)
-    system['mecy1'] = PIM(mecy1, prefix_det=mecy1_det, name=mecy1_name)
+    system['hx2'] = PIM(hx2, name=hx2_name, timeout=30)
+    system['dg3'] = PIM(dg3, name=dg3_name, timeout=30)
+    system['mfxdg1'] = PIM(mfxdg1, prefix_det=mfxdg1_det, name=mfxdg1_name, timeout=30)
+    system['mecy1'] = PIM(mecy1, prefix_det=mecy1_det, name=mecy1_name, timeout=30)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
     return system
