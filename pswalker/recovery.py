@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from bluesky.plans import mv
+
 from .plan_stubs import match_condition
 
 logger = logging.getLogger(__name__)
@@ -112,29 +114,35 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
     """
     # Interpret args as homs mirrors and areadetector pims
     # Take the active mirror/pim pair
+    mirror = motors[index]
     yag = detectors[index]
+    sig_threshold = 0.1
     if sim:
+        # The fake mirror should not try to return to nominal
+        # This lets us test the plan
         sig = yag.detector.stats2.centroid.x
     else:
+        # The real mirror should try to return to nominal first
+        logger.info("Try recovering to nominal first...")
+        yield from mv(mirror, mirror.nominal_position)
         sig = yag.detector.stats2.centroid.y
-    mirror = motors[index]
-    try:
-        # Try recover_threshold toward nominal position
-        center = mirror.nominal_position
-        if mirror.position < center:
-            dir_initial = 1
+        if sig.value > sig_threshold:
+            logger.info("We have beam at the nominal position.")
+            return True
         else:
-            dir_initial = -1
-    except AttributeError:
-        # If no nominal position, do the shorter move first
-        dist_to_high = abs(mirror.position - mirror.high_limit)
-        dist_to_low = abs(mirror.position - mirror.low_limit)
-        if dist_to_high < dist_to_low:
-            dir_initial = 1
-        else:
-            dir_initial = -1
+            logger.info("We do not have beam at the nominal position.")
+
+    # Do the shorter move first
+    dist_to_high = abs(mirror.position - mirror.high_limit)
+    dist_to_low = abs(mirror.position - mirror.low_limit)
+    if dist_to_high < dist_to_low:
+        dir_initial = 1
+    else:
+        dir_initial = -1
+
     # Call the threshold recovery
-    ok = yield from recover_threshold(sig, 0.1, mirror, dir_initial,
+    ok = yield from recover_threshold(sig, sig_threshold,
+                                      mirror, dir_initial,
                                       timeout=60, try_reverse=True,
                                       off_limit=0.001, has_stop=False)
     # Pass the return value back out
