@@ -107,7 +107,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
 
 
 def homs_recovery(*, detectors, motors, goals, detector_fields, index,
-                  sim=False):
+                  sim=False, **kwargs):
     """
     Plan to recover the homs system should something go wrong. Is passed
     arguments as defined in iterwalk.
@@ -149,8 +149,8 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
     return ok
 
 
-def sim_recovery(*, detectors, motors, goals, detector_fields, index):
+def sim_recovery(*, detectors, motors, goals, detector_fields, index, **kwargs):
     return (yield from homs_recovery(detectors=detectors, motors=motors,
                                      goals=goals,
                                      detector_fields=detector_fields,
-                                     index=index, sim=True))
+                                     index=index, sim=True, **kwargs))
