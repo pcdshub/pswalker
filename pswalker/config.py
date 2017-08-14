@@ -46,6 +46,9 @@ m2h_pitch = fmt.format(m2h_name, pitch_key)
 hx2_cent_x = fmt.format(hx2_name, cent_x_key)
 dg3_cent_x = fmt.format(dg3_name, cent_x_key)
 
+m1h_nominal = 283.2
+m2h_nominal = 152.1
+xrtm2_mfx = -558.4
 
 def homs_system():
     """
@@ -57,12 +60,18 @@ def homs_system():
     system: dict
     """
     system = {}
-    system['m1h'] = OffsetMirror(m1h, m1h_xy, name=m1h_name)
-    system['m1h2'] = OffsetMirror(m1h, m1h_xy, name=m1h_name+"2")
-    system['m2h'] = OffsetMirror(m2h, m2h_xy, name=m2h_name)
-    system['m2h2'] = OffsetMirror(m2h, m2h_xy, name=m2h_name+"2")
-    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, name=m3h_name)
-    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2")
+    system['m1h'] = OffsetMirror(m1h, m1h_xy, name=m1h_name,
+                                 nominal_position=m1h_nominal)
+    system['m1h2'] = OffsetMirror(m1h, m1h_xy, name=m1h_name+"2",
+                                  nominal_position=m1h_nominal)
+    system['m2h'] = OffsetMirror(m2h, m2h_xy, name=m2h_name,
+                                 nominal_position=m2h_nominal)
+    system['m2h2'] = OffsetMirror(m2h, m2h_xy, name=m2h_name+"2",
+                                  nominal_position=m2h_nominal)
+    system['xrtm2'] = OffsetMirror(m3h, m3h_xy, name=m3h_name,
+                                   nominal_position=xrtm2_mfx)
+    system['xrtm22'] = OffsetMirror(m3h, m3h_xy, name=m3h_name+"2",
+                                    nominal_position=xrtm2_mfx)
     system['hx2'] = PIM(hx2, name=hx2_name)
     system['dg3'] = PIM(dg3, name=dg3_name)
     system['mfxdg1'] = PIM(mfxdg1, prefix_det=mfxdg1_det, name=mfxdg1_name)
