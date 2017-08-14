@@ -256,7 +256,7 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True,
     drop_missing : bool, optional
         Choice to include events where event keys are missing
 
-    max_drops : int, optional
+    max_dropped : int, optional
     	Maximum number of events to drop before raising a ValueError
 
     Returns
