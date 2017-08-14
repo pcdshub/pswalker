@@ -9,10 +9,13 @@ import logging
 # Third Party #
 ###############
 import pytest
+import numpy as np
 from bluesky import RunEngine
 from lightpath.tests import path
 from bluesky.tests.utils import MsgCollector
 from pcdsdevices.sim import source, mirror, pim
+from psbeam.images.testing.hx2 import images as images_hx2
+from psbeam.images.testing.dg3 import images as images_dg3
 
 ##########
 # Module #
@@ -53,6 +56,15 @@ logger = logging.getLogger(__name__)
 logger.info("pytest start")
 run_engine_logger = logging.getLogger("RunEngine")
 
+def yield_seq_beam_image(images, idx=0):
+    while True:
+        val = idx % len(images)
+        yield images["image_{0:03d}".format(val)].astype(np.uint8)
+        idx += 1        
+
+def _next_image(det_counter, gen):
+    det_counter.value += 1
+    return next(gen)
 
 @pytest.fixture(scope='function')
 def RE():
@@ -123,8 +135,18 @@ def lcls_two_bounce_system():
     y1 = pim.PIM('test_p3h', x=0.0317324, z=103.660)
     y2 = pim.PIM('test_dg3', x=0.0317324, z=375.000)
 
+    # Patch with calculated centroids
     patch_pims([y1, y2], mirrors=[m1, m2], source=s)
-    
+
+    # Patch with image
+    yield_image_hx2 = yield_seq_beam_image(images_hx2, idx=0)
+    y1.detector.image1._image = lambda : _next_image(
+        y1.detector.image1.array_counter, yield_image_hx2)
+
+    yield_image_dg3 = yield_seq_beam_image(images_dg3, idx=0)
+    y2.detector.image1._image = lambda : _next_image(
+        y2.detector.image1.array_counter, yield_image_dg3)
+
     return s, m1, m2, y1, y2
 
 
