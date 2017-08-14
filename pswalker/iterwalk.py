@@ -181,6 +181,10 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 except ValueError:
                     pass
 
+                # Set flag for needing recovery before walking
+                recover_pre_walk = True
+                original_position = motors[index].position
+
                 # Check if we're already done
                 logger.debug("measure_average on det=%s, mot=%s, sys=%s",
                              detectors[index], motors[index], full_system)
@@ -216,6 +220,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     goal = goals[index]
                 else:
                     goal = (goals[index] - pos) * (1 + overshoot) + pos
+
+                # Clear flag for needing recovery before walking
+                recover_pre_walk = False
 
                 # Core walk
                 logger.info(('Starting walk from {} to {} on {} using {}'
@@ -271,11 +278,32 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     logger.error("No recovery plan, not attempting to recover")
                     raise
 
-                # Get a fallback position for if the recovery fails
-                try:
-                    fallback_pos = motors[index].nominal_position
-                except AttributeError:
-                    fallback_pos = motors[index].position
+                # If we had to recover before walk_to_pixel,
+                # get a fallback position for if the recovery fails
+                if recover_pre_walk:
+                    try:
+                        fallback_pos = motors[index].nominal_position
+                    except AttributeError:
+                        fallback_pos = motors[index].position
+                else:
+                    # If we are recovering after walk_to_pixel, don't bother
+                    # with the recovery plan. Just move back and adjust
+                    # parameters.
+                    logger.info(("Bad state reached during walk_to_pixel. "
+                                 "Undoing walk_to_pixel..."))
+                    yield from mv(motors[index], original_position)
+
+                    # Reset the finished flag
+                    finished = [False] * num
+
+                    # Cut our step parameters in half, because they were
+                    # probably too big
+                    logger.info("Lowering initial step parameters...")
+                    if gradients[index] is not None:
+                        gradients[index] = gradients[index] * 2
+                    if first_steps[index] is not None:
+                        first_steps[index] = first_steps[index] / -2
+                    continue
 
                 ok = yield from recovery_plan(detectors=detectors,
                                               motors=motors, goals=goals,
