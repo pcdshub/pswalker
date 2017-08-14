@@ -3,7 +3,7 @@
 import logging
 
 from bluesky import RunEngine
-from bluesky.plans import run_decorator
+from bluesky.plans import run_decorator, stage_decorator
 
 from .recovery import homs_recovery, sim_recovery
 from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor
@@ -62,7 +62,9 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     else:
         recovery_plan = homs_recovery
 
+    area_detectors = [det.detector for det in as_list(detectors)]
     @run_decorator(md=_md)
+    @stage_decorator(area_detectors)
     def letsgo():
         walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
                         gradients=gradients,
