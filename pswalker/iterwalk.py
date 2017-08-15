@@ -284,6 +284,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     try:
                         fallback_pos = motors[index].nominal_position
                     except AttributeError:
+                        fallback_pos = None
+                    # Explicitly check again in case nominal_position is None
+                    if fallback_pos is None:
                         fallback_pos = motors[index].position
                 else:
                     # If we are recovering after walk_to_pixel, don't bother

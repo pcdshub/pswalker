@@ -64,7 +64,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
 
     area_detectors = [det.detector for det in as_list(detectors)]
     @run_decorator(md=_md)
-    @stage_decorator(area_detectors)
+    @stage_decorator(as_list(motors) + area_detectors)
     def letsgo():
         walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
                         gradients=gradients,

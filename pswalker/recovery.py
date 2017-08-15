@@ -124,13 +124,21 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
     else:
         # The real mirror should try to return to nominal first
         logger.info("Try recovering to nominal first...")
-        yield from mv(mirror, mirror.nominal_position)
-        sig = yag.detector.stats2.centroid.y
-        if sig.value > sig_threshold:
-            logger.info("We have beam at the nominal position.")
-            return True
+        try:
+            nominal = mirror.nominal_position
+        except AttributeError:
+            nominal = None
+        # Explicitly check again in case mirror.nominal_position is None
+        if nominal is None:
+            logger.warning("No nominal position configured, skipping...")
         else:
-            logger.info("We do not have beam at the nominal position.")
+            yield from mv(mirror, nominal)
+            sig = yag.detector.stats2.centroid.y
+            if sig.value > sig_threshold:
+                logger.info("We have beam at the nominal position.")
+                return True
+            else:
+                logger.info("We do not have beam at the nominal position.")
 
     # Do the shorter move first
     dist_to_high = abs(mirror.position - mirror.high_limit)
@@ -149,7 +157,8 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
     return ok
 
 
-def sim_recovery(*, detectors, motors, goals, detector_fields, index, **kwargs):
+def sim_recovery(*, detectors, motors, goals, detector_fields, index,
+                 **kwargs):
     return (yield from homs_recovery(detectors=detectors, motors=motors,
                                      goals=goals,
                                      detector_fields=detector_fields,
