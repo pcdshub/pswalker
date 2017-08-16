@@ -588,13 +588,6 @@ def homs_fiducialize(slit_set, yag_set, x_width=.01, y_width=.01, samples=10,
             [slit,yag]
         )
         fiducial = yield from wrapped
-
         results.append(fiducial)
-    print("TESTING RESULTS:")
-    for idx,x in enumerate(results):
-        print('centroid: ',results[idx])
-        print('slit:     ',slit_set[idx])
-        print('yag:      ',yag_set[idx])
-        print("\n")
     return results
 
