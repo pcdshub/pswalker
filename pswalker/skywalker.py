@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from pcdsdevices.epics.attenuator import FeeAtt
 from bluesky import RunEngine
 from bluesky.plans import run_decorator, stage_decorator
 
@@ -29,7 +30,7 @@ def lcls_RE(RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(1, sleep=5, averages=100))
+    RE.install_suspender(BeamEnergySuspendFloor(0.5, sleep=5, averages=100))
     RE.install_suspender(BeamRateSuspendFloor(1, sleep=5))
     return RE
 
@@ -67,8 +68,12 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
         recovery_plan = homs_recovery
 
     area_detectors = [det.detector for det in as_list(detectors)]
+    to_stage = as_list(motors) + area_detectors
+    if not sim:
+        to_stage.append(FeeAtt())
+
     @run_decorator(md=_md)
-    @stage_decorator(as_list(motors) + area_detectors)
+    @stage_decorator(to_stage)
     def letsgo():
         walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
                         gradients=gradients,
