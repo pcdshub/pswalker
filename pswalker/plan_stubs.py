@@ -5,13 +5,15 @@ import threading
 import uuid
 import logging
 
-from bluesky.plans import wait as plan_wait, abs_set, create, read, save
+from bluesky.plans import (wait as plan_wait, abs_set, create, read, save,
+                            stage_wrapper)
 from bluesky.utils import FailedStatus
 
 from .plans import measure_average
 from .utils.argutils import as_list, field_prepend
 from .utils.exceptions import BeamNotFoundError
 from math import nan, isnan
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +382,6 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     return x_scaling, y_scaling
 
 
-
 def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
                           samples=10, filters=None,
                           centroid='detector_stats2_centroid_y'):
@@ -417,13 +418,11 @@ def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
 
     Returns
     -------
-    (float,float)
-        (x,y) coordinates of centroid position in pixel space
+    float
+        return centroid position in pixel space, single axis
     """
     #Set slits
-    yield from abs_set(slits, wait=True,
-                       xwidth = x_width,
-                       ywidth = y_width)
+    yield from abs_set(slits, x_width, wait=True)
 
     #Collect data from yags
     yag_measurements = yield from measure_average([yag], num=samples,
@@ -515,5 +514,82 @@ def fiducialize(slits, yag, start=0.1, step_size=0.5, max_width=5.0,
     raise BeamNotFoundError
 
 
+def homs_fiducialize(slit_set, yag_set, x_width=.01, y_width=.01, samples=10,
+                      filters = None, centroid='detector_stats2_centroid_y'): 
+    """
+    Run slit_scan_fiducialize on a series of yags and their according slits.
+    Automatically restore yags to OUT state and slits to initial position
+    after running.    
+    
+    Paramaters
+    ----------
+    slit_set : [pcdsdevices.epics.slits.Slits,...]
+        List of slits to be used for fiducialization process. yags and slits
+        are paired elementwise and each pair is tested independantly. length
+        of lists must match.
+    
+    yag_set : [pcdsdevices.epics.pim.PIM,...]
+        List of yags to be used for fiducialization process. yags and slits are
+        paired elementwise and each pair is tested independantly. length of
+        lists must match.
+    
+    x_width : float, optional
+        CHANGE SOON - this is the only one actually used 
+    
+    y_width : float, optional
+        CHANGE SOON - passed down to ssf method but not used.
+    
+    samples : int, optional
+        Number of shots to average over for measurments. 
+    
+    filters : dict, optional
+        Filters to eliminate shots
+    
+    centroid : string, optional
+        Field name of centroid measurement
+        
+    Returns
+    -------
+    [float,float,float...]
+        This list of floats represents the field measured for each slit/yag
+        pairing. The floats are in the same order as the slits and yags
+        prsesented in the arguments. Length matches number of slit/yag pairs. 
+    """
 
+    if len(slit_set) != len(yag_set):
+        raise Exception(
+            "Number of slits, yags does not match. Cannot be paired"
+        )
+    
+    results = []
+    for slit, yag in zip(slit_set,yag_set):
+        '''
+        fiducial = yield from stage_wrapper(slit_scan_fiducialize,[slit,yag])(
+            slit,
+            yag,
+            x_width,
+            y_width,
+            samples = samples,
+            filters = filters,
+            centroid = centroid, 
+        )
+        '''
+        wrapped = stage_wrapper(
+            partial(
+                slit_scan_fiducialize,
+                slit,
+                yag,
+                x_width,
+                y_width,
+                samples = samples,
+                filters = filters,
+                centroid = centroid,
+            )(),
+            [slit,yag]
+        )
+        fiducial = yield from wrapped
+
+        results.append(fiducial)
+
+    return results
 

@@ -10,13 +10,15 @@ from bluesky.plans import run_wrapper, scan
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition,
                                  slit_scan_area_comp, slit_scan_fiducialize,
-                                 fiducialize)
+                                 fiducialize, homs_fiducialize)
 from pswalker.utils.exceptions import BeamNotFoundError
 from .utils import plan_stash, collector
 from bluesky.examples import Reader, Mover
 
 from collections import OrderedDict
 from numpy.random import rand
+
+from pcdsdevices.sim.pim import PIM
 
 from math import nan, isnan
 
@@ -272,6 +274,12 @@ def fiducialized_yag():
     return fake_slits, fake_yag
 
 
+@pytest.fixture(scope='function')
+def fiducialized_yag_set():
+    return fiducialized_yag(),fiducialized_yag(),fiducialized_yag()
+
+
+
 def test_slit_scan_fiducialize(RE, fiducialized_yag):
 
     fake_slits, fake_yag = fiducialized_yag
@@ -326,4 +334,41 @@ def test_fiducialize(RE, fiducialized_yag):
         RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
                                     max_width=0.25,centroid='centroid', samples=1)),
         )
+
+
+def test_homs_fiducialize(RE,fiducialized_yag_set):
+    #set of independant (slit,yag) tuples
+    fset = fiducialized_yag_set
+    
+    slit_set,yag_set = list(zip(*fset))
+    yag_set = [
+        PIM("TEST"),    
+        PIM("TEST"),    
+        PIM("TEST"),    
+    ]
+    center = []
+    measuredcenter = collector("TST:TEST_detector_stats2_centroid_y", center)   
+    state = []
+    measuredstate = collector("TST:TEST_states", state)   
+    RE(
+        run_wrapper(homs_fiducialize(
+            slit_set,
+            yag_set,
+            x_width = .6,
+            y_width = .6,
+            samples = 2,
+            centroid = 'detector_stats2_centroid_y')),
+        subs = {'event':[measuredcenter,measuredstate]}
+    )
+    
+    #print(fset[0][0].read()['xwidth']['value'])
+    #print(fset[1][0].read()['xwidth']['value'])
+    #print(center)
+    #print(state)
+    
+    for x in yag_set:
+        assert x.read()['TST:TEST_states']['value'] == 'OUT',"yag not removed"
+
+    for index,_ in enumerate(center):
+        assert center[index] == 0.0, 'measurment incorrect'
 
