@@ -37,7 +37,7 @@ def lcls_RE(RE=None):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, md=None):
+              sim=False, use_filters=True, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -54,9 +54,13 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     _md.update(md or {})
     goals = [480 - g for g in goals]
     det_fields = as_list(det_fields, length=len(detectors))
-    filters = []
-    for det, fld in zip(detectors, det_fields):
-        filters.append({field_prepend(fld, det): lambda x: x > 0})
+    if use_filters:
+        filters = []
+        for det, fld in zip(detectors, det_fields):
+            filters.append({field_prepend(fld, det): lambda x: x > 0})
+    else:
+        # Don't filter on sims unless testing recovery
+        filters = None
     if sim:
         recovery_plan = sim_recovery
     else:
