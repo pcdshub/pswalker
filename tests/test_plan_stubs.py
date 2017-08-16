@@ -254,17 +254,21 @@ def fiducialized_yag():
     fake_slits = Mover(
         "slits",
         OrderedDict([
-            ('xwidth',(lambda xwidth,ywidth:xwidth)),
-            ('ywidth',(lambda xwidth,ywidth:ywidth)),
+            ('xwidth',(lambda xwidth:xwidth)),
+            #('ywidth',(lambda xwidth,ywidth:ywidth)),
+            #('ywidth',(lambda xwidth:xwidth)),
         ]),
-        {'xwidth':0,'ywidth':0}
+        #{'xwidth':0,'ywidth':0}
+        #{'xwidth':0,'ywidth':0}
+        {'xwidth':0}
     )
     #Pretend our beam is 0.3 from the slit center
     def aperatured_centroid(slits=fake_slits):
         #Beam is unblocked
-        if (slits.read()['xwidth']['value'] > 0.5
-            and slits.read()['ywidth']['value'] > 0.5):
-               return 0.3
+        if slits.read()['xwidth']['value'] > 0.5:
+            #and slits.read()['ywidth']['value'] > 0.5):
+                #return 0.3
+            return 0.3
         #Beam is fully blocked
         return 0.0
 
