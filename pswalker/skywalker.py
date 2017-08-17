@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from pcdsdevices.epics.attenuator import FeeAtt
 from bluesky import RunEngine
 from bluesky.plans import run_decorator, stage_decorator
 
@@ -29,7 +30,7 @@ def lcls_RE(RE=None):
     RE: RunEngine
     """
     RE = RE or RunEngine({})
-    RE.install_suspender(BeamEnergySuspendFloor(1, sleep=5, averages=100))
+    RE.install_suspender(BeamEnergySuspendFloor(0.5, sleep=5, averages=100))
     RE.install_suspender(BeamRateSuspendFloor(1, sleep=5))
     return RE
 
@@ -37,7 +38,7 @@ def lcls_RE(RE=None):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, md=None):
+              sim=False, use_filters=True, md=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -54,17 +55,25 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     _md.update(md or {})
     goals = [480 - g for g in goals]
     det_fields = as_list(det_fields, length=len(detectors))
-    filters = []
-    for det, fld in zip(detectors, det_fields):
-        filters.append({field_prepend(fld, det): lambda x: x > 0})
+    if use_filters:
+        filters = []
+        for det, fld in zip(detectors, det_fields):
+            filters.append({field_prepend(fld, det): lambda x: x > 0})
+    else:
+        # Don't filter on sims unless testing recovery
+        filters = None
     if sim:
         recovery_plan = sim_recovery
     else:
         recovery_plan = homs_recovery
 
     area_detectors = [det.detector for det in as_list(detectors)]
+    to_stage = as_list(motors) + area_detectors
+    if not sim:
+        to_stage.append(FeeAtt())
+
     @run_decorator(md=_md)
-    @stage_decorator(as_list(motors) + area_detectors)
+    @stage_decorator(to_stage)
     def letsgo():
         walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
                         gradients=gradients,
