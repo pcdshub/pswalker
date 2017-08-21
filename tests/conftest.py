@@ -173,6 +173,15 @@ def slow_lcls_two_bounce_system():
                           timestamp=time.time())
         return update_pixel
 
+    # Patch with image
+    yield_image_hx2 = yield_seq_beam_image(images_hx2, idx=0)
+    y1.detector.image1._image = lambda : _next_image(
+        y1.detector.image1.array_counter, yield_image_hx2)
+
+    yield_image_dg3 = yield_seq_beam_image(images_dg3, idx=0)
+    y2.detector.image1._image = lambda : _next_image(
+        y2.detector.image1.array_counter, yield_image_dg3)
+
     m1.subscribe(make_update_pixel(y1), m1.SUB_READBACK)
     m2.subscribe(make_update_pixel(y2), m2.SUB_READBACK)
 

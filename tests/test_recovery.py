@@ -10,7 +10,7 @@ from ophyd.device import Staged
 from pswalker.recovery import recover_threshold
 
 logger = logging.getLogger(__name__)
-tmo = 10
+tmo = 15
 
 
 @pytest.mark.timeout(tmo)
