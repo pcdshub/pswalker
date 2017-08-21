@@ -1,16 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+############
+# Standard #
+############
 import logging
 
+###############
+# Third Party #
+###############
 from pcdsdevices.epics.attenuator import FeeAtt
 from bluesky import RunEngine
 from bluesky.plans import run_decorator, stage_decorator
 
-from .recovery import homs_recovery, sim_recovery
-from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor
+##########
+# Module #
+##########
 from .iterwalk import iterwalk
 from .utils.argutils import as_list
 from .utils import field_prepend
+from .recovery import homs_recovery, sim_recovery
+from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor
+from .statistics import beam_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +45,11 @@ def lcls_RE(RE=None):
     return RE
 
 
-def skywalker(detectors, motors, det_fields, mot_fields, goals,
-              first_steps=1,
+def skywalker(detectors, motors, det_fields, mot_fields, goals, first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, use_filters=True, md=None):
+              sim=False, use_filters=True, md=None, get_stats=True,
+              img_field="image1.array_data", sz_field="image1.array_size",
+              cent_field="stats2.centroid"):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -75,6 +86,10 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     @run_decorator(md=_md)
     @stage_decorator(to_stage)
     def letsgo():
+        if get_stats:
+            stats = yield from beam_statistics(detectors, img_field, sz_field,
+                                               cent_field, image_delay=0.1)
+
         walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
                         gradients=gradients,
                         tolerances=tolerances, averages=averages, timeout=timeout,
