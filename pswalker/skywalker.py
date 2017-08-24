@@ -38,7 +38,7 @@ def lcls_RE(RE=None):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, use_filters=True, md=None):
+              sim=False, use_filters=True, md=None,tol_scaling=None):
     """
     Iterwalk as a base, with arguments for branching
     """
@@ -50,7 +50,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                               tolerances=tolerances, averages=averages,
                               timeout=timeout, det_fields=as_list(det_fields),
                               mot_fields=as_list(mot_fields),
-                              first_steps=first_steps)
+                              first_steps=first_steps,tol_scaling=tol_scaling)
           }
     _md.update(md or {})
     goals = [480 - g for g in goals]
@@ -80,7 +80,7 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
                         tolerances=tolerances, averages=averages, timeout=timeout,
                         detector_fields=det_fields, motor_fields=mot_fields,
                         system=detectors + motors, recovery_plan=recovery_plan,
-                        filters=filters)
+                        filters=filters,tol_scaling=tol_scaling)
         return (yield from walk)
 
     return (yield from letsgo())
