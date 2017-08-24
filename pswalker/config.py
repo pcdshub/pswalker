@@ -11,6 +11,7 @@ import logging
 ###############
 from pcdsdevices.epics.pim import PIM
 from pcdsdevices.epics.mirror import OffsetMirror
+from pcdsdevices.epics.slits import Slits
 
 
 ##########
@@ -38,6 +39,12 @@ mfxdg1_name = "mfxdg1"
 mecy1 = "MEC:PIM1"
 mecy1_det = "MEC:HXM:CVV:01"
 mecy1_name = "mecy1"
+hx2_slits = "HX2:SB1:JAWS"
+hx2_slits_name = "hx2_slits"
+dg3_slits = "HFX:DG3:JAWS"
+dg3_slits_name = "dg3_slits"
+mfxdg1_slits = "MFX:DG1:JAWS"
+mfxdg1_slits_name = "mfxdg1_slits"
 pitch_key = "pitch"
 cent_x_key = "detector_stats2_centroid_y"
 fmt = "{}_{}"
@@ -50,6 +57,7 @@ m1h_nominal = 283.2
 m2h_nominal = 152.1
 xrtm2_mfx = -558.4
 timeout = 30
+
 
 def homs_system():
     """
@@ -85,6 +93,9 @@ def homs_system():
     system['mecy1'] = PIM(mecy1, prefix_det=mecy1_det, name=mecy1_name, timeout=30)
     system['y1'] = system['hx2']
     system['y2'] = system['dg3']
+    system['hx2_slits'] = Slits(hx2_slits, name=hx2_slits_name)
+    system['dg3_slits'] = Slits(dg3_slits, name=dg3_slits_name)
+    system['mfxdg1_slits'] = Slits(mfxdg1_slits, name=mfxdg1_slits_name)
     return system
 
 
