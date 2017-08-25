@@ -17,7 +17,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   #Grab all dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION coverage pip wheel ophyd bluesky pytest opencv=3.1 -c conda-forge -c lightsource2-tag
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION coverage pip wheel ophyd==0.6.1 bluesky==0.9.0 pytest opencv=3.1 -c conda-forge -c lightsource2-tag
   #Launch Conda environment
   - source activate test-environment
   #Install pedl
