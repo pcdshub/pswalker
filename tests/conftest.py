@@ -16,6 +16,9 @@ from bluesky.tests.utils import MsgCollector
 from pcdsdevices.sim import source, mirror, pim
 from psbeam.images.testing.hx2 import images as images_hx2
 from psbeam.images.testing.dg3 import images as images_dg3
+from pcdsdevices.sim.areadetector.detectors import SimDetector
+from psbeam.images.testing import (beam_image_01, beam_image_02, beam_image_03,
+                                   beam_image_04)
 
 ##########
 # Module #
@@ -55,6 +58,8 @@ def set_level(pytestconfig):
 logger = logging.getLogger(__name__)
 logger.info("pytest start")
 run_engine_logger = logging.getLogger("RunEngine")
+
+beam_images = [beam_image_01, beam_image_02, beam_image_03, beam_image_04]
 
 def yield_seq_beam_image(images, idx=0):
     while True:
@@ -211,3 +216,45 @@ def mot_and_sig():
                              name='test_mot', limits=(-100, 100))
     sig = MotorSignal(mot, name='test_sig')
     return mot, sig
+
+def yield_seq_beam_image_sim(detector, images, idx=0):
+    while True:
+        val = idx % len(images)
+        yield images[val].astype(np.uint8)
+        idx += 1        
+
+def _next_image_sim(det, gen):
+    det.image.array_counter.value += 1
+    return next(gen)
+        
+@pytest.fixture(scope='function')
+def sim_det_01():
+    det = SimDetector("PSB:SIM:01")
+    # Spoof image
+    yield_image = yield_seq_beam_image_sim(det, beam_images, idx=0)
+    det.image._image = lambda : _next_image_sim(det, yield_image)
+    return det
+
+@pytest.fixture(scope='function')
+def sim_det_02():
+    det = SimDetector("PSB:SIM:02")
+    # Spoof image
+    yield_image = yield_seq_beam_image_sim(det, beam_images, idx=0)
+    det.image._image = lambda : _next_image_sim(det, yield_image)
+    return det
+
+@pytest.fixture(scope='function')
+def sim_hx2():
+    det = SimDetector("PSB:SIM:HX2")
+    # Spoof image
+    yield_image = yield_seq_beam_image_sim(det, images_hx2, idx=0)
+    det.image._image = lambda : _next_image_sim(det, yield_image)
+    return det
+
+@pytest.fixture(scope='function')
+def sim_dg3():
+    det = SimDetector("PSB:SIM:DG3")
+    # Spoof image
+    yield_image = yield_seq_beam_image_sim(det, images_dg3, idx=0)
+    det.image._image = lambda : _next_image_sim(det, yield_image)
+    return det
