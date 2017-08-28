@@ -18,7 +18,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
              gradients=None, detector_fields='centroid_x',
              motor_fields='alpha', tolerances=20, system=None, averages=1,
              overshoot=0, max_walks=None, timeout=None, recovery_plan=None,
-             filters=None):
+             filters=None, tol_scaling=None):
     """
     Iteratively adjust a system of detectors and motors where each motor
     primarily affects the reading of a single detector but also affects the
@@ -77,7 +77,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     tolerances: list of numbers, optional
         If our detector readbacks are within these tolerances of the goal
         positions, we'll treat the goal as reached.
-
+    
     system: list of readable objects, optional
         Other system parameters that we'd like to read during the walk.
 
@@ -114,6 +114,13 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     filters: list of dictionaries
         Each entry in this list should be a valid input to the filters argument
         in the lower functions, such as walk_to_pixel and measure_average.
+    
+    tol_scaling: list of floats or Nones, optional
+        Constants for adaptive tolerances. Nones or omitting this argument
+        reverts to fixed tolerance. For early walks with a starting point far
+        from the goal, tolerance for the walk is set at 
+        current_dist/tol_scaling instead of the set tolerance. Scaling ends
+        when calculated tolerance < targeted tolerance.  
     """
     num = len(detectors)
 
@@ -128,6 +135,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     system = as_list(system)
     averages = as_list(averages, num)
     filters = as_list(filters, num)
+    tol_scaling = as_list(tol_scaling, num)
 
     logger.debug("iterwalk aligning %s to %s on %s",
                  motors, goals, detectors)
@@ -142,6 +150,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     models   = [None]* num
     finished = [False] * num
     done_pos = [0] * num
+    selected_tol = [None] * num
     while True:
         index = 0
         while index < num:
@@ -221,6 +230,15 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 else:
                     goal = (goals[index] - pos) * (1 + overshoot) + pos
 
+                # Calculate adaptive tolerance - otherwise use static tolerance
+                if tol_scaling[index] != None:
+                    selected_tol[index] = \
+                        abs(pos-goals[index]) / tol_scaling[index]
+                    if selected_tol[index] < tolerances[index]:
+                        selected_tol[index] = tolerances[index]
+                else:
+                    selected_tol[index] = tolerances[index]
+                
                 # Clear flag for needing recovery before walking
                 recover_pre_walk = False
 
@@ -228,20 +246,27 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 logger.info(('Starting walk from {} to {} on {} using {}'
                              ''.format(pos, goal, detectors[index].name,
                                        motors[index].name)))
-                pos, models[index] = (yield from walk_to_pixel(detectors[index],
-                                                               motors[index],
-                                                               goal,
-                                                               filters=filters[index],
-                                                               start=firstpos,
-                                                               gradient=gradients[index],
-                                                               target_fields=[
-                                                                   detector_fields[index],
-                                                                   motor_fields[index]],
-                                                               first_step=first_steps[index],
-                                                               tolerance=tolerances[index],
-                                                               system=full_system,
-                                                               average=averages[index],
-                                                               max_steps=10))
+                
+                logger.info("selected tolerance: {}".format(
+                    selected_tol[index]))
+
+                pos, models[index] = (
+                    yield from walk_to_pixel(
+                        detectors[index],
+                        motors[index],
+                        goal,
+                        filters=filters[index],
+                        start=firstpos,
+                        gradient=gradients[index],
+                        target_fields=[
+                            detector_fields[index],
+                            motor_fields[index]],
+                        first_step=first_steps[index],
+                        tolerance=selected_tol[index],
+                        system=full_system,
+                        average=averages[index],
+                        max_steps=10))
+
                 if models[index]:
                     try:
                         gradients[index] = models[index].result.values['slope']
@@ -263,7 +288,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 mirror_walks += 1
 
                 # Be loud if the walk fails to reach the pixel!
-                if abs(pos - goal) > tolerances[index]:
+                if abs(pos - goal) > selected_tol[index]:
                     err = "walk_to_pixel failed to reach the goal"
                     logger.error(err)
                     raise RuntimeError(err)

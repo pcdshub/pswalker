@@ -28,9 +28,10 @@ tmo = 10
 @pytest.mark.parametrize("tolerances", [3])
 @pytest.mark.parametrize("overshoot", [0])
 @pytest.mark.parametrize("max_walks", [5])
+@pytest.mark.parametrize("tol_scaling", [None,2])
 def test_iterwalk(RE, lcls_two_bounce_system,
                   goal1, goal2, first_steps, gradients,
-                  tolerances, overshoot, max_walks):
+                  tolerances, overshoot, max_walks,tol_scaling):
     logger.debug("test_iterwalk with goal1=%s, goal2=%s, first_steps=%s, " +
                  "gradients=%s, tolerances=%s, overshoot=%.2f, max_walks=%s",
                  goal1, goal2, first_steps, gradients, tolerances, overshoot,
@@ -48,12 +49,17 @@ def test_iterwalk(RE, lcls_two_bounce_system,
                                 motor_fields='pitch',
                                 tolerances=tolerances, system=[m1, m2, y1, y2],
                                 averages=1, overshoot=overshoot,
-                                max_walks=max_walks, timeout=None))
+                                max_walks=max_walks, timeout=None,
+                                tol_scaling=tol_scaling))
     RE(plan)
-    assert np.isclose(y1.read()[y1.name + '_detector_stats2_centroid_x']['value'], goal[0],
-                      atol=tolerances)
-    assert np.isclose(y2.read()[y2.name + '_detector_stats2_centroid_x']['value'], goal[1],
-                      atol=tolerances)
+    assert np.isclose(
+        y1.read()[y1.name + '_detector_stats2_centroid_x']['value'],
+        goal[0],
+        atol=tolerances)
+    assert np.isclose(
+        y2.read()[y2.name + '_detector_stats2_centroid_x']['value'],
+        goal[1],
+        atol=tolerances)
 
     # Make sure we actually read all the groups as we went
     m1_reads = 0
