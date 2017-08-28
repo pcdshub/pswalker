@@ -23,7 +23,7 @@ from pcdsdevices.sim.pim import PIM
 from math import nan, isnan
 
 logger = logging.getLogger(__name__)
-tmo = 10
+tmo = 15
 
 
 def test_prep_img_motors(RE, fake_yags):
