@@ -15,7 +15,7 @@ import lmfit
 import pandas as pd
 import numpy  as np
 from lmfit.models import LinearModel
-from bluesky.callbacks import (LiveFit, LiveFitPlot, CallbackBase)
+from bluesky.callbacks import (LiveFit, LiveFitPlot, CallbackBase, LivePlot)
 
 ##########
 # Module #
@@ -532,3 +532,86 @@ class LiveModelPlot(LiveFitPlot):
         super().start(doc)
         if self.target:
             self.ax.axvline(x=self.target, color='r')
+
+class LivePlotWithGoal(LivePlot):
+    """
+    Build a function that updates a plot from a stream of Events.
+    Note: If your figure blocks the main thread when you are trying to
+    scan with this callback, call `plt.ion()` in your IPython session.
+    Parameters
+    ----------
+    y : str
+        the name of a data field in an Event
+    x : str, optional
+        the name of a data field in an Event, or 'seq_num' or 'time'
+        If None, use the Event's sequence number.
+        Special case: If the Event's data includes a key named 'seq_num' or
+        'time', that takes precedence over the standard 'seq_num' and 'time'
+        recorded in every Event.
+    goal : float
+        the target pixel
+    tolerance : float, optional
+        the tolerance for the pixel
+    averages : float, optional
+        The number of images to average. If None is specified, every point is rendered as they come,
+        otherwise the graph will update every ```averages``` points.
+    legend_keys : list, optional
+        The list of keys to extract from the RunStart document and format
+        in the legend of the plot. The legend will always show the
+        scan_id followed by a colon ("1: ").  Each
+    xlim : tuple, optional
+        passed to Axes.set_xlim
+    ylim : tuple, optional
+        passed to Axes.set_ylim
+    ax : Axes, optional
+        matplotib Axes; if none specified, new figure and axes are made.
+    fig : Figure, optional
+        deprecated: use ax instead
+    epoch : {'run', 'unix'}, optional
+        If 'run' t=0 is the time recorded in the RunStart document. If 'unix',
+        t=0 is 1 Jan 1970 ("the UNIX epoch"). Default is 'run'.
+    All additional keyword arguments are passed through to ``Axes.plot``.
+    Examples
+    --------
+    >>> my_plotter = LivePlotWithGoals('det', 'motor', goal=10.0, tolerance=1.5, averages=None, legend_keys=['sample'])
+    >>> RE(my_scan, my_plotter)
+    """
+    def __init__(self, y, x=None, *, goal=0.0, tolerance=0.0, averages=None, **kwargs):
+        super().__init__(y, x, **kwargs)
+        self.legend_title = None
+        self.goal = goal
+        self.tolerance = tolerance
+        self.averages = averages
+        self.event_count = 0
+
+    def start(self, doc):
+        self.goal_data = []
+        self.goal_axis, = self.ax.plot([],[],'r--', label='Target')
+        super().start(doc)
+
+    def event(self, doc):
+        super().event(doc)
+        self.event_count += 1
+
+    def update_plot(self, force=False):
+        if self.averages is None or (self.averages is not None and self.event_count % self.averages == 0) or force:
+            self.goal_axis.set_data(self.x_data, self.goal_data)
+            goal = np.asarray(self.goal_data)
+            distance = 2 if self.averages is None else self.averages+1
+            if force:
+                distance -= 1
+            self.ax.fill_between(self.x_data[-distance:], goal[-distance:]-self.tolerance, goal[-distance:]+self.tolerance,
+                                 alpha=0.2, facecolor='r')
+            super().update_plot()
+            self.ax.set_xlim(left=0, right=None, auto=True)
+
+    def update_caches(self, x, y):
+        self.goal_data.append(self.goal)
+        super().update_caches(x, y)
+
+    def stop(self, doc):
+        # Ensure that the last events are plotted
+        # Only necessary when we are grouping the points
+        if self.averages is not None:
+            self.update_plot(force=True)
+        super().stop(doc)
