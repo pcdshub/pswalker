@@ -210,7 +210,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 if abs(pos - goals[index]) < tolerances[index]:
                     logger.info("Beam was aligned on %s without a move",
-                                 detectors[index])
+                                 detectors[index].name)
                     finished[index] = True
                     done_pos[index] = pos
                     if all(finished):
@@ -247,7 +247,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                              ''.format(pos, goal, detectors[index].name,
                                        motors[index].name)))
                 
-                logger.info("selected tolerance: {}".format(
+                logger.debug("selected tolerance: {}".format(
                     selected_tol[index]))
 
                 pos, models[index] = (
@@ -370,11 +370,18 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    logger.info(("Finished in %.2fs after %s mirror walks, %s yag cycles, "
-                 "and %s recoveries"),
-                 time.time() - start_time, mirror_walks, yag_cycles,
-                 recoveries)
-    logger.info("Aligned to %s", done_pos)
-    logger.info("Goals were %s", goals)
-    logger.info("Deltas are %s", [d - g for g, d in zip(goals, done_pos)])
-    logger.info("Mirror positions are %s", [m.position for m in motors])
+    txt = 'Finished in %.2fs after %s mirror walks, %s yag cycles, and %s '
+    txt += 'recoveries.\n'
+    txt += 'Aligned to %s\n'
+    txt += 'Goals were %s\n'
+    txt += 'Deltas are %s\n'
+    txt += 'Mirror positions are %s'
+    logger.info(txt,
+                time.time() - start_time,
+                mirror_walks,
+                yag_cycles,
+                recoveries,
+                done_pos,
+                goals,
+                [d - g for g, d in zip(goals, done_pos)],
+                [m.position for m in motors])
