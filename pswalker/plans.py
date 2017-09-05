@@ -227,7 +227,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
     
     #Report if we did not need a model
     if not accurate_model:
-        logger.info("Reached target without use of model")
+        logger.debug("Reached target without use of model")
 
     return last_shot, accurate_model
 
@@ -493,11 +493,11 @@ def fitwalk(detectors, motor, models, target,
     while not np.isclose(last_shot, target, atol=tolerance):
         #Log error
         if not steps:
-            logger.info("Initial error before fitwalk is {}"
-                        "".format(int(target-last_shot)))
+            logger.debug("Initial error before fitwalk is {}"
+                         "".format(int(target-last_shot)))
         else:
-            logger.info("fitwalk is reporting an error {} of after step #{}"\
-                        "".format(int(target-last_shot), steps))
+            logger.debug("fitwalk is reporting an error {} of after step #{}"\
+                         "".format(int(target-last_shot), steps))
         #Break on maximum step count
         if steps >= max_steps:
             raise RuntimeError("fitwalk failed to converge after {} steps"\
@@ -506,11 +506,11 @@ def fitwalk(detectors, motor, models, target,
         #Use naive step plan if no model is accurate enough
         #or we have not made a step yet
         if not accurate_model or steps==0:
-            logger.info("No model yielded accurate prediction, "\
-                        "using naive plan")
+            logger.debug("No model yielded accurate prediction, "\
+                         "using naive plan")
             yield from naive_step()
         else:
-            logger.info("Using model {} to determine next step."\
+            logger.debug("Using model {} to determine next step."\
                         "".format(accurate_model.name))
             #Calculate estimate of next step from accurate model
             fixed_motors = dict((key, averaged_data[key])
@@ -529,7 +529,7 @@ def fitwalk(detectors, motor, models, target,
                 logger.warning(e)
 
                 #Reuse naive step
-                logger.info("Reusing naive step due to lack of accurate model")
+                logger.debug("Reusing naive step due to lack of accurate model")
                 yield from naive_step()
             else:
                 #Move system to match estimate
@@ -539,8 +539,8 @@ def fitwalk(detectors, motor, models, target,
                         raise RuntimeError("Invalid position return by fit")
                     #Attempt to move
                     try:
-                        logger.info("Adjusting motor {} to position {:.1f}"\
-                                    "".format(motor.name, pos))
+                        logger.debug("Adjusting motor {} to position {:.1f}"\
+                                     "".format(motor.name, pos))
                         yield from mv(motor, pos)
 
                     except KeyboardInterrupt as e:
