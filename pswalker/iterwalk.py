@@ -5,7 +5,7 @@ import logging
 import uuid
 from copy import copy
 
-from bluesky.plans import checkpoint, mv, wait as plan_wait
+from bluesky.plans import checkpoint, mv, wait as plan_wait, abs_set
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
@@ -160,7 +160,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             position = mot.nominal_position
         except AttributeError:
             continue
-        yield from mv(mot, mot.nominal_position, group=group)
+        yield from abs_set(mot, mot.nominal_position, group=group)
         moving_to_nominal = True
     if moving_to_nominal:
         yield from plan_wait(group=group)
