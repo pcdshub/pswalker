@@ -421,6 +421,8 @@ def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
     float
         return centroid position in pixel space, single axis
     """
+    yield from abs_set(yag, "IN", wait=True)
+
     #Set slits
     yield from abs_set(slits, x_width, wait=True)
 
