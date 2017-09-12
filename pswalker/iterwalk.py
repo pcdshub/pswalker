@@ -160,8 +160,9 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             position = mot.nominal_position
         except AttributeError:
             continue
-        yield from abs_set(mot, mot.nominal_position, group=group)
-        moving_to_nominal = True
+        if position is not None:
+            yield from abs_set(mot, mot.nominal_position, group=group)
+            moving_to_nominal = True
     if moving_to_nominal:
         yield from plan_wait(group=group)
 
