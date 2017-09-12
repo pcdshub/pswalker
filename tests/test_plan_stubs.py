@@ -263,7 +263,7 @@ def fiducialized_yag():
         {'xwidth':0}
     )
     #Pretend our beam is 0.3 from the slit center
-    def aperatured_centroid(slits=fake_slits):
+    def aperatured_centroid(slits=fake_slits, **kwargs):
         #Beam is unblocked
         if slits.read()['xwidth']['value'] > 0.5:
             #and slits.read()['ywidth']['value'] > 0.5):
@@ -273,7 +273,10 @@ def fiducialized_yag():
         return 0.0
 
     #Instantiate fake detector object
-    fake_yag = Reader('det', {'centroid': aperatured_centroid})
+    fake_yag = Mover('det',
+                     {'centroid': aperatured_centroid,
+                      'state': lambda state, **kwargs: state},
+                     {'state': 'OUT'})
 
     return fake_slits, fake_yag
 
