@@ -68,6 +68,7 @@ def measure_average(detectors, num=1, filters=None,
         except TypeError:
             avg[key] = data[-1][key]
 
+    logger.debug("Found the following averages: %s", avg)
     return avg
 
 
