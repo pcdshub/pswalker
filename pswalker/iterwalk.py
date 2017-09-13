@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 import time
 import logging
+import uuid
 from copy import copy
 
-from bluesky.plans import checkpoint, mv
+from bluesky.plans import checkpoint, mv, wait as plan_wait, abs_set
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
@@ -151,6 +152,20 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     finished = [False] * num
     done_pos = [0] * num
     selected_tol = [None] * num
+
+    moving_to_nominal = False
+    group = str(uuid.uuid4())
+    for mot in motors:
+        try:
+            position = mot.nominal_position
+        except AttributeError:
+            continue
+        if position is not None:
+            yield from abs_set(mot, mot.nominal_position, group=group)
+            moving_to_nominal = True
+    if moving_to_nominal:
+        yield from plan_wait(group=group)
+
     while True:
         index = 0
         while index < num:
