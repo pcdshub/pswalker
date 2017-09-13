@@ -13,7 +13,7 @@ from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  fiducialize, homs_fiducialize)
 from pswalker.utils.exceptions import BeamNotFoundError
 from .utils import plan_stash, collector
-from bluesky.examples import Reader, Mover
+from bluesky.examples import Reader, Mover, NullStatus
 
 from collections import OrderedDict
 from numpy.random import rand
@@ -248,6 +248,12 @@ def test_slit_scan_area_compare(RE):
         0.0, 0.0,
         ]
 
+
+class ReaderWithSet(Reader):
+    def set(*args, **kwargs):
+        return NullStatus()
+
+
 @pytest.fixture(scope='function')
 def fiducialized_yag():
     #Instantiate fake slits object
@@ -263,9 +269,9 @@ def fiducialized_yag():
         {'xwidth':0}
     )
     #Pretend our beam is 0.3 from the slit center
-    def aperatured_centroid(slits=fake_slits):
+    def aperatured_centroid(*args, **kwargs):
         #Beam is unblocked
-        if slits.read()['xwidth']['value'] > 0.5:
+        if fake_slits.read()['xwidth']['value'] > 0.5:
             #and slits.read()['ywidth']['value'] > 0.5):
                 #return 0.3
             return 0.3
@@ -273,7 +279,7 @@ def fiducialized_yag():
         return 0.0
 
     #Instantiate fake detector object
-    fake_yag = Reader('det', {'centroid': aperatured_centroid})
+    fake_yag = ReaderWithSet('det', {'centroid': aperatured_centroid})
 
     return fake_slits, fake_yag
 
@@ -285,6 +291,7 @@ def fiducialized_yag_set():
 
 
 def test_slit_scan_fiducialize(RE, fiducialized_yag):
+    logger.debug('test_slit_scan_fiducialize')
 
     fake_slits, fake_yag = fiducialized_yag
 
@@ -303,7 +310,6 @@ def test_slit_scan_fiducialize(RE, fiducialized_yag):
 
     assert center == [0.3]
 
-    
     #collector callbacks aggregate data from 'yield from' returns in lists  
     center = []
     measuredcenter = collector("centroid", center)
@@ -319,6 +325,8 @@ def test_slit_scan_fiducialize(RE, fiducialized_yag):
 
 
 def test_fiducialize(RE, fiducialized_yag):
+    logger.debug('test_fiducialize')
+
     fake_slits, fake_yag = fiducialized_yag
     #collector callbacks aggregate data from 'yield from' returns in lists  
     center = []

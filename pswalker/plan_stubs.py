@@ -421,8 +421,11 @@ def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
     float
         return centroid position in pixel space, single axis
     """
-    #Set slits
-    yield from abs_set(slits, x_width, wait=True)
+    # Set slits and imager, wait together
+    group = str(uuid.uuid4())
+    yield from abs_set(yag, "IN", group=group)
+    yield from abs_set(slits, x_width, group=group)
+    yield from plan_wait(group=group)
 
     #Collect data from yags
     yag_measurements = yield from measure_average([yag], num=samples,
