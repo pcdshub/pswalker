@@ -58,8 +58,8 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
     first_steps: list of numbers, optional.
         This is how far the motors will be moved in an initial probe step as we
-        gauge the detector's response. This argument is ignored if 'gradients'
-        is provided.
+        gauge the detector's response. This argument is ignored if
+        ``gradients`` is provided.
 
     gradients: list of numbers, optional
         If provided, this is a guess at the ratio between motor move and change
@@ -80,7 +80,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         positions, we'll treat the goal as reached.
     
     system: list of readable objects, optional
-        Other system parameters that we'd like to read during the walk.
+        Other system parameters that we would like to read during the walk.
 
     averages: list of numbers, optional
         For each detector, this is the number of shots to average before
@@ -106,11 +106,11 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         This plan should expect a complete description of the situation in the
         form of all arguments given to iterwalk, except for recovery_plan. Note
         that these arguments are listified before being passed to
-        recovery_plan. It will also be passed 'index', which is the index in
+        recovery_plan. It will also be passed ``index``, which is the index in
         all of the list arguments that is currently active.
         Also note that there is no requirement to use all of the provided
         arguments. A good practice is to have recovery_plan accept and ignore
-        **kwargs while explicitly including desired keywords to use.
+        kwargs while explicitly including desired keywords to use.
 
     filters: list of dictionaries
         Each entry in this list should be a valid input to the filters argument
@@ -119,7 +119,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     tol_scaling: list of floats or Nones, optional
         Constants for adaptive tolerances. Nones or omitting this argument
         reverts to fixed tolerance. For early walks with a starting point far
-        from the goal, tolerance for the walk is set at 
+        from the goal, tolerance for the walk is set at
         current_dist/tol_scaling instead of the set tolerance. Scaling ends
         when calculated tolerance < targeted tolerance.  
     """

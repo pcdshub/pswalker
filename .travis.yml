@@ -1,8 +1,14 @@
 language: python
-python:
-  # We don't actually use the Travis Python, but this keeps it organized.
-  - "3.5"
-  - "3.6"
+sudo: false
+env:
+   global:
+     - secure: "hK8k7lISV1MMkoEKqXeyQUGH0mcyBSJWwHMjMgdOjd0H7csQA6qq6RZoTxRQkzwlbKTjfE7Vn0HMuYHlrPnkXJZ3VKuYjIukrDnDvtU2wgDiNadqb/dASODBctynacBg8MHoCFhnUcgWrw1MJ4eHBctmb2yQDqwWpFdeBZ+WXvYsIBNAONiMfj0Ka5cUeCnmKSER5J7tP2UwFD5ihFl45ZPDb0Smj1E0NAXutuVos934R4+AWqPXAhNVfI6Y7FzCeHup1QM9hB9xvgF3OdSLvb4vlrLje+Cp8SVO8j41FVXZEpsMUlc+vKShRNAjhKL6IbA6DwqwObo54s9mxhrRGntONZdCTPAMFBM86YtEyMS9fpvshP1wISj58fZPscjg1ozp2npiLZtZvVjuaeJ3/YtUfEiH4hRmFm8yWYHt0g+ONx1CfYwAySAkWdmV+MAywmsOMPYOkTD4FLsNNDZDA4dMiqKNE9dqjtd1hXVAM6bGNbSKU5z3fSx1LNhfbNyzPhhxbAN1BA/3Lh6bJN5UXvKcyuu8JOIsn0qKZ90HsqGgfmfxR1keBEgyjMO8xyErIH+6TAxfyIcFWxLdDFxxQMyEcBDLllDAUKirvkHUdYpZRsN7o1hkYmBHBA5W+Bvyvr726Y60mc8IN+H1YLpQhwll/6bs5KOwDC1ZflTAzqo="
+
+matrix:
+  include:
+     - python: 3.5
+     - python: 3.6
+       env: BUILD_DOCS=1
 
 install:
   - sudo apt-get update
@@ -29,6 +35,21 @@ install:
 script:
   - coverage run run_tests.py
   - coverage report -m
+  - set -e
+  #Build docs
+  - |
+    if [ $BUILD_DOCS ]; then
+      pip install -r docs-requirements.txt
+      # Install doctr from a custom branch until
+      # https://github.com/drdoctr/doctr/pull/190 is merged.
+      pip uninstall -y doctr
+      pip install git+https://github.com/danielballan/doctr@other-master
+      pushd docs
+      make html
+      popd
+      #Publish docs.
+      doctr deploy --deploy-repo lcls-pcds/skywalker-docs --deploy-branch-name master pswalker
+    fi
 
 after_success:
   - codecov

@@ -129,8 +129,8 @@ def walk_to_pixel(detector, motor, target, filters=None,
     a logical first step size that will keep the object you are trying to
     center within the image. However, in some cases we may know enough to have
     a reasonable first guess at the relationship between pitch and centroid. In
-    this case the algorithm accepts the :param:`.gradient` parameter that is
-    then used to calculate the optimal first step. 
+    this case the algorithm accepts the ``gradient`` parameter that is then
+    used to calculate the optimal first step. 
 
     Parameters
     ----------
