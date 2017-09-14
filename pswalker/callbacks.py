@@ -536,8 +536,8 @@ class LiveModelPlot(LiveFitPlot):
 class LivePlotWithGoal(LivePlot):
     """
     Build a function that updates a plot from a stream of Events.
-    Note: If your figure blocks the main thread when you are trying to
-    scan with this callback, call `plt.ion()` in your IPython session.
+    
+    
     Parameters
     ----------
     y : str
@@ -570,7 +570,14 @@ class LivePlotWithGoal(LivePlot):
     epoch : {'run', 'unix'}, optional
         If 'run' t=0 is the time recorded in the RunStart document. If 'unix',
         t=0 is 1 Jan 1970 ("the UNIX epoch"). Default is 'run'.
+    kwargs :
     All additional keyword arguments are passed through to ``Axes.plot``.
+    
+    Notes
+    -----
+    If your figure blocks the main thread when you are trying to scan with this
+    callback, call `plt.ion()` in your IPython session.
+    
     Examples
     --------
     >>> my_plotter = LivePlotWithGoals('det', 'motor', goal=10.0, tolerance=1.5, averages=None, legend_keys=['sample'])
