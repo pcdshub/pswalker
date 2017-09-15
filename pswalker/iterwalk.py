@@ -258,9 +258,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 recover_pre_walk = False
 
                 # Core walk
-                logger.info(('Starting walk from {} to {} on {} using {}'
-                             ''.format(pos, goal, detectors[index].name,
+                logger.info(('Starting walk of {} pixels on {} using {}'
+                             ''.format(abs(pos - goal), detectors[index].name,
                                        motors[index].name)))
+                logger.debug(('Starting walk from {} to {} on {} using {}'
+                              ''.format(pos, goal, detectors[index].name,
+                                        motors[index].name)))
                 
                 logger.debug("selected tolerance: {}".format(
                     selected_tol[index]))
