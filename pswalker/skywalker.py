@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from pcdsdevices.epics.attenuator import FeeAtt
 from bluesky import RunEngine
 from bluesky.plans import run_decorator, stage_decorator
 
@@ -38,9 +37,10 @@ def lcls_RE(RE=None):
 def skywalker(detectors, motors, det_fields, mot_fields, goals,
               first_steps=1,
               gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, use_filters=True, md=None,tol_scaling=None):
+              sim=False, use_filters=True, md=None, tol_scaling=None,
+              extra_stage=None):
     """
-    Iterwalk as a base, with arguments for branching
+    Iterwalk as a base, with recovery plans, filters, and bonus staging.
     """
     _md = {'goals'     : goals,
            'detectors' : [det.name for det in as_list(detectors)],
@@ -69,8 +69,10 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
 
     area_detectors = [det.detector for det in as_list(detectors)]
     to_stage = as_list(motors) + area_detectors
-    if not sim:
-        to_stage.append(FeeAtt())
+
+    if extra_stage is not None:
+        for dev in extra_stage:
+            to_stage.append(dev)
 
     @run_decorator(md=_md)
     @stage_decorator(to_stage)
