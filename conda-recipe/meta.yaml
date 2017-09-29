@@ -1,0 +1,35 @@
+{% set data = load_setup_py_data() %}
+
+package:
+    name    : pswalker
+    version : {{ data.get('version') }}
+
+source:
+    path: ..
+
+requirements:
+    build:
+       - python {{PY_VER}}*,>=3
+       - setuptools
+
+    run:
+      - python {{PY_VER}}*,>=3
+      - ophyd ==0.6.1
+      - bluesky ==0.9.0
+      - pcds-devices
+      - lightpath
+      - psbeam
+      - simplejson
+      - lmfit
+      - numpy
+      - pandas
+      - matplotlib
+
+test:
+    imports:
+      - pswalker
+
+about:
+  home: https://github.com/slaclab/pswalker
+  license: SLAC Open License
+  summary: Beam Alignment module for Photon Controls and Data Systems
