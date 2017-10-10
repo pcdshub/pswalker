@@ -500,7 +500,7 @@ def fitwalk(detectors, motor, models, target,
             logger.debug("fitwalk is reporting an error {} of after step #{}"\
                          "".format(int(target-last_shot), steps))
         #Break on maximum step count
-        if steps >= max_steps:
+        if max_steps and steps >= max_steps:
             raise RuntimeError("fitwalk failed to converge after {} steps"\
                                "".format(steps))
 
