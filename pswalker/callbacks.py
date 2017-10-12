@@ -495,44 +495,6 @@ class MultiPitchFit(LiveBuild):
                     'a1' : a1}
 
 
-class LiveModelPlot(LiveFitPlot):
-    """
-    LivePlot to display the relationship between centroid and mirror positions
-
-    Parameters
-    ----------
-    livefit : :class:`.LinearFit`
-        Fit to plot
-
-    imager : :class:`.PIM`
-        Imager centroid position
-
-    mirror : :class:`.Homs`
-        Mirror pitch
-
-    target : float, optional
-
-    num_points : int, optional
-
-    ax : Axes, optional
-    """
-    def __init__(self, livefit, imager, mirror,
-                 num_points=100, target=None, ax=None):
-        #Model information
-        self.imager = imager
-        self.mirror = mirror
-        self.target = target
-        #Initalize Plot
-        super().__init__(livefit,
-                         num_points=num_points,
-                         ax=ax)
-
-
-    def start(self, doc):
-        super().start(doc)
-        if self.target:
-            self.ax.axvline(x=self.target, color='r')
-
 class LivePlotWithGoal(LivePlot):
     """
     Build a function that updates a plot from a stream of Events.
