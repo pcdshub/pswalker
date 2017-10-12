@@ -427,7 +427,9 @@ def fitwalk(detectors, motor, models, target,
         Mininum time between consecutive readings
 
     max_steps : int, optional
-        Maximum number of steps the scan will attempt before faulting
+        Maximum number of steps the scan will attempt before faulting.
+        There is a max of 10 by default, but you may disable this by setting
+        this option to None. Note that this may cause the walk to run indefinitely.
     """
     #Check all models are fitting the same key
     if len(set([model.y for model in models])) > 1:
