@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from bluesky.plans import mv
+from bluesky.plan_stubs import mv
 
 from .plan_stubs import match_condition
 
