@@ -140,7 +140,7 @@ class FakeSlits(Device):
 
 @pytest.mark.timeout(tmo)
 def test_slit_scan_area_compare(RE):
-    fake_slits = FakeSlits()
+    fake_slits = FakeSlits(name='fakeslits')
 
     class FakeYag(Device):
         xwidth = Cmp(SynSignal,
@@ -148,7 +148,7 @@ def test_slit_scan_area_compare(RE):
         ywidth = Cmp(SynSignal,
                      func=lambda: fake_slits.read()['ywidth']['value'])
 
-    fake_yag = FakeYag()
+    fake_yag = FakeYag(name='fakeyag')
 
     # collector callbacks aggregate data from 'yield from' in the given lists
     xwidths = []
@@ -189,7 +189,7 @@ def test_slit_scan_area_compare(RE):
 
 @pytest.fixture(scope='function')
 def fiducialized_yag():
-    fake_slits = FakeSlits()
+    fake_slits = FakeSlits(name='fakeslits')
 
     # Pretend our beam is 0.3 from the slit center
     def aperatured_centroid(*args, **kwargs):
