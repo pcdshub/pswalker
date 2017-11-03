@@ -107,4 +107,4 @@ ENV/
 *.swp
 
 # debug log files
-log.txt
+*.log*
