@@ -445,7 +445,7 @@ def fitwalk(detectors, motor, models, target,
                                                                     average))
             model.average = average
         #Subscribe callbacks
-        yield Msg('subscribe', None, 'all', model)
+        yield Msg('subscribe', None, model, 'all')
 
     #Target field
     target_field = models[0].y
