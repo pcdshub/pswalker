@@ -6,7 +6,7 @@ import threading
 
 import numpy as np
 from ophyd.utils import ReadOnlyError
-from bluesky.plans import null
+from bluesky.plan_stubs import null
 from bluesky.suspenders import (SuspenderBase, SuspendCeil, SuspendFloor,
                                 SuspendBoolHigh)
 # from pcdsdevices.signal import Signal
