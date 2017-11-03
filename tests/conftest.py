@@ -114,15 +114,15 @@ def lightpath():
 
 @pytest.fixture(scope='function')
 def fake_yags():
-    yags = [pim.PIM("p1h"),
-            pim.PIM("p2h", z=20),
-            pim.PIM("p3h", z=40),
-            pim.PIM("hx2_pim", z=50),
-            pim.PIM("um6_pim", z=60),
-            pim.PIM("dg3_pim", z=70)]
+    yags = [pim.PIM("p1h", name="p1h"),
+            pim.PIM("p2h", name="p2h", z=20),
+            pim.PIM("p3h", name="p3h", z=40),
+            pim.PIM("hx2_pim", name="hx2_pim", z=50),
+            pim.PIM("um6_pim", name="um6_pim", z=60),
+            pim.PIM("dg3_pim", name="dg3_pim", z=70)]
 
     # Pretend that the correct values are the current values
-    ans = [y.read()[y.name + '_detector_stats2_centroid_x']['value'] 
+    ans = [y.read()[y.name + '_detector_stats2_centroid_x']['value']
            for y in yags]
 
     return yags, ans

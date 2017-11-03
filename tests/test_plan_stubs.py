@@ -5,7 +5,6 @@ from queue import Queue
 import functools
 import logging
 
-from bluesky.plans import scan
 from bluesky.preprocessors import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
@@ -14,14 +13,11 @@ from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  fiducialize, homs_fiducialize)
 from pswalker.utils.exceptions import BeamNotFoundError
 from .utils import plan_stash, collector
-from bluesky.examples import Reader, Mover, NullStatus
+from ophyd.sim import SynSignal, SynAxis
+from ophyd.device import Device, Component as Cmp
 
-from collections import OrderedDict
-from numpy.random import rand
 
 from pcdsdevices.sim.pim import PIM
-
-from math import nan, isnan
 
 logger = logging.getLogger(__name__)
 tmo = 15
@@ -63,11 +59,13 @@ def test_verify_all_answers(RE, fake_yags):
 
     # Check that all correct returns True, near correct returns True, and
     # completely wrong returns False.
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x', 
-                                    ans, 1)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags,
+                                    'detector_stats2_centroid_x', ans, 1)))
+    RE(run_wrapper(verify_and_stash(ok_queue, yags,
+                                    'detector_stats2_centroid_x',
                                     [a + 5 for a in ans], 6)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags, 'detector_stats2_centroid_x',
+    RE(run_wrapper(verify_and_stash(ok_queue, yags,
+                                    'detector_stats2_centroid_x',
                                     [a + 5 for a in ans], 1)))
     assert ok_queue.get() is True, "Exactly correct rejected!"
     assert ok_queue.get() is True, "Within tolerance rejected!"
@@ -186,24 +184,22 @@ def test_match_condition_timeout(RE, mot_and_sig):
     # If the motor did not reach 5, we timed out
 
 
+class FakeSlits(Device):
+    xwidth = Cmp(SynAxis)
+    ywidth = Cmp(SynAxis)
+
+
 @pytest.mark.timeout(tmo)
 def test_slit_scan_area_compare(RE):
-    fake_slits = Mover(
-        "slits",
-        OrderedDict([
-            ('xwidth',(lambda x,y:x)),
-            ('ywidth',(lambda x,y:y)),
-        ]),
-        {'x':0,'y':0}
-    )
+    fake_slits = FakeSlits()
 
-    fake_yag = Reader(
-        'fake_yag',
-        {
-            'xwidth':(lambda:fake_slits.read()['xwidth']['value']),
-            'ywidth':(lambda:fake_slits.read()['ywidth']['value']),
-        }
-    )
+    class FakeYag(Device):
+        xwidth = Cmp(SynSignal,
+                     func=lambda: fake_slits.read()['xwidth']['value'])
+        ywidth = Cmp(SynSignal,
+                     func=lambda: fake_slits.read()['ywidth']['value'])
+
+    fake_yag = FakeYag()
 
     # collector callbacks aggregate data from 'yield from' in the given lists
     xwidths = []
@@ -211,84 +207,57 @@ def test_slit_scan_area_compare(RE):
     measuredxwidths = collector("xwidth", xwidths)
     measuredywidths = collector("ywidth", ywidths)
 
-    #test two basic positions
-    RE(
-        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.0,1.0,2)),
-        subs={'event':[measuredxwidths,measuredywidths]}
-    )
-    RE(
-        run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,1.5,2)),
-        subs={'event':[measuredxwidths,measuredywidths]}
-    )
+    # test two basic positions
+    RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.0, 1.0, 2)),
+       subs={'event': [measuredxwidths, measuredywidths]})
+    RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.1, 1.5, 2)),
+       subs={'event': [measuredxwidths, measuredywidths]})
     # excpect error if both measurements <= 0
     with pytest.raises(ValueError):
-        RE(
-            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,0.0,0.0,2)),
-            subs={'event':[measuredxwidths,measuredywidths]}
-        )
-    # expect error if one measurement <= 0 
+        RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 0.0, 0.0, 2)),
+           subs={'event': [measuredxwidths, measuredywidths]})
+    # expect error if one measurement <= 0
     with pytest.raises(ValueError):
-        RE(
-            run_wrapper(slit_scan_area_comp(fake_slits,fake_yag,1.1,0.0,2)),
-            subs={'event':[measuredxwidths,measuredywidths]}
-        )
+        RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.1, 0.0, 2)),
+           subs={'event': [measuredxwidths, measuredywidths]})
 
-    logger.debug(xwidths) 
-    logger.debug(ywidths) 
+    logger.debug(xwidths)
+    logger.debug(ywidths)
 
     assert xwidths == [
-        1.0, 1.0, 
-        1.1, 1.1, 
-        0.0, 0.0, 
+        1.0, 1.0,
+        1.1, 1.1,
+        0.0, 0.0,
         1.1, 1.1,
         ]
     assert ywidths == [
-        1.0, 1.0, 
-        1.5, 1.5, 
-        0.0, 0.0, 
+        1.0, 1.0,
+        1.5, 1.5,
+        0.0, 0.0,
         0.0, 0.0,
         ]
 
 
-class ReaderWithSet(Reader):
-    def set(*args, **kwargs):
-        return NullStatus()
-
-
 @pytest.fixture(scope='function')
 def fiducialized_yag():
-    #Instantiate fake slits object
-    fake_slits = Mover(
-        "slits",
-        OrderedDict([
-            ('xwidth',(lambda xwidth:xwidth)),
-            #('ywidth',(lambda xwidth,ywidth:ywidth)),
-            #('ywidth',(lambda xwidth:xwidth)),
-        ]),
-        #{'xwidth':0,'ywidth':0}
-        #{'xwidth':0,'ywidth':0}
-        {'xwidth':0}
-    )
-    #Pretend our beam is 0.3 from the slit center
+    fake_slits = FakeSlits()
+
+    # Pretend our beam is 0.3 from the slit center
     def aperatured_centroid(*args, **kwargs):
-        #Beam is unblocked
+        # Beam is unblocked
         if fake_slits.read()['xwidth']['value'] > 0.5:
-            #and slits.read()['ywidth']['value'] > 0.5):
-                #return 0.3
             return 0.3
-        #Beam is fully blocked
+        # Beam is fully blocked
         return 0.0
 
-    #Instantiate fake detector object
-    fake_yag = ReaderWithSet('det', {'centroid': aperatured_centroid})
+    fake_yag = SynAxis(name='det', readback_func=aperatured_centroid)
 
     return fake_slits, fake_yag
 
 
 @pytest.fixture(scope='function')
 def fiducialized_yag_set():
-    return fiducialized_yag(),fiducialized_yag(),fiducialized_yag()
-
+    return fiducialized_yag(), fiducialized_yag(), fiducialized_yag()
 
 
 def test_slit_scan_fiducialize(RE, fiducialized_yag):
@@ -296,31 +265,26 @@ def test_slit_scan_fiducialize(RE, fiducialized_yag):
 
     fake_slits, fake_yag = fiducialized_yag
 
-    #collector callbacks aggregate data from 'yield from' returns in lists  
     center = []
-    measuredcenter = collector("centroid", center)
+    measuredcenter = collector("det_readback", center)
 
-    #Run plan with wide slits
-    RE(
-        run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
-                                          x_width=1.0,y_width=1.0,
-                                          centroid='centroid',
-                                          samples=1)),
-        subs={'event':[measuredcenter]}
-    )
+    # Run plan with wide slits
+    RE(run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
+                                         x_width=1.0, y_width=1.0,
+                                         centroid='det_readback',
+                                         samples=1)),
+       subs={'event': [measuredcenter]})
 
     assert center == [0.3]
 
-    #collector callbacks aggregate data from 'yield from' returns in lists  
     center = []
-    measuredcenter = collector("centroid", center)
-    #Run plan with narrow slits
-    RE(
-        run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
-                                          centroid='centroid',
-                                          samples=1)),
-        subs={'event':[measuredcenter]}
-    )
+    measuredcenter = collector("det_readback", center)
+
+    # Run plan with narrow slits
+    RE(run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
+                                         centroid='det_readback',
+                                         samples=1)),
+       subs={'event': [measuredcenter]})
 
     assert center == [0.0]
 
@@ -329,59 +293,48 @@ def test_fiducialize(RE, fiducialized_yag):
     logger.debug('test_fiducialize')
 
     fake_slits, fake_yag = fiducialized_yag
-    #collector callbacks aggregate data from 'yield from' returns in lists  
-    center = []
-    measuredcenter = collector("centroid", center)
 
-    #Run plan with sufficiently large max_width
-    RE(
-        run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
-                                centroid='centroid', samples=1)),
-        subs={'event':[measuredcenter]}
-    )
-    #First shot is blocked second is not
+    center = []
+    measuredcenter = collector("det_readback", center)
+
+    # Run plan with sufficiently large max_width
+    RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
+                               centroid='det_readback', samples=1)),
+       subs={'event': [measuredcenter]})
+
+    # First shot is blocked second is not
     assert center == [0.0, 0.3]
 
-    #Run plan with insufficiently large max_width
+    # Run plan with insufficiently large max_width
     with pytest.raises(BeamNotFoundError):
-        RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
-                                    max_width=0.25,centroid='centroid', samples=1)),
-        )
+        RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1,
+                                   step_size=1.0, max_width=0.25,
+                                   centroid='det_readback', samples=1)))
 
 
-def test_homs_fiducialize(RE,fiducialized_yag_set):
-    #set of independant (slit,yag) tuples
+def test_homs_fiducialize(RE, fiducialized_yag_set):
     fset = fiducialized_yag_set
-    
-    slit_set,yag_set = list(zip(*fset))
+
+    slit_set, yag_set = list(zip(*fset))
     yag_set = [
-        PIM("TEST"),    
-        PIM("TEST"),    
-        PIM("TEST"),    
+        PIM("TEST"),
+        PIM("TEST"),
+        PIM("TEST"),
     ]
     center = []
-    measuredcenter = collector("TST:TEST_detector_stats2_centroid_y", center)   
+    measuredcenter = collector("TST:TEST_detector_stats2_centroid_y", center)
     state = []
-    measuredstate = collector("TST:TEST_states", state)   
-    RE(
-        run_wrapper(homs_fiducialize(
-            slit_set,
-            yag_set,
-            x_width = .6,
-            y_width = .6,
-            samples = 2,
-            centroid = 'detector_stats2_centroid_y')),
-        subs = {'event':[measuredcenter,measuredstate]}
-    )
-    
-    #print(fset[0][0].read()['xwidth']['value'])
-    #print(fset[1][0].read()['xwidth']['value'])
-    #print(center)
-    #print(state)
-    
+    measuredstate = collector("TST:TEST_states", state)
+    RE(run_wrapper(homs_fiducialize(slit_set,
+                                    yag_set,
+                                    x_width=.6,
+                                    y_width=.6,
+                                    samples=2,
+                                    centroid='detector_stats2_centroid_y')),
+        subs={'event': [measuredcenter, measuredstate]})
+
     for x in yag_set:
-        assert x.read()['TST:TEST_states']['value'] == 'OUT',"yag not removed"
+        assert x.read()['TST:TEST_states']['value'] == 'OUT', "yag not removed"
 
-    for index,_ in enumerate(center):
+    for index, _ in enumerate(center):
         assert center[index] == 0.0, 'measurment incorrect'
-

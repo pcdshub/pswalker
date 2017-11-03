@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from ophyd.sim import SynSignal, SynAxisNoHints
+from ophyd.sim import SynSignal, SynAxis
 from bluesky import RunEngine
 from bluesky.plans import outer_product_scan, scan
 
@@ -18,7 +18,7 @@ def test_linear_fit():
     # Expected values of fit
     expected = {'slope': 5, 'intercept': 2}
 
-    motor = SynAxisNoHints(name='motor')
+    motor = SynAxis(name='motor')
     det = SynSignal(name='centroid',
                     func=lambda: 5*motor.read()['motor']['value'] + 2)
 
@@ -44,8 +44,8 @@ def test_multi_fit():
     # Expected values of fit
     expected = {'x0': 5, 'x1': 4, 'x2': 3}
 
-    m1 = SynAxisNoHints(name='m1')
-    m2 = SynAxisNoHints(name='m2')
+    m1 = SynAxis(name='m1')
+    m2 = SynAxis(name='m2')
     det = SynSignal(name='centroid',
                     func=lambda: 5
                          + 4*m1.read()['m1']['value']
@@ -127,7 +127,7 @@ def test_rank_models():
     RE = RunEngine()
 
     # Create accurate fit
-    motor = SynAxisNoHints(name='motor')
+    motor = SynAxis(name='motor')
     det = SynSignal(name='centroid',
                     func=lambda: 5*motor.read()['motor']['value'] + 2)
     fit1 = LinearFit('centroid', 'motor',
