@@ -8,7 +8,7 @@ import logging
 ###############
 import pytest
 import numpy as np
-from bluesky.plans import run_wrapper
+from bluesky.preprocessors import run_wrapper
 from psbeam.beamdetector import detect
 from psbeam.beamexceptions import (NoBeamDetected, NoContoursDetected)
 from psbeam.filters import contour_area_filter
