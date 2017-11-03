@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 import logging
-from queue import Queue
 
-from bluesky.plans import run_wrapper, run_decorator, null
-from ophyd.device import Staged
+from bluesky.preprocessors import run_wrapper
 
 from pswalker.recovery import recover_threshold
 
