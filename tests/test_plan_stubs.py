@@ -7,7 +7,7 @@ import logging
 
 from bluesky.preprocessors import run_wrapper
 
-from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
+from pswalker.plan_stubs import (prep_img_motors, as_list,
                                  match_condition,
                                  slit_scan_area_comp, slit_scan_fiducialize,
                                  fiducialize, homs_fiducialize)
@@ -48,57 +48,6 @@ def test_as_list():
     assert as_list([1, 2, 3]) == [1, 2, 3]
     assert as_list((1, 2, 3)) == [1, 2, 3]
     assert as_list("apples") == ["apples"]
-
-
-verify_and_stash = functools.partial(plan_stash, verify_all)
-
-
-def test_verify_all_answers(RE, fake_yags):
-    yags, ans = fake_yags
-    ok_queue = Queue()
-
-    # Check that all correct returns True, near correct returns True, and
-    # completely wrong returns False.
-    RE(run_wrapper(verify_and_stash(ok_queue, yags,
-                                    'detector_stats2_centroid_x', ans, 1)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags,
-                                    'detector_stats2_centroid_x',
-                                    [a + 5 for a in ans], 6)))
-    RE(run_wrapper(verify_and_stash(ok_queue, yags,
-                                    'detector_stats2_centroid_x',
-                                    [a + 5 for a in ans], 1)))
-    assert ok_queue.get() is True, "Exactly correct rejected!"
-    assert ok_queue.get() is True, "Within tolerance rejected!"
-    assert ok_queue.get() is False, "Outside of tolerance accepted!"
-
-
-def test_verify_all_readers(RE, fake_yags):
-    yags, ans = fake_yags
-    ok = False
-
-    RE(run_wrapper(verify_all(yags[1:], 'detector_stats2_centroid_x', ans, 5,
-                              other_readers=yags[0],
-                              other_fields='detector_stats2_centroid_y')))
-    for msg in RE.msg_hook.msgs:
-        if msg.command == 'read' and yags[0] is msg.obj:
-            ok = True
-            break
-    assert ok, ("We didn't find our extra reader in the collected messages")
-
-
-def test_verify_all_array(RE, fake_yags):
-    yags, ans = fake_yags
-    ok_queue = Queue()
-
-    # Last let's make sure we can get a list of bools that correspond correctly
-    # to the yag that was wrong
-    ans[0] = ans[0] + 25
-    RE(run_wrapper(verify_and_stash(
-        ok_queue, yags, 'detector_stats2_centroid_x', ans, 5, summary=False)))
-    ok_list = ok_queue.get()
-    assert not ok_list[0], "Wrong element bool i=0"
-    for i in range(1, len(ans)):
-        assert ok_list[i], "Wrong element bool i={}".format(i)
 
 
 @pytest.mark.timeout(tmo)
