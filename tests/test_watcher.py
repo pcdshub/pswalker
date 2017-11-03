@@ -7,7 +7,7 @@ import logging
 # Third Party #
 ###############
 from jinja2 import Environment
-from bluesky.plans import run_wrapper
+from bluesky.preprocessors import run_wrapper
 ##########
 # Module #
 ##########
