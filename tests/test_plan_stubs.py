@@ -140,21 +140,22 @@ class FakeSlits(Device):
 
 @pytest.mark.timeout(tmo)
 def test_slit_scan_area_compare(RE):
-    fake_slits = FakeSlits(name='fakeslits')
+    pre = 'fakeslits'
+    fake_slits = FakeSlits(name=pre)
 
     class FakeYag(Device):
         xwidth = Cmp(SynSignal,
-                     func=lambda: fake_slits.read()['xwidth']['value'])
+                     func=lambda: fake_slits.read()[pre + '_xwidth']['value'])
         ywidth = Cmp(SynSignal,
-                     func=lambda: fake_slits.read()['ywidth']['value'])
+                     func=lambda: fake_slits.read()[pre + '_ywidth']['value'])
 
     fake_yag = FakeYag(name='fakeyag')
 
     # collector callbacks aggregate data from 'yield from' in the given lists
     xwidths = []
     ywidths = []
-    measuredxwidths = collector("xwidth", xwidths)
-    measuredywidths = collector("ywidth", ywidths)
+    measuredxwidths = collector("fakeyag_xwidth", xwidths)
+    measuredywidths = collector("fakeyag_ywidth", ywidths)
 
     # test two basic positions
     RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.0, 1.0, 2)),
