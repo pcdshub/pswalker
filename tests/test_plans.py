@@ -67,7 +67,7 @@ def test_measure_average(RE, one_bounce_system):
     col_r = collector(mot.name + '_pitch',    readbacks)
 
     RE(run_wrapper(measure_average([det, mot], delay=0.1, num=5)),
-       subs={'event': [col_c, col_r]})
+       {'event': [col_c, col_r]})
 
     assert centroids == [250., 250., 250., 250., 250.]
     assert readbacks == [0., 0., 0., 0., 0.]
@@ -77,7 +77,7 @@ def test_measure_average(RE, one_bounce_system):
 
     # Run with array of delays
     RE(run_wrapper(measure_average([det, mot], delay=[0.1], num=2)),
-       subs={'event': [col_c, col_r]})
+       {'event': [col_c, col_r]})
 
     assert centroids == [250., 250.]
     assert readbacks == [0., 0.]
@@ -98,7 +98,7 @@ def test_measure_average_system(RE, lcls_two_bounce_system):
 
     RE(run_wrapper(measure_average([y1, m1, y2, m2],
                                    delay=0.1, num=5)),
-       subs={'event': [col_c, col_r]})
+       {'event': [col_c, col_r]})
 
     assert centroids == [y1.detector._get_readback_centroid_x()] * 5
     assert readbacks == [m1.position] * 5
@@ -136,7 +136,7 @@ def test_measure_centroid(RE, one_bounce_system):
 
     RE(run_wrapper(measure_centroid(det, average=5,
                                     target_field=key_ext)),
-       subs={'event': [col_c]})
+       {'event': [col_c]})
     assert centroids == [250., 250., 250., 250., 250.]
 
 
@@ -208,7 +208,7 @@ def test_measure(RE):
     cb = collector('det', shots)
 
     # Run simple
-    RE(plan, subs={'event': cb})
+    RE(plan, {'event': cb})
     assert shots == [1.0, 1.0, 1.0, 1.0, 1.0]
 
     # Create counting detector
@@ -231,7 +231,7 @@ def test_measure(RE):
     cb = collector('intensity', shots)
 
     # Run filtered
-    RE(plan, subs={'event': cb})
+    RE(plan, {'event': cb})
     assert shots == [1, 3, 4, 5, 6, 7]
     # 2 is skipped, because read is called
     # by `describe`, which is called by RE

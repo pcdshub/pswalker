@@ -159,17 +159,17 @@ def test_slit_scan_area_compare(RE):
 
     # test two basic positions
     RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.0, 1.0, 2)),
-       subs={'event': [measuredxwidths, measuredywidths]})
+       {'event': [measuredxwidths, measuredywidths]})
     RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.1, 1.5, 2)),
-       subs={'event': [measuredxwidths, measuredywidths]})
+       {'event': [measuredxwidths, measuredywidths]})
     # excpect error if both measurements <= 0
     with pytest.raises(ValueError):
         RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 0.0, 0.0, 2)),
-           subs={'event': [measuredxwidths, measuredywidths]})
+           {'event': [measuredxwidths, measuredywidths]})
     # expect error if one measurement <= 0
     with pytest.raises(ValueError):
         RE(run_wrapper(slit_scan_area_comp(fake_slits, fake_yag, 1.1, 0.0, 2)),
-           subs={'event': [measuredxwidths, measuredywidths]})
+           {'event': [measuredxwidths, measuredywidths]})
 
     logger.debug(xwidths)
     logger.debug(ywidths)
@@ -223,7 +223,7 @@ def test_slit_scan_fiducialize(RE, fiducialized_yag):
                                          x_width=1.0, y_width=1.0,
                                          centroid='det_readback',
                                          samples=1)),
-       subs={'event': [measuredcenter]})
+       {'event': [measuredcenter]})
 
     assert center == [0.3]
 
@@ -234,7 +234,7 @@ def test_slit_scan_fiducialize(RE, fiducialized_yag):
     RE(run_wrapper(slit_scan_fiducialize(fake_slits, fake_yag,
                                          centroid='det_readback',
                                          samples=1)),
-       subs={'event': [measuredcenter]})
+       {'event': [measuredcenter]})
 
     assert center == [0.0]
 
@@ -250,7 +250,7 @@ def test_fiducialize(RE, fiducialized_yag):
     # Run plan with sufficiently large max_width
     RE(run_wrapper(fiducialize(fake_slits, fake_yag, start=0.1, step_size=1.0,
                                centroid='det_readback', samples=1)),
-       subs={'event': [measuredcenter]})
+       {'event': [measuredcenter]})
 
     # First shot is blocked second is not
     assert center == [0.0, 0.3]
@@ -281,7 +281,7 @@ def test_homs_fiducialize(RE, fiducialized_yag_set):
                                     y_width=.6,
                                     samples=2,
                                     centroid='detector_stats2_centroid_y')),
-        subs={'event': [measuredcenter, measuredstate]})
+        {'event': [measuredcenter, measuredstate]})
 
     for x in yag_set:
         assert x.read()['TST:TEST_states']['value'] == 'OUT', "yag not removed"
