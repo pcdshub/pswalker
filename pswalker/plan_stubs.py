@@ -5,8 +5,8 @@ import threading
 import uuid
 import logging
 
-from bluesky.plans import (wait as plan_wait, abs_set, create, read, save,
-                            stage_wrapper)
+from bluesky.plan_stubs import wait as plan_wait, abs_set, create, read, save
+from bluesky.preprocessors import stage_wrapper
 from bluesky.utils import FailedStatus
 
 from .plans import measure_average

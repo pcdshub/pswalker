@@ -5,7 +5,7 @@ import logging
 import uuid
 from copy import copy
 
-from bluesky.plans import checkpoint, mv, wait as plan_wait, abs_set
+from bluesky.plan_stubs import checkpoint, mv, wait as plan_wait, abs_set
 
 from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors

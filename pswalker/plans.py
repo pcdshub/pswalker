@@ -18,7 +18,8 @@ import bluesky
 from scipy.stats   import linregress
 from ophyd import Device, Signal
 from bluesky.utils import Msg
-from bluesky.plans import mv, rel_set, trigger_and_read, run_decorator, stage_decorator
+from bluesky.plan_stubs import mv, rel_set, trigger_and_read
+from bluesky.preprocessors import run_decorator, stage_decorator
 
 ##########
 # Module #

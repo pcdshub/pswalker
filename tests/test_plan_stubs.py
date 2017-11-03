@@ -5,7 +5,8 @@ from queue import Queue
 import functools
 import logging
 
-from bluesky.plans import run_wrapper, scan
+from bluesky.plans import scan
+from bluesky.preprocessors import run_wrapper
 
 from pswalker.plan_stubs import (prep_img_motors, as_list, verify_all,
                                  match_condition,
