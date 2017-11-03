@@ -9,9 +9,8 @@ import logging
 import lmfit
 import pytest
 import numpy as np
-from bluesky             import Msg, RunEngine
-from bluesky.plans       import mv, run_wrapper
-from bluesky.examples    import det, motor, Mover, Reader
+from bluesky.preprocessors import run_wrapper
+from bluesky.examples import det, motor, Mover, Reader
 
 ##########
 # Module #
