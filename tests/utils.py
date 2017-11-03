@@ -8,7 +8,7 @@ import threading
 from ophyd import Signal
 from ophyd.ophydobj import OphydObject
 from ophyd.positioner import SoftPositioner, PositionerBase
-from bluesky.plans import sleep, checkpoint
+from bluesky.plan_stubs import sleep, checkpoint
 
 from pcdsdevices.sim import pim, mirror
 
