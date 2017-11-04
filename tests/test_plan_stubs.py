@@ -155,6 +155,11 @@ def test_slit_scan_area_compare(RE):
         ywidth = Cmp(SynSignal,
                      func=lambda: fake_slits.read()[pre + '_ywidth']['value'])
 
+        def trigger(self):
+            xstat = self.xwidth.trigger()
+            ystat = self.ywidth.trigger()
+            return xstat & ystat
+
     fake_yag = FakeYag(name='fakeyag')
 
     # collector callbacks aggregate data from 'yield from' in the given lists
