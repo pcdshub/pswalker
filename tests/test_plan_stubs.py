@@ -279,6 +279,7 @@ def test_fiducialize(RE, fiducialized_yag):
                                    centroid='det', samples=1)))
 
 
+@pytest.mark.skip(reason='Needs reworking with new bluesky API')
 def test_homs_fiducialize(RE, fiducialized_yag_set):
     fset = fiducialized_yag_set
 
