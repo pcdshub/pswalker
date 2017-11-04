@@ -263,7 +263,7 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     #data = yield from measure_average([yag],['xwidth','ywidth'])
 
     # set slits to specified gap size
-    yield from abs_set(slits,x=x_width,y = y_width)
+    yield from abs_set(slits, x=x_width, y=y_width, wait=True)
 
     # read profile dimensions from image (width plugin pending)
     yag_measurements = yield from measure_average(
