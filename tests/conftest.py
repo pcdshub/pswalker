@@ -78,7 +78,7 @@ def one_bounce_system():
     """
     s = source.Undulator('test_source', name='test_source')
     mot = mirror.OffsetMirror('mirror', 'mirror_xy', name='mirror', z=50)
-    det = pim.PIM('yag', z=60, size=(500,500))
+    det = pim.PIM('yag', name='yag', z=60, size=(500,500))
     det = patch_pims(det, mot)
     return s, mot, det
 
