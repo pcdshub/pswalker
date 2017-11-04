@@ -131,8 +131,8 @@ def test_measure_centroid(RE, one_bounce_system):
 
     _, mot, det = one_bounce_system
     centroids = []
-    key_ext = '_detector_stats2_centroid_x'
-    col_c = collector(det.name + key_ext, centroids)
+    key_ext = 'detector_stats2_centroid_x'
+    col_c = collector(det.name + "_" + key_ext, centroids)
 
     RE(run_wrapper(measure_centroid(det, average=5,
                                     target_field=key_ext)),
@@ -186,7 +186,7 @@ def test_walk_to_pixel(RE, one_bounce_system):
                                      target_fields=[cent, 'pitch'],
                                      max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()[det.name + cent]['value'], 200, atol=1)
+    assert np.isclose(det.read()[det.name + "_" + cent]['value'], 200, atol=1)
 
     mot.set(0.)
 
@@ -196,7 +196,7 @@ def test_walk_to_pixel(RE, one_bounce_system):
                                      target_fields=[cent, 'pitch'],
                                      max_steps=3))
     RE(plan)
-    assert np.isclose(det.read()[det.name + cent]['value'], 200, atol=10)
+    assert np.isclose(det.read()[det.name + "_" + cent]['value'], 200, atol=10)
 
 
 def test_measure(RE):
@@ -212,7 +212,7 @@ def test_measure(RE):
     assert shots == [1.0, 1.0, 1.0, 1.0, 1.0]
 
     # Create counting detector
-    index = 0
+    index = -1
 
     def count():
         nonlocal index
@@ -232,10 +232,7 @@ def test_measure(RE):
 
     # Run filtered
     RE(plan, {'event': cb})
-    assert shots == [1, 3, 4, 5, 6, 7]
-    # 2 is skipped, because read is called
-    # by `describe`, which is called by RE
-    # after first read
+    assert shots == [1, 2, 3, 4, 5, 6, 7]
 
     # Make sure an exception is raised when we fail too many filter checks
     plan = run_wrapper(measure([counter],
