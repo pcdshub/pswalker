@@ -16,7 +16,6 @@ from .utils import plan_stash, collector
 from ophyd.sim import SynSignal, SynAxis
 from ophyd.device import Device, Component as Cmp
 
-
 from pcdsdevices.sim.pim import PIM
 
 logger = logging.getLogger(__name__)
@@ -136,6 +135,13 @@ def test_match_condition_timeout(RE, mot_and_sig):
 class FakeSlits(Device):
     xwidth = Cmp(SynAxis)
     ywidth = Cmp(SynAxis)
+
+    def set(self, x, y=None, **kwargs):
+        if y is None:
+            y = x
+        x_status = self.xwidth.set(x)
+        y_status = self.ywidth.set(y)
+        return x_status & y_status
 
 
 @pytest.mark.timeout(tmo)
