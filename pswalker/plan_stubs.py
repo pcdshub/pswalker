@@ -272,8 +272,8 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     )
 
     # extract measurements of interest from returned dict
-    yag_measured_x_width = yag_measurements['xwidth']
-    yag_measured_y_width = yag_measurements['ywidth']
+    yag_measured_x_width = yag_measurements[field_prepend('xwidth', yag)]
+    yag_measured_y_width = yag_measurements[field_prepend('ywidth', yag)]
 
     logger.debug("Measured x width: {}".format(yag_measured_x_width))
     logger.debug("Measured y width: {}".format(yag_measured_y_width))
