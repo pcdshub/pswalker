@@ -25,7 +25,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   #Grab all dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION coverage pip wheel ophyd==1.0.0 bluesky==1.0.0 pytest pcds-devices lightpath psbeam -c conda-forge -c lightsource2-tag -c skywalker-dev -c paulscherrerinstitute
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION coverage pip wheel ophyd==1.0.0 bluesky==1.0.0 pytest pcds-devices lightpath psbeam -c conda-forge -c skywalker-dev -c gsecars -c lightsource2-tag -c pydm-dev -c paulscherrerinstitute
   #Launch Conda environment
   - source activate test-environment
   #Install pedl
