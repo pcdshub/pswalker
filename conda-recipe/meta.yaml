@@ -14,8 +14,8 @@ requirements:
 
     run:
       - python {{PY_VER}}*,>=3
-      - ophyd ==0.6.1
-      - bluesky ==0.9.0
+      - ophyd ==1.0.0
+      - bluesky ==1.0.0
       - pcds-devices
       - lightpath
       - psbeam

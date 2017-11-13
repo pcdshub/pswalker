@@ -228,8 +228,9 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
                    pim.sim_z.value)
     return _x_to_pixel(x, pim)
 
-def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY"), 
-               source=Undulator("TEST_UND")):
+def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
+                                          name="test_mirror"),
+               source=Undulator("TEST_UND", name="test_und")):
     """
     Takes the inputted set of pims and mirrors and then the internal centroid
     calculating function for the pims to be one of the ray-tracing equations

@@ -12,7 +12,7 @@ from copy import copy
 # Third Party #
 ###############
 import numpy as np
-from bluesky.plans import checkpoint
+from bluesky.plan_stubs import checkpoint
 from psbeam.filters import contour_area_filter
 from psbeam.utils import (to_image, signal_tuple)
 from psbeam.beamexceptions import NoContoursDetected

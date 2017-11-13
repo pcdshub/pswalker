@@ -3,7 +3,7 @@
 import logging
 
 from bluesky import RunEngine
-from bluesky.plans import run_decorator, stage_decorator
+from bluesky.preprocessors import run_decorator, stage_decorator
 
 from .recovery import homs_recovery, sim_recovery
 from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor

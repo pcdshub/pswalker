@@ -6,8 +6,9 @@ import logging
 
 import pytest
 from ophyd.signal import Signal
-from bluesky.plans import (run_decorator, checkpoint, create, read, save,
-                           mv, sleep, null)
+from bluesky.plan_stubs import (checkpoint, create, read, save,
+                                mv, sleep, null)
+from bluesky.preprocessors import run_decorator
 from bluesky.suspenders import SuspendFloor
 
 from pswalker.suspenders import (LightpathSuspender, BeamEnergySuspendFloor,

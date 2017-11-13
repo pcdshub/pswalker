@@ -7,7 +7,7 @@ import logging
 ###############
 import pytest
 import numpy as np
-from bluesky.plans import run_wrapper
+from bluesky.preprocessors import run_wrapper
 from ophyd.status import Status
 ##########
 # Module #

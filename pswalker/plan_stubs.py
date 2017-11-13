@@ -5,8 +5,8 @@ import threading
 import uuid
 import logging
 
-from bluesky.plans import (wait as plan_wait, abs_set, create, read, save,
-                            stage_wrapper)
+from bluesky.plan_stubs import wait as plan_wait, abs_set, create, read, save
+from bluesky.preprocessors import stage_wrapper
 from bluesky.utils import FailedStatus
 
 from .plans import measure_average
@@ -85,95 +85,6 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
     else:
         logger.debug("prep_img_motors exitted with timeout")
     return ok
-
-
-def verify_all(detectors, target_fields, target_values, tolerances,
-               other_readers=None, other_fields=None, average=1, delay=None,
-               summary=True):
-    """
-    Plan to double-check the values on each of our imagers. Manipulates the
-    yags, checks the values, and tells us which are ok.
-
-    Parameters
-    ----------
-    detectors: list of Devices, or Device
-        These are the imagers we're checking individually. They should have set
-        methods that accept "IN" and "OUT" so we can manipulate their states as
-        well as the Reader interface so we can get their values. These are
-        assumed to block beam. This will accept a single Device instead of a
-        list of there is only one.
-
-    target_fields: list of str, or a str
-        The field to verify for each detector, or a single field to use for
-        every detector.
-
-    target_values: list of numbers, or a number
-        The value we're looking for at each detector, or a single value for
-        every detector.
-
-    tolerances: list of numbers, or a number
-        The allowed delta from the target_value for each detector, or a single
-        delta for every detector.
-
-    other_readers: list of Devices or Device, optional
-        Other readers to read and include in events while we're doing
-        everything else.
-
-    other_fields: list of str or str, optional
-        The fields to read from our other_readers.
-
-    average: int, optional
-        Number of events to average over for the measurement
-
-    delay: number, optional
-        Time to wait between measurements during an average.
-
-    summary: bool, optional
-        If True, return a single boolean for the entire system. If False,
-        return individual booleans for each detector.
-
-    Returns
-    -------
-    ok: bool or list of bool
-        If summary is True, we'll get a single boolean that is True if all of
-        the detector readouts are verified and False otherwise. If summary is
-        False, we'll get a list of booleans, one for each detector.
-    """
-    # Allow variable inputs
-    detectors = as_list(detectors)
-    num = len(detectors)
-    target_fields = as_list(target_fields, length=num)
-    target_values = as_list(target_values, length=num)
-    tolerances = as_list(tolerances, length=num)
-    other_readers = as_list(other_readers)
-    other_fields = as_list(other_fields)
-
-    # Build the ok list using our plans
-    ok_list = []
-    for i, (det, fld, val, tol) in enumerate(zip(detectors, target_fields,
-                                                 target_values, tolerances)):
-        ok = yield from prep_img_motors(i, detectors, timeout=15)
-        if not ok:
-            err = "Detector motion timed out!"
-            logger.error(err)
-            raise RuntimeError(err)
-        avgs = yield from measure_average([det] + other_readers,
-                                          num=average, delay=delay)
-        #Check the tolerance of detector measurement
-        ok_list.append(abs(avgs[field_prepend(fld,det)] - val) < tol)
-
-    # Output for yield from
-    output = all(ok_list)
-    logger.debug("verify all complete for %s", detectors)
-    if output:
-        logger.debug("verify success")
-    else:
-        logger.debug("verify failed, bool is %s", ok_list)
-
-    if summary:
-        return output
-    else:
-        return ok_list
 
 
 def match_condition(signal, condition, mover, setpoint, timeout=None,
@@ -352,7 +263,7 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     #data = yield from measure_average([yag],['xwidth','ywidth'])
 
     # set slits to specified gap size
-    yield from abs_set(slits,x=x_width,y = y_width)
+    yield from abs_set(slits, x=x_width, y=y_width, wait=True)
 
     # read profile dimensions from image (width plugin pending)
     yag_measurements = yield from measure_average(
@@ -361,8 +272,8 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     )
 
     # extract measurements of interest from returned dict
-    yag_measured_x_width = yag_measurements['xwidth']
-    yag_measured_y_width = yag_measurements['ywidth']
+    yag_measured_x_width = yag_measurements[field_prepend('xwidth', yag)]
+    yag_measured_y_width = yag_measurements[field_prepend('ywidth', yag)]
 
     logger.debug("Measured x width: {}".format(yag_measured_x_width))
     logger.debug("Measured y width: {}".format(yag_measured_y_width))

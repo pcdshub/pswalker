@@ -7,7 +7,7 @@ import logging
 # Third Party #
 ###############
 from jinja2 import Environment
-from bluesky.plans import run_wrapper
+from bluesky.preprocessors import run_wrapper
 ##########
 # Module #
 ##########
@@ -18,7 +18,7 @@ def test_watcher_report_smoke(RE, lcls_two_bounce_system):
     w = Watcher()
     #Configure RE
     RE.msg_hook = w
-    RE.subscribe('all', w)
+    RE.subscribe(w, 'all')
     RE.record_interruptions = True
     #Run skywalker
     s, m1, m2, y1, y2 = lcls_two_bounce_system

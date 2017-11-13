@@ -3,11 +3,7 @@
 import logging
 
 import numpy as np
-import pytest
-from bluesky.plans import (open_run, close_run, create, read, save, mv,
-                           checkpoint, run_wrapper)
 from pswalker.skywalker import skywalker
-from .utils import collector, MotorSignal
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +15,7 @@ def test_skywalker(RE, slow_lcls_two_bounce_system):
     start2 = 0
     logger.debug(("test_skywalker_main with, "
                   "goal1=%s, goal2=%s, start1=%s, start2=%s"),
-                  goal1, goal2, start1, start2)
+                 goal1, goal2, start1, start2)
     s, m1, m2, y1, y2 = slow_lcls_two_bounce_system
     m1.set(start1)
     m2.set(start2)
