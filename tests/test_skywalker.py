@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 import logging
 
+import pytest
 import numpy as np
 from pswalker.skywalker import skywalker
 
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skip(reason='deprecated')
 def test_skywalker(RE, slow_lcls_two_bounce_system):
     goal1 = 0
     goal2 = 0

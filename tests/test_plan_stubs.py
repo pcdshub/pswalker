@@ -16,7 +16,7 @@ from .utils import plan_stash, collector
 from ophyd.sim import SynSignal, SynAxis, NullStatus
 from ophyd.device import Device, Component as Cmp
 
-from pcdsdevices.sim.pim import PIM
+from pswalker.sim.pim import PIM
 
 logger = logging.getLogger(__name__)
 tmo = 15

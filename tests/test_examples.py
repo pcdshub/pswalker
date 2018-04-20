@@ -15,14 +15,14 @@ import numpy as np
 ##########
 from pswalker.examples import (patch_pims, _calc_cent_x, _m1_calc_cent_x,
                                _m1_m2_calc_cent_x)
-from pcdsdevices.sim import (source, mirror, pim)
+from pswalker.sim import (source, mirror, pim)
 
 
 def test_patch_pims_with_no_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    pim_1 = [pim.PIM('test_pim', z=3)]
-    pim_2 = [pim.PIM('test_pim', z=5)]
-    pim_3 = [pim.PIM('test_pim', z=7)]
+    pim_1 = [pim.PIM('test_pim', name='pim_1', z=3)]
+    pim_2 = [pim.PIM('test_pim', name='pim_2', z=5)]
+    pim_3 = [pim.PIM('test_pim', name='pim_3', z=7)]
     
     pim_1 = patch_pims(pim_1)
     assert pim_1.detector.stats2.centroid.x.value == _calc_cent_x(s, pim_1)
@@ -35,8 +35,8 @@ def test_patch_pims_with_no_bounce_func(simple_two_bounce_system):
 
 def test_patch_pims_with_one_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    pim_1 = [pim.PIM('test_pim', z=13)]
-    pim_2 = [pim.PIM('test_pim', z=15)]
+    pim_1 = [pim.PIM('test_pim', name='pim_1', z=13)]
+    pim_2 = [pim.PIM('test_pim', name='pim_1', z=15)]
     
     pim_1 = patch_pims(pim_1, [m1,m2])
     assert pim_1.detector.stats2.centroid.x.value == _m1_calc_cent_x(s, m1, 
@@ -48,7 +48,7 @@ def test_patch_pims_with_one_bounce_func(simple_two_bounce_system):
 
 def test_patch_pims_with_two_bounce_func(simple_two_bounce_system):
     s, m1, m2 = simple_two_bounce_system
-    pim_1 = [pim.PIM('test_pim', z=25)]    
+    pim_1 = [pim.PIM('test_pim', name='pim_1', z=25)]    
     pim_1 = patch_pims(pim_1, [m1,m2])
     assert pim_1.detector.stats2.centroid.x.value == _m1_m2_calc_cent_x(
         s, m1, m2, pim_1)

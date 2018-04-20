@@ -46,7 +46,7 @@ def test_iterwalk(RE, lcls_two_bounce_system,
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=first_steps, gradients=gradients,
                                 detector_fields='detector_stats2_centroid_x',
-                                motor_fields='pitch',
+                                motor_fields='sim_alpha',
                                 tolerances=tolerances, system=[m1, m2, y1, y2],
                                 averages=1, overshoot=overshoot,
                                 max_walks=max_walks, timeout=None,
@@ -105,7 +105,8 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1, gradients=None,
-                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
+                                detector_fields='detector_stats2_centroid_x',
+                                motor_fields='sim_alpha',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
@@ -119,7 +120,8 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='detector_stats2_centroid_x', motor_fields='pitch',
+                                detector_fields='detector_stats2_centroid_x',
+                                motor_fields='sim_alpha',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
@@ -162,7 +164,8 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
 
     plan = run_wrapper(iterwalk([y1, y2], [m1, m2], goal, starts=None,
                                 first_steps=1e-6, gradients=None,
-                                detector_fields='sim_x', motor_fields='pitch',
+                                detector_fields='sim_x',
+                                motor_fields='sim_alpha',
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised

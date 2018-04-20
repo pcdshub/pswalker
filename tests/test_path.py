@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pytest
-from pcdsdevices.sim.pim import PIM
+from pswalker.sim.pim import PIM
 from pswalker.path import prune_path, get_path, clear_lightpath
 
 def test_prune_path(lightpath):

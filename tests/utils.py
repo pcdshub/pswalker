@@ -10,7 +10,7 @@ from ophyd.ophydobj import OphydObject
 from ophyd.positioner import SoftPositioner, PositionerBase
 from bluesky.plan_stubs import sleep, checkpoint
 
-from pcdsdevices.sim import pim, mirror
+from pswalker.sim import pim, mirror
 
 logger=logging.getLogger(__name__)
 
