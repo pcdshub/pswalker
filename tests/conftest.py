@@ -4,7 +4,6 @@ import logging
 import pytest
 import numpy as np
 from bluesky import RunEngine
-from lightpath.tests import path
 from bluesky.tests.utils import MsgCollector
 from pswalker.sim import source, mirror, pim
 from pswalker.sim.areadetector.detectors import SimDetector
@@ -65,12 +64,6 @@ def one_bounce_system():
     det = pim.PIM('yag', name='yag', z=60, size=(500, 500))
     det = patch_pims(det, mot)
     return s, mot, det
-
-
-@pytest.fixture(scope='function')
-def lightpath():
-    # Repurpose the simulated lightpath
-    return path()
 
 
 @pytest.fixture(scope='function')
