@@ -17,13 +17,13 @@ from collections import OrderedDict, ChainMap
 # Third Party #
 ###############
 import numpy as np
-from pcdsdevices.sim.pim import PIM
-from pcdsdevices.sim.source import Undulator
-from pcdsdevices.sim.mirror import OffsetMirror
 
 ##########
 # Module #
 ##########
+from .sim.pim import PIM
+from .sim.source import Undulator
+from .sim.mirror import OffsetMirror
 
 logger = logging.getLogger(__name__)
 

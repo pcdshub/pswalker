@@ -18,8 +18,9 @@ from .utils import (ruin_my_path, sleepy_scan, SlowSoftPositioner, collector)
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skip('deprecated')
 @pytest.mark.timeout(5)
-def test_lightpath_suspender(RE, lightpath):
+def test_lightpath_suspender(RE):
     path = lightpath
     path.clear(wait=True)
     suspender = LightpathSuspender(None, path=path)

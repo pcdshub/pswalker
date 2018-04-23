@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pytest
-from pcdsdevices.sim.pim import PIM
+from pswalker.sim.pim import PIM
 from pswalker.path import prune_path, get_path, clear_lightpath
 
-def test_prune_path(lightpath):
+
+@pytest.mark.skip('deprecated')
+def test_prune_path():
     i = 0
     some_devices = list()
     while i < len(lightpath.devices):
@@ -21,13 +23,15 @@ def test_prune_path(lightpath):
         assert d in lightpath.devices, "New path, new objects... Wasteful."
 
 
-def test_get_path_sanity(lightpath):
+@pytest.mark.skip('deprecated')
+def test_get_path_sanity():
     new_path = get_path(None, path=lightpath)
     for d1, d2 in zip(lightpath.path, new_path.path):
         assert d1 == d2, "Path from new_path changes devices or their order"
 
 
-def test_clear_lightpath(lightpath):
+@pytest.mark.skip('deprecated')
+def test_clear_lightpath():
     for device in lightpath.devices:
         device.insert()
     clear_lightpath(None, path=lightpath, wait=True)

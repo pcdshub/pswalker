@@ -64,7 +64,7 @@ def test_measure_average(RE, one_bounce_system):
     centroids = []
     readbacks = []
     col_c = collector(det.name + '_detector_stats2_centroid_x', centroids)
-    col_r = collector(mot.name + '_pitch',    readbacks)
+    col_r = collector(mot.name + '_sim_alpha',    readbacks)
 
     RE(run_wrapper(measure_average([det, mot], delay=0.1, num=5)),
        {'event': [col_c, col_r]})
@@ -94,7 +94,7 @@ def test_measure_average_system(RE, lcls_two_bounce_system):
     centroids = []
     readbacks = []
     col_c = collector(y1.name + '_detector_stats2_centroid_x', centroids)
-    col_r = collector(m1.name + '_pitch',    readbacks)
+    col_r = collector(m1.name + '_sim_alpha',    readbacks)
 
     RE(run_wrapper(measure_average([y1, m1, y2, m2],
                                    delay=0.1, num=5)),
@@ -183,7 +183,7 @@ def test_walk_to_pixel(RE, one_bounce_system):
     cent = 'detector_stats2_centroid_x'
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, first_step=1e-6,
                                      tolerance=10, average=None,
-                                     target_fields=[cent, 'pitch'],
+                                     target_fields=[cent, 'sim_alpha'],
                                      max_steps=3))
     RE(plan)
     assert np.isclose(det.read()[det.name + "_" + cent]['value'], 200, atol=1)
@@ -193,7 +193,7 @@ def test_walk_to_pixel(RE, one_bounce_system):
     # Gradient
     plan = run_wrapper(walk_to_pixel(det, mot, 200, 0, gradient=1.6842e+06,
                                      tolerance=10, average=None,
-                                     target_fields=[cent, 'pitch'],
+                                     target_fields=[cent, 'sim_alpha'],
                                      max_steps=3))
     RE(plan)
     assert np.isclose(det.read()[det.name + "_" + cent]['value'], 200, atol=10)

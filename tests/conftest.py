@@ -1,50 +1,33 @@
-############
-# Standard #
-############
-import os
 import time
 import logging
 
-###############
-# Third Party #
-###############
 import pytest
 import numpy as np
 from bluesky import RunEngine
-from lightpath.tests import path
 from bluesky.tests.utils import MsgCollector
-from pcdsdevices.sim import source, mirror, pim
-from psbeam.images.testing.hx2 import images as images_hx2
-from psbeam.images.testing.dg3 import images as images_dg3
-from pcdsdevices.sim.areadetector.detectors import SimDetector
-from psbeam.images.testing import (beam_image_01, beam_image_02, beam_image_03,
-                                   beam_image_04)
+from pswalker.sim import source, mirror, pim
+from pswalker.sim.areadetector.detectors import SimDetector
 
-##########
-# Module #
-##########
 from pswalker.examples import patch_pims
 from .utils import SlowSoftPositioner, MotorSignal, SlowOffsetMirror
 
-#################
-# Logging Setup #
-#################
 
 logger = logging.getLogger(__name__)
 logger.info("pytest start")
 run_engine_logger = logging.getLogger("RunEngine")
 
-beam_images = [beam_image_01, beam_image_02, beam_image_03, beam_image_04]
 
 def yield_seq_beam_image(images, idx=0):
     while True:
         val = idx % len(images)
         yield images["image_{0:03d}".format(val)].astype(np.uint8)
-        idx += 1        
+        idx += 1
+
 
 def _next_image(det_counter, gen):
     det_counter.value += 1
     return next(gen)
+
 
 @pytest.fixture(scope='function')
 def RE():
@@ -78,15 +61,9 @@ def one_bounce_system():
     """
     s = source.Undulator('test_source', name='test_source')
     mot = mirror.OffsetMirror('mirror', 'mirror_xy', name='mirror', z=50)
-    det = pim.PIM('yag', name='yag', z=60, size=(500,500))
+    det = pim.PIM('yag', name='yag', z=60, size=(500, 500))
     det = patch_pims(det, mot)
     return s, mot, det
-
-
-@pytest.fixture(scope='function')
-def lightpath():
-    #Repurpose the simulated lightpath
-    return path()
 
 
 @pytest.fixture(scope='function')
@@ -122,15 +99,6 @@ def lcls_two_bounce_system():
     # Patch with calculated centroids
     patch_pims([y1, y2], mirrors=[m1, m2], source=s)
 
-    # Patch with image
-    yield_image_hx2 = yield_seq_beam_image(images_hx2, idx=0)
-    y1.detector.image1._image = lambda : _next_image(
-        y1.detector.image1.array_counter, yield_image_hx2)
-
-    yield_image_dg3 = yield_seq_beam_image(images_dg3, idx=0)
-    y2.detector.image1._image = lambda : _next_image(
-        y2.detector.image1.array_counter, yield_image_dg3)
-
     return s, m1, m2, y1, y2
 
 
@@ -157,22 +125,11 @@ def slow_lcls_two_bounce_system():
                           timestamp=time.time())
         return update_pixel
 
-    # Patch with image
-    yield_image_hx2 = yield_seq_beam_image(images_hx2, idx=0)
-    y1.detector.image1._image = lambda : _next_image(
-        y1.detector.image1.array_counter, yield_image_hx2)
-
-    yield_image_dg3 = yield_seq_beam_image(images_dg3, idx=0)
-    y2.detector.image1._image = lambda : _next_image(
-        y2.detector.image1.array_counter, yield_image_dg3)
-
     m1.subscribe(make_update_pixel(y1), m1.SUB_READBACK)
     m2.subscribe(make_update_pixel(y2), m2.SUB_READBACK)
 
-    m1.high_limit = 2000
-    m1.low_limit = 1000
-    m2.high_limit = 2000
-    m2.low_limit = 1000
+    m1.pitch._limits = (1000, 2000)
+    m2.pitch._limits = (1000, 2000)
 
     return s, m1, m2, y1, y2
 
@@ -187,44 +144,38 @@ def mot_and_sig():
     sig = MotorSignal(mot, name='test_sig')
     return mot, sig
 
+
 def yield_seq_beam_image_sim(detector, images, idx=0):
     while True:
         val = idx % len(images)
         yield images[val].astype(np.uint8)
-        idx += 1        
+        idx += 1
+
 
 def _next_image_sim(det, gen):
     det.image.array_counter.value += 1
     return next(gen)
-        
+
+
 @pytest.fixture(scope='function')
 def sim_det_01():
     det = SimDetector("PSB:SIM:01", name='sim01')
-    # Spoof image
-    yield_image = yield_seq_beam_image_sim(det, beam_images, idx=0)
-    det.image._image = lambda : _next_image_sim(det, yield_image)
     return det
+
 
 @pytest.fixture(scope='function')
 def sim_det_02():
     det = SimDetector("PSB:SIM:02", name='sim02')
-    # Spoof image
-    yield_image = yield_seq_beam_image_sim(det, beam_images, idx=0)
-    det.image._image = lambda : _next_image_sim(det, yield_image)
     return det
+
 
 @pytest.fixture(scope='function')
 def sim_hx2():
     det = SimDetector("PSB:SIM:HX2", name='simhx2')
-    # Spoof image
-    yield_image = yield_seq_beam_image_sim(det, images_hx2, idx=0)
-    det.image._image = lambda : _next_image_sim(det, yield_image)
     return det
+
 
 @pytest.fixture(scope='function')
 def sim_dg3():
     det = SimDetector("PSB:SIM:DG3", name='simdg3')
-    # Spoof image
-    yield_image = yield_seq_beam_image_sim(det, images_dg3, idx=0)
-    det.image._image = lambda : _next_image_sim(det, yield_image)
     return det

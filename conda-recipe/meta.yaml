@@ -14,11 +14,8 @@ requirements:
 
     run:
       - python {{PY_VER}}*,>=3
-      - ophyd >=1.0.0,<1.1
-      - bluesky >=1.0.0,<1.1
-      - pcds-devices >=0.2.0,<0.3
-      - lightpath >=0.2.2,<0.3
-      - psbeam >=0.0.3,<0.1
+      - ophyd >=1.0.0
+      - bluesky >=1.0.0
       - simplejson
       - lmfit
       - numpy
