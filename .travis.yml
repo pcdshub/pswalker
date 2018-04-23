@@ -1,6 +1,10 @@
 language: python
 sudo: false
 
+env:
+  global:
+    - OFFICIAL_REPO="pcdshub/pswalker"
+
 matrix:
   include:
      - python: 3.6
