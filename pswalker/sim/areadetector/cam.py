@@ -19,7 +19,7 @@ class CamBase(cam.CamBase):
     pool_max_mem = Component(FakeSignal, value=0)
     pool_used_buffers = Component(FakeSignal, value=0)
     pool_used_mem = Component(FakeSignal, value=0)
-    port_name = Component(FakeSignal, value=0)
+    port_name = Component(FakeSignal, value='CAM')
 
     # Cam-specific
     acquire = Component(FakeSignal, value=0)

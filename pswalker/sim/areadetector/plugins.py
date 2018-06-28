@@ -45,7 +45,7 @@ class PluginBase(plugins.PluginBase):
     enable = Component(FakeSignal, value=0)
     min_callback_time = Component(FakeSignal, value=0)
     nd_array_address = Component(FakeSignal, value=0)
-    nd_array_port = Component(FakeSignal, value=0)
+    nd_array_port = Component(FakeSignal, value='CAM')
     ndimensions = Component(FakeSignal, value=0)
     plugin_type = Component(FakeSignal, value="TEST", use_string=True)
     queue_free = Component(FakeSignal, value=0)
