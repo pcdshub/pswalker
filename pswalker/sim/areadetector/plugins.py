@@ -58,7 +58,7 @@ class PluginBase(plugins.PluginBase):
     unique_id = Component(FakeSignal, value=0)
 
 
-class StatsPlugin(plugins.StatsPlugin, PluginBase):
+class StatsPlugin(PluginBase, plugins.StatsPlugin):
     """
     StatsPlugin but with components instantiated to be empty signals.
 
@@ -252,7 +252,7 @@ class StatsPlugin(plugins.StatsPlugin, PluginBase):
     def noise_kwargs_y(self, val):
         self.centroid.y.noise_kwargs = val
 
-class ImagePlugin(plugins.ImagePlugin, PluginBase):
+class ImagePlugin(PluginBase, plugins.ImagePlugin):
     """
     Image plugin with a couple of the signals spoofed.
 
@@ -261,6 +261,7 @@ class ImagePlugin(plugins.ImagePlugin, PluginBase):
     """
     plugin_type = Component(FakeSignal, value="NDPluginStdArrays")
     array_data = Component(FakeSignal, value=np.zeros((256,256)))
+    shaped_image = array_data
 
     def __init__(self, prefix, *args, **kwargs):
         super().__init__(prefix, *args, **kwargs)

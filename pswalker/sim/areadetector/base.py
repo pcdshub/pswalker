@@ -10,5 +10,5 @@ def ad_group(cls, attr_suffix, **kwargs):
     """
     defn = OrderedDict()
     for attr in attr_suffix:
-        defn[attr] = (cls, kwargs)
+        defn[attr] = (cls, '', kwargs)
     return defn
