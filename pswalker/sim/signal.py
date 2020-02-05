@@ -18,7 +18,7 @@ class FakeSignal(Signal):
     velocity parameter, and setting the value of the signal according to an
     outside function/method.
     """
-    def __init__(self, value=0, put_sleep=0, get_sleep=0, 
+    def __init__(self, prefix='', value=0, put_sleep=0, get_sleep=0,
                  noise=False, noise_type="norm", noise_func=None, noise_args=(), 
                  noise_kwargs={}, velocity=None, use_string=False, **kwargs):
         self.put_sleep = put_sleep
