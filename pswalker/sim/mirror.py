@@ -118,13 +118,6 @@ class OMMotor(Device, SoftPositioner):
         # Set the readback val to always be the setpoint val
         self.user_readback._get_readback = lambda : self.user_setpoint.value
 
-    def move(self, position, wait=False, **kwargs):
-        status = super().move(position, wait=wait, **kwargs)
-        # It takes one second for the status object to object update so set it
-        # manually.
-        status.success = True
-        return status
-
     @property
     def noise(self):
         return self.user_readback.noise
