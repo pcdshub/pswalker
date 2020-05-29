@@ -66,7 +66,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                   "dir_initial=%s, timeout=%s"), signal, threshold, motor,
                  dir_initial, timeout)
     logger.info("Starting recovery on %s=%s because of %s=%s", motor.name,
-                motor.position, signal.name, signal.value)
+                motor.position, signal.name, signal.get())
     if dir_initial > 0:
         logger.info("Recovering towards the high limit switch %s",
                     motor.high_limit)
@@ -86,12 +86,12 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     if ok:
         logger.info(('Recovery was successful! Ended with good values '
                      '%s=%s, %s=%s'), motor.name, motor.position,
-                    signal.name, signal.value)
+                    signal.name, signal.get())
         return True
     else:
         if try_reverse:
             logger.info(("First direction failed, %s is %s at limit. "
-                         "Trying reverse..."), signal.name, signal.value)
+                         "Trying reverse..."), signal.name, signal.get())
             if timeout is not None:
                 timeout *= 2
             return (yield from recover_threshold(signal, threshold, motor,
@@ -102,7 +102,7 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
                                                  off_limit=off_limit))
         else:
             logger.info("Recovery failed, signal is %s at limit.",
-                        signal.value)
+                        signal.get())
             return False
 
 
@@ -134,7 +134,7 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
             logger.warning("No nominal position configured, skipping...")
         else:
             yield from mv(mirror, nominal)
-            if sig.value > sig_threshold:
+            if sig.get() > sig_threshold:
                 logger.info("We have beam at the nominal position.")
                 return True
             else:

@@ -99,7 +99,9 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
         logger.info("{0}Setting Attributes. (BAD)".format(yag.log_pref))
         logger.debug("{0}Setting: CMD:{1}, {2} (BAD)".format(
                 yag.log_pref, cmd, kwargs))
-        return Status(done=True, success=False)
+        status = Status()
+        status.set_exception(RuntimeError('bad_set test'))
+        return status
     # Patch yag set command
     y1.set = lambda cmd, **kwargs: bad_set(y1, cmd, **kwargs)
 
@@ -125,7 +127,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(RuntimeError):
+    with pytest.raises(Exception):
         RE(plan)
         
 def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounce_system):
@@ -158,7 +160,9 @@ def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounc
                 if key in motor_params:
                     # Add error term to sets
                     motor.set(kwargs[key] + err)
-        return Status(done=True, success=True)
+        status = Status()
+        status.set_finished()
+        return status
     # Patch yag set command
     m1.set = lambda cmd, **kwargs: bad_set(m1, cmd, **kwargs)
 

@@ -113,17 +113,10 @@ class OMMotor(Device, SoftPositioner):
         self.noise_type = noise_type
         self.noise_args = noise_args
         self.noise_kwargs = noise_kwargs
-        self.user_setpoint.velocity = lambda : self.velocity.value
+        self.user_setpoint.velocity = lambda : self.velocity.get()
         
         # Set the readback val to always be the setpoint val
-        self.user_readback._get_readback = lambda : self.user_setpoint.value
-
-    def move(self, position, wait=False, **kwargs):
-        status = super().move(position, wait=wait, **kwargs)
-        # It takes one second for the status object to object update so set it
-        # manually.
-        status.success = True
-        return status
+        self.user_readback._get_readback = lambda : self.user_setpoint.get()
 
     @property
     def noise(self):
@@ -369,19 +362,19 @@ class OffsetMirror(SimDevice):
 
     @property
     def velocity_x(self):
-        return self.gan_x_p.velocity.value
+        return self.gan_x_p.velocity.get()
 
     @velocity_x.setter
     def velocity_x(self, val):
-        self.gan_x_p.velocity.value = val
+        self.gan_x_p.velocity.put(val)
 
     @property
     def velocity_y(self):
-        return self.gan_y_p.velocity.value
+        return self.gan_y_p.velocity.get()
 
     @velocity_y.setter
     def velocity_y(self, val):
-        self.gan_y_p.velocity.value = val
+        self.gan_y_p.velocity.put(val)
 
     @property
     def velocity_z(self):
@@ -393,11 +386,11 @@ class OffsetMirror(SimDevice):
 
     @property
     def velocity_alpha(self):
-        return self.pitch.velocity.value
+        return self.pitch.velocity.get()
 
     @velocity_alpha.setter
     def velocity_alpha(self, val):
-        self.pitch.velocity.value = val
+        self.pitch.velocity.put(val)
 
     @property
     def noise_func(self):
