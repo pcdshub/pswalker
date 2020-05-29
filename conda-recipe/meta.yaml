@@ -14,9 +14,9 @@ requirements:
 
     run:
       - python {{PY_VER}}*,>=3
-      - ophyd 1.4.0rc4|>=1.4.0
-      - bluesky >=1.0.0
-      - pcdsdevices >=0.8.0
+      - ophyd >=1.5.0
+      - bluesky >=1.5.0
+      - pcdsdevices >=2.6.0
       - simplejson
       - lmfit
       - numpy
