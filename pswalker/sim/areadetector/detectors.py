@@ -28,10 +28,10 @@ class SimDetector(detectors.DetectorBase):
         super().__init__(prefix, read_attrs=read_attrs, *args, **kwargs)
     
     def centroid_x(self):
-        return self.stats.centroid.x.value
+        return self.stats.centroid.x.get()
     
     def centroid_y(self):
-        return self.stats.centroid.y.value
+        return self.stats.centroid.y.get()
 
     @property
     def centroid(self):

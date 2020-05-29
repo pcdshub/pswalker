@@ -137,8 +137,8 @@ def _x_to_pixel(x, pim):
     """
     cam = pim.detector.cam
     result = np.round(np.floor(
-        cam.size.size_x.value / 2) + (x - pim.sim_x.value) * \
-                      cam.size.size_x.value / cam.resolution.resolution_x.value)
+        cam.size.size_x.get() / 2) + (x - pim.sim_x.get()) * \
+                      cam.size.size_x.get() / cam.resolution.resolution_x.get())
     return result
 
 def _calc_cent_x(source, pim):
@@ -159,7 +159,7 @@ def _calc_cent_x(source, pim):
     result : int
         Pixel of the centroid of the beam at the pim
     """
-    x = source.sim_x.value + source.sim_xp.value*pim.sim_z.value
+    x = source.sim_x.get() + source.sim_xp.get()*pim.sim_z.get()
     result = _x_to_pixel(x, pim)
     return result
 
@@ -184,12 +184,12 @@ def _m1_calc_cent_x(source, mirror, pim):
     result : int
         Pixel of the centroid of the beam at the pim
     """    
-    x = one_bounce(mirror.sim_alpha.value*1e-6,
-                   source.sim_x.value,
-                   source.sim_xp.value,
-                   mirror.sim_x.value,
-                   mirror.sim_z.value,
-                   pim.sim_z.value)
+    x = one_bounce(mirror.sim_alpha.get()*1e-6,
+                   source.sim_x.get(),
+                   source.sim_xp.get(),
+                   mirror.sim_x.get(),
+                   mirror.sim_z.get(),
+                   pim.sim_z.get())
     result = _x_to_pixel(x, pim)
     return result
 
@@ -217,15 +217,15 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
     result : int
         Pixel of the centroid of the beam at the pim
     """    
-    x = two_bounce((mirror_1.sim_alpha.value*1e-6,
-                    mirror_2.sim_alpha.value*1e-6),
-                   source.sim_x.value,
-                   source.sim_xp.value,
-                   mirror_1.sim_x.value,
-                   mirror_1.sim_z.value,
-                   mirror_2.sim_x.value,
-                   mirror_2.sim_z.value,
-                   pim.sim_z.value)
+    x = two_bounce((mirror_1.sim_alpha.get()*1e-6,
+                    mirror_2.sim_alpha.get()*1e-6),
+                   source.sim_x.get(),
+                   source.sim_xp.get(),
+                   mirror_1.sim_x.get(),
+                   mirror_1.sim_z.get(),
+                   mirror_2.sim_x.get(),
+                   mirror_2.sim_z.get(),
+                   pim.sim_z.get())
     return _x_to_pixel(x, pim)
 
 def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
@@ -266,13 +266,13 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
     # Go through each pim
     for pim in pims:
         # If the pim is before the first mirror or there arent any mirrors
-        if not mirrors or pim.sim_z.value <= mirrors[0].sim_z.value:
+        if not mirrors or pim.sim_z.get() <= mirrors[0].sim_z.get():
             logger.debug("Patching '{0}' with no bounce equation.".format(
                     pim.name))
             pim.detector._get_readback_centroid_x = partial(
                 _calc_cent_x, source, pim)
             
-        elif mirrors[0].sim_z.value < pim.sim_z.value:
+        elif mirrors[0].sim_z.get() < pim.sim_z.get():
             # If there is only one mirror and the pim is after it
             if len(mirrors) == 1:
                 logger.debug("Patching '{0}' with one bounce equation.".format(
@@ -281,14 +281,14 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
                     _m1_calc_cent_x, source, mirrors[0], pim)
                 
             # If the pim is behind the second mirror
-            elif pim.sim_z.value <= mirrors[1].sim_z.value:
+            elif pim.sim_z.get() <= mirrors[1].sim_z.get():
                 logger.debug("Patching '{0}' with one bounce equation.".format(
                         pim.name))
                 pim.detector._get_readback_centroid_x = partial(
                     _m1_calc_cent_x, source, mirrors[0], pim)
 
             # If the pim is after the second mirror
-            elif mirrors[1].sim_z.value < pim.sim_z.value:
+            elif mirrors[1].sim_z.get() < pim.sim_z.get():
                 logger.debug("Patching '{0}' with two bounce equation.".format(
                         pim.name))
                 pim.detector._get_readback_centroid_x = partial(
@@ -296,7 +296,7 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
 
         # Patch the y centroid to always be the center of the image
         pim.detector._get_readback_centroid_y = lambda : (
-            int(pim.detector.cam.size.size_x.value / 2))
+            int(pim.detector.cam.size.size_x.get() / 2))
         
     # Return just the pim if there was only one of them
     if len(pims) == 1:

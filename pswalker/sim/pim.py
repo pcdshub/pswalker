@@ -45,7 +45,7 @@ class PIMPulnixDetector(PulnixDetector):
         Returns the beam centroid in x.
         """
         self.check_camera()
-        return self.stats2.centroid.x.value
+        return self.stats2.centroid.x.get()
         
     @property
     def centroid_y(self, **kwargs):
@@ -53,7 +53,7 @@ class PIMPulnixDetector(PulnixDetector):
         Returns the beam centroid in y.
         """
         self.check_camera()
-        return self.stats2.centroid.y.value
+        return self.stats2.centroid.y.get()
           
     def _centroid_within_bounds(self):
         """
@@ -125,7 +125,7 @@ class PIMPulnixDetector(PulnixDetector):
 
     @property
     def size(self):
-        return (self.cam.size.size_x.value, self.cam.size.size_y.value)
+        return (self.cam.size.size_x.get(), self.cam.size.size_y.get())
 
     @size.setter
     def size(self, val):
@@ -135,8 +135,8 @@ class PIMPulnixDetector(PulnixDetector):
 
     @property
     def resolution(self):
-        return (self.cam.resolution.resolution_x.value, 
-                self.cam.resolution.resolution_y.value)
+        return (self.cam.resolution.resolution_x.get(), 
+                self.cam.resolution.resolution_y.get())
 
     @resolution.setter
     def resolution(self, val):
@@ -189,7 +189,7 @@ class PIMMotor(Device):
 
     @property
     def position(self):
-        pos = self.states.value
+        pos = self.states.get()
         if pos == "YAG":
             return "IN"
         return pos
@@ -273,7 +273,7 @@ class PIM(PIMMotor, SimDevice):
 
         # Simulation Values
         self.sim_x.put(x)
-        self.sim_y._get_readback = lambda : self._pos.value
+        self.sim_y._get_readback = lambda : self._pos.get()
         self.sim_z.put(z)
         self.log_pref = "{0} (PIM) - ".format(self.name)
         # Detector args

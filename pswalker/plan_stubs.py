@@ -90,7 +90,7 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
 def match_condition(signal, condition, mover, setpoint, timeout=None,
                     sub_type=None, has_stop=True):
     """
-    Plan to adjust mover until condition(signal.value) returns True.
+    Plan to adjust mover until condition(signal.get()) returns True.
 
     Parameters
     ----------
@@ -200,7 +200,7 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                                    timeout=timeout)
             except FailedStatus:
                 logger.warning("Timeout on motor %s", mover)
-            if condition(signal.value):
+            if condition(signal.get()):
                 success.set()
 
     signal.clear_sub(condition_cb)
@@ -209,11 +209,11 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     if ok:
         logger.debug(('condition met in match_condition, '
                       'mover=%s setpt=%s cond value=%s'),
-                     mover.name, setpoint, signal.value)
+                     mover.name, setpoint, signal.get())
     else:
         logger.debug(('condition fail in match_condition, '
                       'mover=%s setpt=%s cond value=%s'),
-                     mover.name, setpoint, signal.value)
+                     mover.name, setpoint, signal.get())
     return ok
 
 
