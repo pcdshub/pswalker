@@ -21,7 +21,7 @@ install:
   - conda install conda-build anaconda-client
   - conda update -q conda conda-build
   - conda config --add channels pcds-tag
-  - conda config --append channels conda-forge
+  - conda config --add channels conda-forge
   # Useful for debugging any issues with conda
   - conda info -a
   # Test conda build
