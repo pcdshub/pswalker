@@ -8,7 +8,6 @@ import logging
 import pytest
 import numpy as np
 from bluesky.preprocessors import run_wrapper
-from bluesky.utils import FailedStatus
 from ophyd.status import Status
 ##########
 # Module #
@@ -128,7 +127,7 @@ def test_iterwalk_raises_RuntimeError_on_motion_timeout(RE, lcls_two_bounce_syst
                                 tolerances=TOL, system=None, averages=1,
                                 overshoot=0, max_walks=5, timeout=None))
     # Check a RunTimError is raised
-    with pytest.raises(FailedStatus):
+    with pytest.raises(Exception):
         RE(plan)
         
 def test_iterwalk_raises_RuntimeError_on_failed_walk_to_pixel(RE, lcls_two_bounce_system):
