@@ -1,32 +1,35 @@
 {% set data = load_setup_py_data() %}
 
 package:
-    name    : pswalker
-    version : {{ data.get('version') }}
+  name: pswalker
+  version: {{ data.get('version') }}
 
 source:
-    path: ..
+  path: ..
+
+build:
+  number: 1
+  noarch: python
 
 requirements:
-    build:
-       - python {{PY_VER}}*,>=3
-       - setuptools
-
-    run:
-      - python {{PY_VER}}*,>=3
-      - ophyd >=1.5.0
-      - bluesky >=1.5.0
-      - pcdsdevices >=2.6.0
-      - simplejson
-      - lmfit
-      - numpy
-      - pandas
-      - matplotlib
-      - jinja2
+  build:
+    - python >=3.6
+    - setuptools
+  run:
+    - python >=3.6
+    - ophyd >=1.5.0
+    - bluesky >=1.5.0
+    - pcdsdevices >=2.6.0
+    - simplejson
+    - lmfit
+    - numpy
+    - pandas
+    - matplotlib
+    - jinja2
 
 test:
-    imports:
-      - pswalker
+  imports:
+    - pswalker
 
 about:
   home: https://github.com/slaclab/pswalker
