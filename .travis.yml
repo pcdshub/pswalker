@@ -24,6 +24,7 @@ jobs:
   allow_failures:
     - name: "Python 3.6 - PIP"
     - name: "Docs Build (Python 3.6)"
+    - name: "Python Linter"
 
 import:
   # This import enables a set of standard python jobs including:
