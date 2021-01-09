@@ -1,50 +1,42 @@
-language: python
-sudo: false
+version: ~> 1.0
 
 env:
   global:
-    - OFFICIAL_REPO="pcdshub/pswalker"
+    # Options to be passed to flake8 for package linting. Usually this is just
+    # the package name but you can enable other flake8 options via this config
+    - PYTHON_LINT_OPTIONS="pswalker"
 
-matrix:
-  include:
-     - python: 3.6
+    # The name of the conda package
+    - CONDA_PACKAGE="pswalker"
+    # The folder containing the conda recipe (meta.yaml)
+    - CONDA_RECIPE_FOLDER="conda-recipe"
+    # Extra dependencies needed to run the tests which are not included
+    # at the recipe and dev-requirements.txt. E.g. PyQt
+    - CONDA_EXTRAS="pip"
+    # Requirements file with contents for tests dependencies
+    - CONDA_REQUIREMENTS="dev-requirements.txt"
 
-install:
-  - sudo apt-get update
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda install conda-build anaconda-client
-  - conda update -q conda conda-build
-  - conda config --add channels pcds-tag
-  - conda config --add channels conda-forge
-  # Useful for debugging any issues with conda
-  - conda info -a
-  # Test conda build
-  - conda build -q conda-recipe --python $TRAVIS_PYTHON_VERSION --output-folder bld-dir
-  - conda config --add channels "file://`pwd`/bld-dir"
-  # Create test environment
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pswalker --file dev-requirements.txt
-  - source activate test-environment
+    # Extra dependencies needed to run the test with Pip (similar to
+    # CONDA_EXTRAS) but for pip
+    - PIP_EXTRAS=""
 
-script:
-  - coverage run run_tests.py
-  - coverage report -m
+jobs:
+  allow_failures:
+    - name: "Python 3.6 - PIP"
+    - name: "Docs Build (Python 3.6)"
 
-after_success:
-  - set -e
-  - codecov
-  - |
-    if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == $OFFICIAL_REPO && $TRAVIS_BRANCH == $TRAVIS_TAG  && $TRAVIS_TAG != '' && $CONDA_UPLOAD_TOKEN_TAG != '' ]]; then
-      export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN_TAG
-      anaconda upload bld-dir/linux-64/*.tar.bz2
-    fi
-  - |
-    if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == $OFFICIAL_REPO && $TRAVIS_BRANCH == 'master' && $TRAVIS_TAG == '' && $CONDA_UPLOAD_TOKEN_DEV != '' ]]; then
-      export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN_DEV
-      anaconda upload bld-dir/linux-64/*.tar.bz2
-    fi
+import:
+  # This import enables a set of standard python jobs including:
+  # - Build
+  #   - Anaconda Package Build
+  # - Tests
+  #   - Python Linter
+  #   - Package Linter
+  #   - Documentation
+  #   - Python 3.6 - PIP based
+  #   - Python 3.6, 3.7 & 3.8 - Conda base
+  # - Deploy
+  #   - Documentation using doctr
+  #   - Conda Package - uploaded to pcds-dev and pcds-tag
+  #   - PyPI
+  - pcdshub/pcds-ci-helpers:travis/shared_configs/standard-python-conda.yml
