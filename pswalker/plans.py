@@ -7,7 +7,7 @@ Bluesky Plans for the Walker
 import time
 import itertools
 import logging
-from collections import Iterable
+from collections.abc import Iterable
 from copy import copy
 ###############
 # Third Party #
