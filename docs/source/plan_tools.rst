@@ -8,5 +8,3 @@ Suspenders
 .. class:: pswalker.suspenders.BeamRateSuspendFloor
 
 .. class:: pswalker.suspenders.FeeSpecSuspendFloor
-
-

@@ -1,8 +1,8 @@
-from ophyd.device import Device, Component, FormattedComponent
+from ophyd.device import Component, Device, FormattedComponent
 from ophyd.positioner import SoftPositioner
 
+from .signal import FakeSignal, Signal
 from .sim import SimDevice
-from .signal import (Signal, FakeSignal)
 
 
 class OMMotor(Device, SoftPositioner):
@@ -47,7 +47,7 @@ class OMMotor(Device, SoftPositioner):
         appease the Bluesky interface
 
     Parameters
-    ---------- 
+    ----------
     prefix : str
         Prefix of the motor
 
@@ -72,6 +72,7 @@ class OMMotor(Device, SoftPositioner):
         Tolerance used to judge if the motor has reached its final position
 
     """
+
     # Simulated components
     # position
     user_readback = Component(FakeSignal, value=0)
@@ -95,28 +96,48 @@ class OMMotor(Device, SoftPositioner):
     enabled = Component(FakeSignal)
 
     # misc
-    motor_egu = Component(FakeSignal, value='urad')
+    motor_egu = Component(FakeSignal, value="urad")
 
     # appease bluesky since there is no stop pv for these motors
     motor_stop = Component(FakeSignal)
 
-    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None, 
-                 name=None, parent=None, velocity=0, noise=0, settle_time=0, 
-                 noise_func=None, noise_type="uni", noise_args=(), 
-                 noise_kwargs={}, timeout=None, **kwargs):
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs, name=name, 
-                         parent=parent, timeout=timeout, **kwargs)
+    def __init__(
+        self,
+        prefix,
+        *,
+        read_attrs=None,
+        configuration_attrs=None,
+        name=None,
+        parent=None,
+        velocity=0,
+        noise=0,
+        settle_time=0,
+        noise_func=None,
+        noise_type="uni",
+        noise_args=(),
+        noise_kwargs={},
+        timeout=None,
+        **kwargs
+    ):
+        super().__init__(
+            prefix,
+            read_attrs=read_attrs,
+            configuration_attrs=configuration_attrs,
+            name=name,
+            parent=parent,
+            timeout=timeout,
+            **kwargs
+        )
         self.velocity.put(velocity)
         self.noise = noise
         self.settle_time = settle_time
         self.noise_type = noise_type
         self.noise_args = noise_args
         self.noise_kwargs = noise_kwargs
-        self.user_setpoint.velocity = lambda : self.velocity.get()
-        
+        self.user_setpoint.velocity = lambda: self.velocity.get()
+
         # Set the readback val to always be the setpoint val
-        self.user_readback._get_readback = lambda : self.user_setpoint.get()
+        self.user_readback._get_readback = lambda: self.user_setpoint.get()
 
     @property
     def noise(self):
@@ -174,7 +195,7 @@ class OMMotor(Device, SoftPositioner):
 class OffsetMirror(SimDevice):
     """
     Simulation of a simple flat mirror with assorted motors.
-    
+
     Parameters
     ----------
     name : string
@@ -197,7 +218,7 @@ class OffsetMirror(SimDevice):
 
     noise_alpha : float, optional
         Multiplicative noise factor added to alpha-motor readback
-    
+
     fake_sleep_x : float, optional
         Amount of time to wait after moving x-motor
 
@@ -206,7 +227,8 @@ class OffsetMirror(SimDevice):
 
     fake_sleep_alpha : float, optional
         Amount of time to wait after moving alpha-motor
-    """    
+    """
+
     # Pitch Motor
     pitch = FormattedComponent(OMMotor, "{self.prefix}")
     # Gantry Motors
@@ -221,20 +243,49 @@ class OffsetMirror(SimDevice):
     # Simulation component
     sim_alpha = Component(FakeSignal)
 
-    def __init__(self, prefix, prefix_xy,*, name=None, read_attrs=None,
-                 parent=None, configuration_attrs=None, x=0, y=0, z=0, alpha=0, 
-                 velo_x=0, velo_y=0, velo_z=0, velo_alpha=0, noise_x=0, 
-                 noise_y=0, noise_z=0, noise_alpha=0, settle_time_x=0, 
-                 settle_time_y=0, settle_time_z=0, settle_time_alpha=0, 
-                 noise_func=None, noise_type="uni", noise_args=(), 
-                 noise_kwargs={}, timeout=None, **kwargs):
+    def __init__(
+        self,
+        prefix,
+        prefix_xy,
+        *,
+        name=None,
+        read_attrs=None,
+        parent=None,
+        configuration_attrs=None,
+        x=0,
+        y=0,
+        z=0,
+        alpha=0,
+        velo_x=0,
+        velo_y=0,
+        velo_z=0,
+        velo_alpha=0,
+        noise_x=0,
+        noise_y=0,
+        noise_z=0,
+        noise_alpha=0,
+        settle_time_x=0,
+        settle_time_y=0,
+        settle_time_z=0,
+        settle_time_alpha=0,
+        noise_func=None,
+        noise_type="uni",
+        noise_args=(),
+        noise_kwargs={},
+        timeout=None,
+        **kwargs
+    ):
         self._mirror = prefix_xy
         if len(prefix.split(":")) < 3:
             prefix = "MIRR:TST:{0}".format(prefix)
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent,
-                         **kwargs)
+        super().__init__(
+            prefix,
+            read_attrs=read_attrs,
+            configuration_attrs=configuration_attrs,
+            name=name,
+            parent=parent,
+            **kwargs
+        )
         self.log_pref = "{0} (OffsetMirror) - ".format(self.name)
 
         # Simulation Attributes
@@ -243,7 +294,7 @@ class OffsetMirror(SimDevice):
         self.noise_y = noise_y
         self.noise_z = noise_z
         self.noise_alpha = noise_alpha
-        
+
         # Settle time for every move
         self.settle_time_x = settle_time_x
         self.settle_time_y = settle_time_y
@@ -255,7 +306,7 @@ class OffsetMirror(SimDevice):
         self.velo_y = velo_y
         self.velo_z = velo_z
         self.velo_alpha = velo_alpha
-        
+
         # Set initial position values
         self.gan_x_p.set(x)
         self.gan_y_p.set(y)
@@ -269,10 +320,10 @@ class OffsetMirror(SimDevice):
         self.noise_kwargs = noise_kwargs
 
         # Simulation values
-        self.sim_x._get_readback = lambda : self.gan_x_p.position
-        self.sim_y._get_readback = lambda : self.gan_y_p.position
+        self.sim_x._get_readback = lambda: self.gan_x_p.position
+        self.sim_y._get_readback = lambda: self.gan_y_p.position
         self.sim_z.put(z)
-        self.sim_alpha._get_readback = lambda : self.pitch.position
+        self.sim_alpha._get_readback = lambda: self.pitch.position
 
     def move(self, position, wait=False, **kwargs):
         return self.pitch.move(position, wait=wait, **kwargs)
@@ -295,7 +346,7 @@ class OffsetMirror(SimDevice):
     @property
     def gdif(self):
         return 0.0
-    
+
     @property
     def noise_x(self):
         return self.gan_x_p.noise
@@ -327,7 +378,7 @@ class OffsetMirror(SimDevice):
     @noise_alpha.setter
     def noise_alpha(self, val):
         self.pitch.noise = bool(val)
-    
+
     @property
     def settle_time_x(self):
         return self.gan_x_p.settle_time
@@ -348,7 +399,7 @@ class OffsetMirror(SimDevice):
     def settle_time_z(self):
         return self.sim_z.put_sleep
 
-    @noise_z.setter
+    @settle_time_z.setter
     def settle_time_z(self, val):
         self.sim_z.put_sleep = val
 
@@ -437,4 +488,3 @@ class OffsetMirror(SimDevice):
         self.gan_y_p.noise_kwargs = val
         self.sim_z.noise_kwargs = val
         self.pitch.noise_kwargs = val
-

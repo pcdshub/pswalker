@@ -1,25 +1,21 @@
 """
 Bluesky Plans for the Walker
 """
+import itertools
+import logging
 ############
 # Standard #
 ############
 import time
-import itertools
-import logging
 from collections.abc import Iterable
-from copy import copy
+
 ###############
 # Third Party #
 ###############
 import numpy as np
 import pandas as pd
-import bluesky
-from scipy.stats   import linregress
-from ophyd import Device, Signal
+from bluesky.plan_stubs import mv, rel_set
 from bluesky.utils import Msg
-from bluesky.plan_stubs import mv, rel_set, trigger_and_read
-from bluesky.preprocessors import run_decorator, stage_decorator
 
 ##########
 # Module #
@@ -30,8 +26,8 @@ from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
-def measure_average(detectors, num=1, filters=None,
-                    delay=None, drop_missing=True):
+
+def measure_average(detectors, num=1, filters=None, delay=None, drop_missing=True):
     """
     Gather a series of measurements from a list of detectors and return the
     average over the number of shots.
@@ -57,11 +53,12 @@ def measure_average(detectors, num=1, filters=None,
     --------
     :func:`.measure`
     """
-    #Gather data
-    data = yield from measure(detectors, num=num, delay=delay,
-                              filters=filters, drop_missing=drop_missing)
+    # Gather data
+    data = yield from measure(
+        detectors, num=num, delay=delay, filters=filters, drop_missing=drop_missing
+    )
 
-    #Gather keys
+    # Gather keys
     avg = dict.fromkeys(set([key for d in data for key in d.keys()]))
     for key in avg.keys():
         try:
@@ -73,9 +70,14 @@ def measure_average(detectors, num=1, filters=None,
     return avg
 
 
-def measure_centroid(det, target_field='centroid_x',
-                     average=1, delay=None, filters=None,
-                     drop_missing=True):
+def measure_centroid(
+    det,
+    target_field="centroid_x",
+    average=1,
+    delay=None,
+    filters=None,
+    drop_missing=True,
+):
     """
     Measure the centroid of the beam over one or more images
 
@@ -93,21 +95,33 @@ def measure_centroid(det, target_field='centroid_x',
     delay : float, optional
         Time to wait inbetween images
     """
-    logger.debug("Running measure_centroid.") 
-    #Use default filters
-    filters = filters or {field_prepend(target_field, det) : lambda x : x > 0}
-    #Take average measurement
-    avgs = yield from measure_average([det], num=average, delay=delay,
-                                       filters=filters, drop_missing=drop_missing)
+    logger.debug("Running measure_centroid.")
+    # Use default filters
+    filters = filters or {field_prepend(target_field, det): lambda x: x > 0}
+    # Take average measurement
+    avgs = yield from measure_average(
+        [det], num=average, delay=delay, filters=filters, drop_missing=drop_missing
+    )
     return avgs[field_prepend(target_field, det)]
 
 
-def walk_to_pixel(detector, motor, target, filters=None,
-                  start=None, gradient=None, models=[],
-                  target_fields=['centroid_x', 'alpha'],
-                  first_step=1., tolerance=20, system=None,
-                  average=1, delay=None, max_steps=None,
-                  drop_missing=True):
+def walk_to_pixel(
+    detector,
+    motor,
+    target,
+    filters=None,
+    start=None,
+    gradient=None,
+    models=[],
+    target_fields=["centroid_x", "alpha"],
+    first_step=1.0,
+    tolerance=20,
+    system=None,
+    average=1,
+    delay=None,
+    max_steps=None,
+    drop_missing=True,
+):
     """
     Step a motor until a specific threshold is reached on the detector
 
@@ -131,7 +145,7 @@ def walk_to_pixel(detector, motor, target, filters=None,
     center within the image. However, in some cases we may know enough to have
     a reasonable first guess at the relationship between pitch and centroid. In
     this case the algorithm accepts the ``gradient`` parameter that is then
-    used to calculate the optimal first step. 
+    used to calculate the optimal first step.
 
     Parameters
     ----------
@@ -173,69 +187,90 @@ def walk_to_pixel(detector, motor, target, filters=None,
     max_steps : int, optional
         Limit the number of steps the walk will take before exiting
     """
-    #Prepend field names
-    target_fields = [field_prepend(fld, obj)
-                     for (fld, obj) in zip(target_fields,[detector, motor])]
+    # Prepend field names
+    target_fields = [
+        field_prepend(fld, obj) for (fld, obj) in zip(target_fields, [detector, motor])
+    ]
 
-    system  = system or list()
+    system = system or list()
     average = average or 1
-    #Travel to starting position
+    # Travel to starting position
     if start:
         yield from mv(motor, start)
 
     else:
         start = motor.position
 
-    #Create initial step plan
+    # Create initial step plan
     if gradient:
-        #Seed the fit with our estimate
-        init_guess = {'slope' : gradient}
-        #Take a quick measurement
+        # Seed the fit with our estimate
+        init_guess = {"slope": gradient}
+        # Take a quick measurement
+
         def gradient_step():
-            logger.debug("Using gradient of {} for naive step..."
-                        "".format(gradient))
-            #Take a quick measurement 
-            avgs = yield from measure_average([detector, motor] + system,
-                                               filters=filters,
-                                               num=average, delay=delay,
-                                               drop_missing=drop_missing)
-            #Extract centroid and position
+            logger.debug("Using gradient of {} for naive step..." "".format(gradient))
+            # Take a quick measurement
+            avgs = yield from measure_average(
+                [detector, motor] + system,
+                filters=filters,
+                num=average,
+                delay=delay,
+                drop_missing=drop_missing,
+            )
+            # Extract centroid and position
             center, pos = avgs[target_fields[0]], avgs[target_fields[1]]
-            #Calculate corresponding intercept
-            intercept = center - gradient*pos
-            #Calculate best step on first guess of line
-            next_pos = (target - intercept)/gradient
-            logger.debug("Predicting position using line y = {}*x + {}"
-                         "".format(gradient, intercept))
-            #Move to position
+            # Calculate corresponding intercept
+            intercept = center - gradient * pos
+            # Calculate best step on first guess of line
+            next_pos = (target - intercept) / gradient
+            logger.debug(
+                "Predicting position using line y = {}*x + {}"
+                "".format(gradient, intercept)
+            )
+            # Move to position
             yield from mv(motor, next_pos)
 
         naive_step = gradient_step
     else:
         init_guess = dict()
+
         def naive_step():
             return (yield from rel_set(motor, first_step, wait=True))
 
-    #Create fitting callback
-    fit = LinearFit(target_fields[0], target_fields[1],
-                    init_guess=init_guess, average=average,
-                    name='Linear')
+    # Create fitting callback
+    fit = LinearFit(
+        target_fields[0],
+        target_fields[1],
+        init_guess=init_guess,
+        average=average,
+        name="Linear",
+    )
 
-    #Fitwalk
-    last_shot, accurate_model = yield from fitwalk([detector]+system, motor, [fit]+models, target,
-                                        naive_step=naive_step, average=average,
-                                        filters=filters, tolerance=tolerance, delay=delay,
-                                        drop_missing=drop_missing, max_steps=max_steps)
-    
-    #Report if we did not need a model
+    # Fitwalk
+    last_shot, accurate_model = yield from fitwalk(
+        [detector] + system,
+        motor,
+        [fit] + models,
+        target,
+        naive_step=naive_step,
+        average=average,
+        filters=filters,
+        tolerance=tolerance,
+        delay=delay,
+        drop_missing=drop_missing,
+        max_steps=max_steps,
+    )
+
+    # Report if we did not need a model
     if not accurate_model:
         logger.debug("Reached target without use of model")
 
     return last_shot, accurate_model
 
 
-def measure(detectors, num=1, delay=None, filters=None, drop_missing=True,
-            max_dropped=50):
+def measure(
+    detectors, num=1, delay=None, filters=None, drop_missing=True, max_dropped=50
+):
     """
     Gather a fixed number of measurements from a group of detectors
 
@@ -259,131 +294,152 @@ def measure(detectors, num=1, delay=None, filters=None, drop_missing=True,
         Choice to include events where event keys are missing
 
     max_dropped : int, optional
-    	Maximum number of events to drop before raising a ValueError
+        Maximum number of events to drop before raising a ValueError
 
     Returns
     -------
     data : list
         List of mock-event documents
     """
-    #Log setup
+    # Log setup
     logger.debug("Running measure")
-    logger.debug("Arguments passed: detectors: {0}, "\
-                 "num: {1}, delay: {2}, drop_missing: {3}"\
-                 "".format([d.name for d in detectors],
-                           num, delay,drop_missing))
+    logger.debug(
+        "Arguments passed: detectors: {0}, "
+        "num: {1}, delay: {2}, drop_missing: {3}"
+        "".format([d.name for d in detectors], num, delay, drop_missing)
+    )
 
-    #If scalable, repeat forever
+    # If scalable, repeat forever
     if not isinstance(delay, Iterable):
         delay = itertools.repeat(delay)
 
     else:
-        #Number of supplied delays
+        # Number of supplied delays
         try:
             num_delays = len(delay)
 
-        #Invalid delay
+        # Invalid delay
         except TypeError as err:
             err_msg = "Supplied delay must be scalar or iterable"
             logger.error(err_msg)
             raise ValueError(err_msg) from err
 
-        #Handle provided iterable
+        # Handle provided iterable
         else:
-            #Invalid number of delays for shot counts
-            if num -1 > num_delays:
-                err = "num={:} but delays only provides "\
-                      "{:} entries".format(num, num_delays)
+            # Invalid number of delays for shot counts
+            if num - 1 > num_delays:
+                err = "num={:} but delays only provides " "{:} entries".format(
+                    num, num_delays
+                )
                 logger.error(err, stack_info=True)
                 raise ValueError(err)
-        #Ensure it is an iterable
+        # Ensure it is an iterable
         delay = iter(delay)
 
-    #Gather shots
+    # Gather shots
     logger.debug("Gathering shots..")
-    shots   = 0
+    shots = 0
     dropped = 0
-    data    = list()
+    data = list()
     filters = filters or dict()
-    #Gather fixed number of shots
+    # Gather fixed number of shots
     while shots < num:
-        #Timestamp earliest possible moment
+        # Timestamp earliest possible moment
         now = time.time()
 
-        #Trigger detector and wait for completion
+        # Trigger detector and wait for completion
         for det in detectors:
-            yield Msg('trigger', det, group='B')
+            yield Msg("trigger", det, group="B")
 
-        #Wait for completion and start bundling
-        yield Msg('wait',   None, 'B')
-        yield Msg('create', None, name='primary')
+        # Wait for completion and start bundling
+        yield Msg("wait", None, "B")
+        yield Msg("create", None, name="primary")
 
-        #Mock-event document
+        # Mock-event document
         det_reads = dict()
 
-        #Gather shots
+        # Gather shots
         for det in detectors:
-            cur_det = yield Msg('read', det)
-            det_reads.update(dict([(k,v['value'])
-                             for k,v in cur_det.items()]))
-        #Emit Event doc to callbacks
-        yield Msg('save')
+            cur_det = yield Msg("read", det)
+            det_reads.update(dict([(k, v["value"]) for k, v in cur_det.items()]))
+        # Emit Event doc to callbacks
+        yield Msg("save")
 
-        #Apply filters
-        unfiltered = apply_filters(det_reads, filters=filters, drop_missing=drop_missing)
-        #Increment shots if filters are passed
+        # Apply filters
+        unfiltered = apply_filters(
+            det_reads, filters=filters, drop_missing=drop_missing
+        )
+        # Increment shots if filters are passed
         shots += int(unfiltered)
-        #Do not delay if we have not passed filter
+        # Do not delay if we have not passed filter
         if unfiltered:
-            #Append recent read to data list
+            # Append recent read to data list
             data.append(det_reads)
 
-            #Gather next delay
+            # Gather next delay
             try:
                 d = next(delay)
 
-            #Out of delays
+            # Out of delays
             except StopIteration:
-                #If our last measurement that is fine
+                # If our last measurement that is fine
                 if shots == num:
                     break
-                #Otherwise raise exception
+                # Otherwise raise exception
                 else:
                     err = "num={:} but delays only provides {:} entries".format(
-                        num, shots)
+                        num, shots
+                    )
                     logger.error(err, stack_info=True)
                     raise ValueError(err)
 
-            #If we have a delay, sleep
+            # If we have a delay, sleep
             if d is not None:
                 d = d - (time.time() - now)
                 if d > 0:
-                    yield Msg('sleep', None, d)
+                    yield Msg("sleep", None, d)
 
-        #Report filtered event
+        # Report filtered event
         else:
             dropped += 1
-            logger.debug('Ignoring inadequate measurement, '\
-                         'attempting to gather again...')
+            logger.debug(
+                "Ignoring inadequate measurement, " "attempting to gather again..."
+            )
         if dropped > max_dropped:
             dropped_dict = {}
             for key in filters.keys():
                 dropped_dict[key] = det_reads[key]
-            logger.debug(('Dropped too many events, raising exception. Latest '
-                          'bad values were %s'), dropped_dict)
+            logger.debug(
+                (
+                    "Dropped too many events, raising exception. Latest "
+                    "bad values were %s"
+                ),
+                dropped_dict,
+            )
             raise FilterCountError
-    #Report finished
-    logger.debug("Finished taking {} measurements, "\
-                 "filters removed {} events"\
-                 "".format(len(data), dropped))
+    # Report finished
+    logger.debug(
+        "Finished taking {} measurements, "
+        "filters removed {} events"
+        "".format(len(data), dropped)
+    )
 
     return data
 
 
-def fitwalk(detectors, motor, models, target,
-            naive_step=None, average=120,
-            filters=None, drop_missing=True,
-            tolerance=10, delay=None, max_steps=10):
+def fitwalk(
+    detectors,
+    motor,
+    models,
+    target,
+    naive_step=None,
+    average=120,
+    filters=None,
+    drop_missing=True,
+    tolerance=10,
+    delay=None,
+    max_steps=10,
+):
     """
     Parameters
     ----------
@@ -432,57 +488,64 @@ def fitwalk(detectors, motor, models, target,
         There is a max of 10 by default, but you may disable this by setting
         this option to None. Note that this may cause the walk to run indefinitely.
     """
-    #Check all models are fitting the same key
+    # Check all models are fitting the same key
     if len(set([model.y for model in models])) > 1:
-        raise RuntimeError("Provided models must predict "\
-                           "the same dependent variable.")
-    #Prepare model callbacks
+        raise RuntimeError(
+            "Provided models must predict " "the same dependent variable."
+        )
+    # Prepare model callbacks
     for model in models:
-        #Modify averaging
+        # Modify averaging
         if average % model.average != 0:
-            logger.warning("Model {} was set to an incompatible averaging "
-                           "setting, changing setting to {}".format(model.name,
-                                                                    average))
+            logger.warning(
+                "Model {} was set to an incompatible averaging "
+                "setting, changing setting to {}".format(model.name, average)
+            )
             model.average = average
-        #Subscribe callbacks
-        yield Msg('subscribe', None, model, 'all')
+        # Subscribe callbacks
+        yield Msg("subscribe", None, model, "all")
 
-    #Target field
+    # Target field
     target_field = models[0].y
 
-    #Install filters
+    # Install filters
     filters = filters or {}
     [m.install_filters(filters) for m in models]
 
-    #Link motor to independent variables
+    # Link motor to independent variables
     detectors.insert(1, motor)
-    field_names = list(set(var for model in models
-                           for var in model.independent_vars.values()))
-    motors  = dict((key, motor) for key in field_names
-                    if key in motor.read_attrs)
+    field_names = list(
+        set(var for model in models for var in model.independent_vars.values())
+    )
+    motors = dict((key, motor) for key in field_names if key in motor.read_attrs)
 
-    #Initialize variables
-    steps      = 0
+    # Initialize variables
+    steps = 0
     if not naive_step:
+
         def naive_step():
             return (yield from rel_set(motor, 0.01, wait=True))
 
-    #Measurement method
+    # Measurement method
     def model_measure():
-        #Take average measurement
-        avg = yield from measure_average(detectors,
-                                         num=average, delay=delay,
-                                         drop_missing=drop_missing,
-                                         filters=filters)
-        #Save current target position
+        # Take average measurement
+        avg = yield from measure_average(
+            detectors,
+            num=average,
+            delay=delay,
+            drop_missing=drop_missing,
+            filters=filters,
+        )
+        # Save current target position
         last_shot = avg.pop(target_field)
-        logger.debug("Averaged data yielded {} is at {}"
-                     "".format(target_field, last_shot))
+        logger.debug(
+            "Averaged data yielded {} is at {}" "".format(target_field, last_shot)
+        )
 
-        #Rank models based on accuracy of fit
+        # Rank models based on accuracy of fit
         model_ranking = rank_models(models, last_shot, **avg)
 
-        #Determine if any models are accurate enough
+        # Determine if any models are accurate enough
         if len(model_ranking):
             model = model_ranking[0]
 
@@ -491,74 +554,86 @@ def fitwalk(detectors, motor, models, target,
 
         return avg, last_shot, model
 
-    #Make first measurements
+    # Make first measurements
     averaged_data, last_shot, accurate_model = yield from model_measure()
-    #Begin walk
+    # Begin walk
     while not np.isclose(last_shot, target, atol=tolerance):
-        #Log error
+        # Log error
         if not steps:
-            logger.debug("Initial error before fitwalk is {}"
-                         "".format(int(target-last_shot)))
+            logger.debug(
+                "Initial error before fitwalk is {}" "".format(int(target - last_shot))
+            )
         else:
-            logger.debug("fitwalk is reporting an error {} of after step #{}"\
-                         "".format(int(target-last_shot), steps))
-        #Break on maximum step count
+            logger.debug(
+                "fitwalk is reporting an error {} of after step #{}"
+                "".format(int(target - last_shot), steps)
+            )
+        # Break on maximum step count
         if max_steps and steps >= max_steps:
-            raise RuntimeError("fitwalk failed to converge after {} steps"\
-                               "".format(steps))
+            raise RuntimeError(
+                "fitwalk failed to converge after {} steps" "".format(steps)
+            )
 
-        #Use naive step plan if no model is accurate enough
-        #or we have not made a step yet
-        if not accurate_model or steps==0:
-            logger.debug("No model yielded accurate prediction, "\
-                         "using naive plan")
+        # Use naive step plan if no model is accurate enough
+        # or we have not made a step yet
+        if not accurate_model or steps == 0:
+            logger.debug("No model yielded accurate prediction, " "using naive plan")
             yield from naive_step()
         else:
-            logger.debug("Using model {} to determine next step."\
-                        "".format(accurate_model.name))
-            #Calculate estimate of next step from accurate model
-            fixed_motors = dict((key, averaged_data[key])
-                                 for key in field_names
-                                 if key not in motors.keys())
+            logger.debug(
+                "Using model {} to determine next step." "".format(accurate_model.name)
+            )
+            # Calculate estimate of next step from accurate model
+            fixed_motors = dict(
+                (key, averaged_data[key])
+                for key in field_names
+                if key not in motors.keys()
+            )
 
-            #Try and step off model prediction
+            # Try and step off model prediction
             try:
                 estimates = accurate_model.backsolve(target, **fixed_motors)
 
-            #Report model faults
+            # Report model faults
             except Exception as e:
-                logger.warning("Accurate model {} was unable to backsolve "
-                               "for target {}".format(accurate_model.name,
-                                                      target))
+                logger.warning(
+                    "Accurate model {} was unable to backsolve "
+                    "for target {}".format(accurate_model.name, target)
+                )
                 logger.warning(e)
 
-                #Reuse naive step
+                # Reuse naive step
                 logger.debug("Reusing naive step due to lack of accurate model")
                 yield from naive_step()
             else:
-                #Move system to match estimate
+                # Move system to match estimate
                 for param, pos in estimates.items():
-                    #Watch for NaN
+                    # Watch for NaN
                     if pd.isnull(pos) or np.isinf(pos):
                         raise RuntimeError("Invalid position return by fit")
-                    #Attempt to move
+                    # Attempt to move
                     try:
-                        logger.debug("Adjusting motor {} to position {:.1f}"\
-                                     "".format(motor.name, pos))
+                        logger.debug(
+                            "Adjusting motor {} to position {:.1f}"
+                            "".format(motor.name, pos)
+                        )
                         yield from mv(motor, pos)
 
                     except KeyboardInterrupt as e:
-                        logger.debug("No motor found to adjust variable {}"\
-                                     "".format(e))
-        #Count our steps
+                        logger.debug(
+                            "No motor found to adjust variable {}" "".format(e)
+                        )
+        # Count our steps
         steps += 1
 
-        #Take a new measurement
+        # Take a new measurement
         logger.debug("Resampling after successfull move")
         averaged_data, last_shot, accurate_model = yield from model_measure()
 
-    #Report a succesfull run
-    logger.info("Succesfully walked to value {} (target={}) after {} steps."\
-                "".format(int(last_shot), target, steps))
+    # Report a succesfull run
+    logger.info(
+        "Succesfully walked to value {} (target={}) after {} steps."
+        "".format(int(last_shot), target, steps)
+    )
 
     return last_shot, accurate_model

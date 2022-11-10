@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-import sys
-import os
 import logging
+import os
+import sys
 from logging.handlers import RotatingFileHandler
+
 import pytest
 
 if __name__ == '__main__':

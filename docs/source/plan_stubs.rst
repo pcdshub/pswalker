@@ -1,7 +1,7 @@
 Extensible Plans
 ================
 ``pswalker`` has quite a few useful plans that may be extensible to other systems
-besides ``skywalker``. 
+besides ``skywalker``.
 
 
 Scans

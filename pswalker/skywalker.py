@@ -5,11 +5,11 @@ import logging
 from bluesky import RunEngine
 from bluesky.preprocessors import run_decorator, stage_decorator
 
+from .iterwalk import iterwalk
 from .recovery import homs_recovery, sim_recovery
 from .suspenders import BeamEnergySuspendFloor, BeamRateSuspendFloor
-from .iterwalk import iterwalk
-from .utils.argutils import as_list
 from .utils import field_prepend
+from .utils.argutils import as_list
 
 logger = logging.getLogger(__name__)
 
@@ -34,24 +34,43 @@ def lcls_RE(RE=None):
     return RE
 
 
-def skywalker(detectors, motors, det_fields, mot_fields, goals,
-              first_steps=1,
-              gradients=None, tolerances=20, averages=20, timeout=600,
-              sim=False, use_filters=True, md=None, tol_scaling=None,
-              extra_stage=None):
+def skywalker(
+    detectors,
+    motors,
+    det_fields,
+    mot_fields,
+    goals,
+    first_steps=1,
+    gradients=None,
+    tolerances=20,
+    averages=20,
+    timeout=600,
+    sim=False,
+    use_filters=True,
+    md=None,
+    tol_scaling=None,
+    extra_stage=None,
+):
     """
     Iterwalk as a base, with recovery plans, filters, and bonus staging.
     """
-    _md = {'goals'     : goals,
-           'detectors' : [det.name for det in as_list(detectors)],
-           'mirrors'   : [mot.name for mot in as_list(motors)],
-           'plan_name' : 'homs_skywalker',
-           'plan_args' : dict(goals=goals, gradients=gradients,
-                              tolerances=tolerances, averages=averages,
-                              timeout=timeout, det_fields=as_list(det_fields),
-                              mot_fields=as_list(mot_fields),
-                              first_steps=first_steps,tol_scaling=tol_scaling)
-          }
+    _md = {
+        "goals": goals,
+        "detectors": [det.name for det in as_list(detectors)],
+        "mirrors": [mot.name for mot in as_list(motors)],
+        "plan_name": "homs_skywalker",
+        "plan_args": dict(
+            goals=goals,
+            gradients=gradients,
+            tolerances=tolerances,
+            averages=averages,
+            timeout=timeout,
+            det_fields=as_list(det_fields),
+            mot_fields=as_list(mot_fields),
+            first_steps=first_steps,
+            tol_scaling=tol_scaling,
+        ),
+    }
     _md.update(md or {})
     goals = [480 - g for g in goals]
     det_fields = as_list(det_fields, length=len(detectors))
@@ -77,12 +96,22 @@ def skywalker(detectors, motors, det_fields, mot_fields, goals,
     @run_decorator(md=_md)
     @stage_decorator(to_stage)
     def letsgo():
-        walk = iterwalk(detectors, motors, goals, first_steps=first_steps,
-                        gradients=gradients,
-                        tolerances=tolerances, averages=averages, timeout=timeout,
-                        detector_fields=det_fields, motor_fields=mot_fields,
-                        system=detectors + motors, recovery_plan=recovery_plan,
-                        filters=filters,tol_scaling=tol_scaling)
+        walk = iterwalk(
+            detectors,
+            motors,
+            goals,
+            first_steps=first_steps,
+            gradients=gradients,
+            tolerances=tolerances,
+            averages=averages,
+            timeout=timeout,
+            detector_fields=det_fields,
+            motor_fields=mot_fields,
+            system=detectors + motors,
+            recovery_plan=recovery_plan,
+            filters=filters,
+            tol_scaling=tol_scaling,
+        )
         return (yield from walk)
 
     return (yield from letsgo())

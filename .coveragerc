@@ -1,6 +1,6 @@
 [run]
 source =
-    pswalker 
+    pswalker
 [report]
 omit =
     #tests

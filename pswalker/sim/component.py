@@ -1,11 +1,12 @@
-from ophyd.device import Component
 import ophyd.device as device
+from ophyd.device import Component
 
 
 class DynamicDeviceComponent(device.DynamicDeviceComponent):
     """
     DynamicDeviceComponent that accepts signals with no suffix.
     """
+
     def create_attr(self, attr_name):
         try:
             cls, suffix, kwargs = self.defn[attr_name]
@@ -24,18 +25,19 @@ class DynamicDeviceComponent(device.DynamicDeviceComponent):
             except ValueError:
                 cls, kwargs = items
                 suffix = None
-            kw_str = ', '.join('{}={!r}'.format(k, v)
-                               for k, v in kwargs.items())
+            kw_str = ", ".join("{}={!r}".format(k, v) for k, v in kwargs.items())
             if suffix is not None:
-                suffix_str = '{!r}'.format(suffix)
+                suffix_str = "{!r}".format(suffix)
                 if kwargs:
-                    suffix_str += ', '
+                    suffix_str += ", "
             else:
-                suffix_str = ''
+                suffix_str = ""
             if suffix_str or kw_str:
-                arg_str = ', {}{}'.format(suffix_str, kw_str)
+                arg_str = ", {}{}".format(suffix_str, kw_str)
             else:
-                arg_str = ''
-            doc.append('{attr} = Component({cls.__name__}{arg_str})'
-                       ''.format(attr=attr, cls=cls, arg_str=arg_str))
-        return '\n'.join(doc)
+                arg_str = ""
+            doc.append(
+                "{attr} = Component({cls.__name__}{arg_str})"
+                "".format(attr=attr, cls=cls, arg_str=arg_str)
+            )
+        return "\n".join(doc)

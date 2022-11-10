@@ -3,27 +3,23 @@
 """
 Script to hold functions and classes to use in simulating walks.
 """
+import logging
 ############
 # Standard #
 ############
-import time
-import logging
-from pprint import pprint
-from functools import partial
 from collections.abc import Iterable
-from collections import OrderedDict, ChainMap
+from functools import partial
 
 ###############
 # Third Party #
 ###############
 import numpy as np
 
+from .sim.mirror import OffsetMirror
 ##########
 # Module #
 ##########
-from .sim.pim import PIM
 from .sim.source import Undulator
-from .sim.mirror import OffsetMirror
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +29,14 @@ class TestBase(object):
     When you want things to be Ophyd-like but are too lazy to make it real
     Opyhd
     """
+
     def nameify_keys(self, d):
-        return {self.name + "_" + key : value
-                for key, value in d.items()}
+        return {self.name + "_" + key: value for key, value in d.items()}
+
 
 def isiterable(obj):
     """
-    Function that determines if an object is an iterable, not including 
+    Function that determines if an object is an iterable, not including
     str.
 
     Parameters
@@ -56,6 +53,7 @@ def isiterable(obj):
         return False
     else:
         return isinstance(obj, Iterable)
+
 
 def one_bounce(a1, x0, xp0, x1, z1, z2):
     """
@@ -79,15 +77,16 @@ def one_bounce(a1, x0, xp0, x1, z1, z2):
         z position of the first mirror in meters
 
     z2 : float
-        z position of the imager    
+        z position of the imager
     """
-    result = -2*a1*z1 + 2*a1*z2 - z2*xp0 + 2*x1 - x0
+    result = -2 * a1 * z1 + 2 * a1 * z2 - z2 * xp0 + 2 * x1 - x0
     return result
+
 
 def two_bounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
     """
     Calculates the x position of the beam after bouncing off two flat mirrors.
-    
+
     Parameters
     ----------
     alphas : tuple
@@ -107,16 +106,25 @@ def two_bounce(alphas, x0, xp0, x1, z1, x2, z2, z3):
 
     x2 : float
         x position of the second mirror in meters
-    
+
     z2 : float
         z position of the second mirror in meters
 
     z3 : float
         z position of imager
     """
-    result = 2*alphas[0]*z1 - 2*alphas[0]*z3 - 2*alphas[1]*z2 + \
-        2*alphas[1]*z3 + z3*xp0 - 2*x1 + 2*x2 + x0
+    result = (
+        2 * alphas[0] * z1
+        - 2 * alphas[0] * z3
+        - 2 * alphas[1] * z2
+        + 2 * alphas[1] * z3
+        + z3 * xp0
+        - 2 * x1
+        + 2 * x2
+        + x0
+    )
     return result
+
 
 def _x_to_pixel(x, pim):
     """
@@ -136,10 +144,14 @@ def _x_to_pixel(x, pim):
         Pixel the x position corresponds to on the inputted pim.
     """
     cam = pim.detector.cam
-    result = np.round(np.floor(
-        cam.size.size_x.get() / 2) + (x - pim.sim_x.get()) * \
-                      cam.size.size_x.get() / cam.resolution.resolution_x.get())
+    result = np.round(
+        np.floor(cam.size.size_x.get() / 2)
+        + (x - pim.sim_x.get())
+        * cam.size.size_x.get()
+        / cam.resolution.resolution_x.get()
+    )
     return result
+
 
 def _calc_cent_x(source, pim):
     """
@@ -159,9 +171,10 @@ def _calc_cent_x(source, pim):
     result : int
         Pixel of the centroid of the beam at the pim
     """
-    x = source.sim_x.get() + source.sim_xp.get()*pim.sim_z.get()
+    x = source.sim_x.get() + source.sim_xp.get() * pim.sim_z.get()
     result = _x_to_pixel(x, pim)
     return result
+
 
 def _m1_calc_cent_x(source, mirror, pim):
     """
@@ -183,15 +196,18 @@ def _m1_calc_cent_x(source, mirror, pim):
     -------
     result : int
         Pixel of the centroid of the beam at the pim
-    """    
-    x = one_bounce(mirror.sim_alpha.get()*1e-6,
-                   source.sim_x.get(),
-                   source.sim_xp.get(),
-                   mirror.sim_x.get(),
-                   mirror.sim_z.get(),
-                   pim.sim_z.get())
+    """
+    x = one_bounce(
+        mirror.sim_alpha.get() * 1e-6,
+        source.sim_x.get(),
+        source.sim_xp.get(),
+        mirror.sim_x.get(),
+        mirror.sim_z.get(),
+        pim.sim_z.get(),
+    )
     result = _x_to_pixel(x, pim)
     return result
+
 
 def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
     """
@@ -216,21 +232,25 @@ def _m1_m2_calc_cent_x(source, mirror_1, mirror_2, pim):
     -------
     result : int
         Pixel of the centroid of the beam at the pim
-    """    
-    x = two_bounce((mirror_1.sim_alpha.get()*1e-6,
-                    mirror_2.sim_alpha.get()*1e-6),
-                   source.sim_x.get(),
-                   source.sim_xp.get(),
-                   mirror_1.sim_x.get(),
-                   mirror_1.sim_z.get(),
-                   mirror_2.sim_x.get(),
-                   mirror_2.sim_z.get(),
-                   pim.sim_z.get())
+    """
+    x = two_bounce(
+        (mirror_1.sim_alpha.get() * 1e-6, mirror_2.sim_alpha.get() * 1e-6),
+        source.sim_x.get(),
+        source.sim_xp.get(),
+        mirror_1.sim_x.get(),
+        mirror_1.sim_z.get(),
+        mirror_2.sim_x.get(),
+        mirror_2.sim_z.get(),
+        pim.sim_z.get(),
+    )
     return _x_to_pixel(x, pim)
 
-def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
-                                          name="test_mirror"),
-               source=Undulator("TEST_UND", name="test_und")):
+
+def patch_pims(
+    pims,
+    mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY", name="test_mirror"),
+    source=Undulator("TEST_UND", name="test_und"),
+):
     """
     Takes the inputted set of pims and mirrors and then the internal centroid
     calculating function for the pims to be one of the ray-tracing equations
@@ -267,39 +287,44 @@ def patch_pims(pims, mirrors=OffsetMirror("TEST_MIRROR", "TEST_XY",
     for pim in pims:
         # If the pim is before the first mirror or there arent any mirrors
         if not mirrors or pim.sim_z.get() <= mirrors[0].sim_z.get():
-            logger.debug("Patching '{0}' with no bounce equation.".format(
-                    pim.name))
-            pim.detector._get_readback_centroid_x = partial(
-                _calc_cent_x, source, pim)
-            
+            logger.debug("Patching '{0}' with no bounce equation.".format(pim.name))
+            pim.detector._get_readback_centroid_x = partial(_calc_cent_x, source, pim)
+
         elif mirrors[0].sim_z.get() < pim.sim_z.get():
             # If there is only one mirror and the pim is after it
             if len(mirrors) == 1:
-                logger.debug("Patching '{0}' with one bounce equation.".format(
-                        pim.name))
+                logger.debug(
+                    "Patching '{0}' with one bounce equation.".format(pim.name)
+                )
                 pim.detector._get_readback_centroid_x = partial(
-                    _m1_calc_cent_x, source, mirrors[0], pim)
-                
+                    _m1_calc_cent_x, source, mirrors[0], pim
+                )
+
             # If the pim is behind the second mirror
             elif pim.sim_z.get() <= mirrors[1].sim_z.get():
-                logger.debug("Patching '{0}' with one bounce equation.".format(
-                        pim.name))
+                logger.debug(
+                    "Patching '{0}' with one bounce equation.".format(pim.name)
+                )
                 pim.detector._get_readback_centroid_x = partial(
-                    _m1_calc_cent_x, source, mirrors[0], pim)
+                    _m1_calc_cent_x, source, mirrors[0], pim
+                )
 
             # If the pim is after the second mirror
             elif mirrors[1].sim_z.get() < pim.sim_z.get():
-                logger.debug("Patching '{0}' with two bounce equation.".format(
-                        pim.name))
+                logger.debug(
+                    "Patching '{0}' with two bounce equation.".format(pim.name)
+                )
                 pim.detector._get_readback_centroid_x = partial(
-                    _m1_m2_calc_cent_x , source, mirrors[0], mirrors[1], pim)
+                    _m1_m2_calc_cent_x, source, mirrors[0], mirrors[1], pim
+                )
 
         # Patch the y centroid to always be the center of the image
-        pim.detector._get_readback_centroid_y = lambda : (
-            int(pim.detector.cam.size.size_x.get() / 2))
-        
+        pim.detector._get_readback_centroid_y = lambda: (
+            int(pim.detector.cam.size.size_x.get() / 2)
+        )
+
     # Return just the pim if there was only one of them
     if len(pims) == 1:
         return pims[0]
-    
+
     return pims

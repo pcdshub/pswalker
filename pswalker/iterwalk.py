@@ -1,25 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import time
 import logging
+import time
 import uuid
 from copy import copy
 
-from bluesky.plan_stubs import checkpoint, mv, wait as plan_wait, abs_set
+from bluesky.plan_stubs import abs_set, checkpoint, mv
+from bluesky.plan_stubs import wait as plan_wait
 
-from .plans import walk_to_pixel, measure_average
 from .plan_stubs import prep_img_motors
+from .plans import measure_average, walk_to_pixel
 from .utils.argutils import as_list, field_prepend
 from .utils.exceptions import FilterCountError
 
 logger = logging.getLogger(__name__)
 
 
-def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
-             gradients=None, detector_fields='centroid_x',
-             motor_fields='alpha', tolerances=20, system=None, averages=1,
-             overshoot=0, max_walks=None, timeout=None, recovery_plan=None,
-             filters=None, tol_scaling=None):
+def iterwalk(
+    detectors,
+    motors,
+    goals,
+    starts=None,
+    first_steps=1,
+    gradients=None,
+    detector_fields="centroid_x",
+    motor_fields="alpha",
+    tolerances=20,
+    system=None,
+    averages=1,
+    overshoot=0,
+    max_walks=None,
+    timeout=None,
+    recovery_plan=None,
+    filters=None,
+    tol_scaling=None,
+):
     """
     Iteratively adjust a system of detectors and motors where each motor
     primarily affects the reading of a single detector but also affects the
@@ -78,7 +93,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     tolerances: list of numbers, optional
         If our detector readbacks are within these tolerances of the goal
         positions, we'll treat the goal as reached.
-    
+
     system: list of readable objects, optional
         Other system parameters that we would like to read during the walk.
 
@@ -115,13 +130,13 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     filters: list of dictionaries
         Each entry in this list should be a valid input to the filters argument
         in the lower functions, such as walk_to_pixel and measure_average.
-    
+
     tol_scaling: list of floats or Nones, optional
         Constants for adaptive tolerances. Nones or omitting this argument
         reverts to fixed tolerance. For early walks with a starting point far
         from the goal, tolerance for the walk is set at
         current_dist/tol_scaling instead of the set tolerance. Scaling ends
-        when calculated tolerance < targeted tolerance.  
+        when calculated tolerance < targeted tolerance.
     """
     num = len(detectors)
 
@@ -138,8 +153,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     filters = as_list(filters, num)
     tol_scaling = as_list(tol_scaling, num)
 
-    logger.debug("iterwalk aligning %s to %s on %s",
-                 motors, goals, detectors)
+    logger.debug("iterwalk aligning %s to %s on %s", motors, goals, detectors)
 
     # Debug counters
     mirror_walks = 0
@@ -148,7 +162,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
     # Set up end conditions
     n_steps = 0
     start_time = time.time()
-    models   = [None]* num
+    models = [None] * num
     finished = [False] * num
     done_pos = [0] * num
     selected_tol = [None] * num
@@ -172,11 +186,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
             try:
                 # Before each walk, check the global timeout.
                 if timeout is not None and time.time() - start_time > timeout:
-                    raise RuntimeError("Iterwalk has timed out after %s s",
-                                       time.time() - start_time)
+                    raise RuntimeError(
+                        "Iterwalk has timed out after %s s", time.time() - start_time
+                    )
 
                 logger.debug("putting imager in")
-                ok = (yield from prep_img_motors(index, detectors, timeout=15))
+                ok = yield from prep_img_motors(index, detectors, timeout=15)
                 yag_cycles += 1
 
                 # Be loud if the yags fail to move! Operator should know!
@@ -210,22 +225,27 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                 original_position = motors[index].position
 
                 # Check if we're already done
-                logger.debug("measure_average on det=%s, mot=%s, sys=%s",
-                             detectors[index], motors[index], full_system)
-                avgs = (yield from measure_average([detectors[index],
-                                                    motors[index]]
-                                                    + full_system,
-                                                    num=averages[index],
-                                                    filters=filters[index]))
+                logger.debug(
+                    "measure_average on det=%s, mot=%s, sys=%s",
+                    detectors[index],
+                    motors[index],
+                    full_system,
+                )
+                avgs = yield from measure_average(
+                    [detectors[index], motors[index]] + full_system,
+                    num=averages[index],
+                    filters=filters[index],
+                )
 
-                pos = avgs[field_prepend(detector_fields[index],
-                                         detectors[index])]
-                logger.debug("recieved %s from measure_average on %s", pos,
-                             detectors[index])
+                pos = avgs[field_prepend(detector_fields[index], detectors[index])]
+                logger.debug(
+                    "recieved %s from measure_average on %s", pos, detectors[index]
+                )
 
                 if abs(pos - goals[index]) < tolerances[index]:
-                    logger.info("Beam was aligned on %s without a move",
-                                 detectors[index].name)
+                    logger.info(
+                        "Beam was aligned on %s without a move", detectors[index].name
+                    )
                     finished[index] = True
                     done_pos[index] = pos
                     if all(finished):
@@ -246,63 +266,71 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     goal = (goals[index] - pos) * (1 + overshoot) + pos
 
                 # Calculate adaptive tolerance - otherwise use static tolerance
-                if tol_scaling[index] != None:
-                    selected_tol[index] = \
-                        abs(pos-goals[index]) / tol_scaling[index]
+                if tol_scaling[index] is not None:
+                    selected_tol[index] = abs(pos - goals[index]) / tol_scaling[index]
                     if selected_tol[index] < tolerances[index]:
                         selected_tol[index] = tolerances[index]
                 else:
                     selected_tol[index] = tolerances[index]
-                
+
                 # Clear flag for needing recovery before walking
                 recover_pre_walk = False
 
                 # Core walk
-                logger.info(('Starting walk of {} pixels on {} using {}'
-                             ''.format(abs(pos - goal), detectors[index].name,
-                                       motors[index].name)))
-                logger.debug(('Starting walk from {} to {} on {} using {}'
-                              ''.format(pos, goal, detectors[index].name,
-                                        motors[index].name)))
-                
-                logger.debug("selected tolerance: {}".format(
-                    selected_tol[index]))
+                logger.info(
+                    (
+                        "Starting walk of {} pixels on {} using {}"
+                        "".format(
+                            abs(pos - goal), detectors[index].name, motors[index].name
+                        )
+                    )
+                )
+                logger.debug(
+                    (
+                        "Starting walk from {} to {} on {} using {}"
+                        "".format(pos, goal, detectors[index].name, motors[index].name)
+                    )
+                )
 
-                pos, models[index] = (
-                    yield from walk_to_pixel(
-                        detectors[index],
-                        motors[index],
-                        goal,
-                        filters=filters[index],
-                        start=firstpos,
-                        gradient=gradients[index],
-                        target_fields=[
-                            detector_fields[index],
-                            motor_fields[index]],
-                        first_step=first_steps[index],
-                        tolerance=selected_tol[index],
-                        system=full_system,
-                        average=averages[index],
-                        max_steps=10))
+                logger.debug("selected tolerance: {}".format(selected_tol[index]))
+
+                pos, models[index] = yield from walk_to_pixel(
+                    detectors[index],
+                    motors[index],
+                    goal,
+                    filters=filters[index],
+                    start=firstpos,
+                    gradient=gradients[index],
+                    target_fields=[detector_fields[index], motor_fields[index]],
+                    first_step=first_steps[index],
+                    tolerance=selected_tol[index],
+                    system=full_system,
+                    average=averages[index],
+                    max_steps=10,
+                )
 
                 if models[index]:
                     try:
-                        gradients[index] = models[index].result.values['slope']
-                        logger.debug("Found equation of ({}, {}) between " 
-                                     "linear fit of {} to {}"
-                                     "".format(gradients[index],
-                                               models[index].result.values['intercept'],
-                                               motors[index].name,
-                                               detectors[index].name))
+                        gradients[index] = models[index].result.values["slope"]
+                        logger.debug(
+                            "Found equation of ({}, {}) between "
+                            "linear fit of {} to {}"
+                            "".format(
+                                gradients[index],
+                                models[index].result.values["intercept"],
+                                motors[index].name,
+                                detectors[index].name,
+                            )
+                        )
                     except Exception as e:
                         logger.warning(e)
-                        logger.warning("Unable to find gradient of " 
-                                       "linear fit of {} to {}"
-                                       "".format(motors[index].name,
-                                                 detectors[index].name))
+                        logger.warning(
+                            "Unable to find gradient of "
+                            "linear fit of {} to {}"
+                            "".format(motors[index].name, detectors[index].name)
+                        )
 
-                logger.debug("Walk reached pos %s on %s", pos,
-                             detectors[index].name)
+                logger.debug("Walk reached pos %s on %s", pos, detectors[index].name)
                 mirror_walks += 1
 
                 # Be loud if the walk fails to reach the pixel!
@@ -316,7 +344,7 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 # Increment index before restarting loop
                 index += 1
-            except FilterCountError as err:
+            except FilterCountError:
                 if recovery_plan is None:
                     logger.error("No recovery plan, not attempting to recover")
                     raise
@@ -335,8 +363,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                     # If we are recovering after walk_to_pixel, don't bother
                     # with the recovery plan. Just move back and adjust
                     # parameters.
-                    logger.info(("Bad state reached during walk_to_pixel. "
-                                 "Undoing walk_to_pixel..."))
+                    logger.info(
+                        (
+                            "Bad state reached during walk_to_pixel. "
+                            "Undoing walk_to_pixel..."
+                        )
+                    )
                     yield from mv(motors[index], original_position)
 
                     # Reset the finished flag
@@ -351,21 +383,24 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
                         first_steps[index] = first_steps[index] / -2
                     continue
 
-                ok = yield from recovery_plan(detectors=detectors,
-                                              motors=motors, goals=goals,
-                                              starts=starts,
-                                              first_steps=first_steps,
-                                              gradients=gradients,
-                                              detector_fields=detector_fields,
-                                              motor_fields=motor_fields,
-                                              tolerances=tolerances,
-                                              system=system,
-                                              averages=averages,
-                                              overshoot=overshoot,
-                                              max_walks=max_walks,
-                                              timeout=timeout,
-                                              filters=filters,
-                                              index=index)
+                ok = yield from recovery_plan(
+                    detectors=detectors,
+                    motors=motors,
+                    goals=goals,
+                    starts=starts,
+                    first_steps=first_steps,
+                    gradients=gradients,
+                    detector_fields=detector_fields,
+                    motor_fields=motor_fields,
+                    tolerances=tolerances,
+                    system=system,
+                    averages=averages,
+                    overshoot=overshoot,
+                    max_walks=max_walks,
+                    timeout=timeout,
+                    filters=filters,
+                    index=index,
+                )
 
                 # Reset the finished tag because we moved something
                 finished = [False] * num
@@ -373,8 +408,12 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
 
                 # If recovery failed, move to nominal and switch to next device
                 if not ok:
-                    logger.info(("Recover failed, using fallback pos and "
-                                 "trying next device alignment."))
+                    logger.info(
+                        (
+                            "Recover failed, using fallback pos and "
+                            "trying next device alignment."
+                        )
+                    )
                     yield from mv(motors[index], fallback_pos)
                     index += 1
                 # Try again
@@ -388,18 +427,20 @@ def iterwalk(detectors, motors, goals, starts=None, first_steps=1,
         if max_walks is not None and n_steps > max_walks:
             logger.info("Iterwalk has reached the max_walks limit")
             break
-    txt = 'Finished in %.2fs after %s mirror walks, %s yag cycles, and %s '
-    txt += 'recoveries.\n'
-    txt += 'Aligned to %s\n'
-    txt += 'Goals were %s\n'
-    txt += 'Deltas are %s\n'
-    txt += 'Mirror positions are %s'
-    logger.info(txt,
-                time.time() - start_time,
-                mirror_walks,
-                yag_cycles,
-                recoveries,
-                done_pos,
-                goals,
-                [d - g for g, d in zip(goals, done_pos)],
-                [m.position for m in motors])
+    txt = "Finished in %.2fs after %s mirror walks, %s yag cycles, and %s "
+    txt += "recoveries.\n"
+    txt += "Aligned to %s\n"
+    txt += "Goals were %s\n"
+    txt += "Deltas are %s\n"
+    txt += "Mirror positions are %s"
+    logger.info(
+        txt,
+        time.time() - start_time,
+        mirror_walks,
+        yag_cycles,
+        recoveries,
+        done_pos,
+        goals,
+        [d - g for g, d in zip(goals, done_pos)],
+        [m.position for m in motors],
+    )

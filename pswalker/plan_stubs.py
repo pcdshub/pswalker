@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import time
-import threading
-import uuid
 import logging
+import threading
+import time
+import uuid
+from functools import partial
+from math import nan
 
-from bluesky.plan_stubs import wait as plan_wait, abs_set, create, read, save
+from bluesky.plan_stubs import abs_set
+from bluesky.plan_stubs import wait as plan_wait
 from bluesky.preprocessors import stage_wrapper
 from bluesky.utils import FailedStatus
 
 from .plans import measure_average
-from .utils.argutils import as_list, field_prepend
+from .utils.argutils import field_prepend
 from .utils.exceptions import BeamNotFoundError
-from math import nan, isnan
-from functools import partial
 
 logger = logging.getLogger(__name__)
 
 
-def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
-                    timeout=None):
+def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True, timeout=None):
     """
     Plan to prepare image motors for taking data. Moves the correct imagers in
     and waits for them to be ready.
@@ -63,14 +63,12 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
                 if timeout is None:
                     yield from abs_set(mot, "OUT", group=prev_img_mot)
                 else:
-                    yield from abs_set(mot, "OUT", group=prev_img_mot,
-                                       timeout=timeout)
+                    yield from abs_set(mot, "OUT", group=prev_img_mot, timeout=timeout)
             elif i == n_mot:
                 if timeout is None:
                     yield from abs_set(mot, "IN", group=prev_img_mot)
                 else:
-                    yield from abs_set(mot, "IN", group=prev_img_mot,
-                                       timeout=timeout)
+                    yield from abs_set(mot, "IN", group=prev_img_mot, timeout=timeout)
             elif tail_in:
                 yield from abs_set(mot, "IN")
         yield from plan_wait(group=prev_img_mot)
@@ -87,8 +85,9 @@ def prep_img_motors(n_mot, img_motors, prev_out=True, tail_in=True,
     return ok
 
 
-def match_condition(signal, condition, mover, setpoint, timeout=None,
-                    sub_type=None, has_stop=True):
+def match_condition(
+    signal, condition, mover, setpoint, timeout=None, sub_type=None, has_stop=True
+):
     """
     Plan to adjust mover until condition(signal.get()) returns True.
 
@@ -133,10 +132,12 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
     success = threading.Event()
 
     if has_stop:
+
         def condition_cb(*args, value, **kwargs):
             if condition(value):
                 success.set()
                 mover.stop()
+
     else:
         pts = []
 
@@ -183,21 +184,20 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
                     curr_start = i
                 curr_end = i
             else:
-                best_start, best_end = new_best(best_start, best_end,
-                                                curr_start, curr_end)
+                best_start, best_end = new_best(
+                    best_start, best_end, curr_start, curr_end
+                )
                 curr_start = -1
                 curr_end = -1
-        best_start, best_end = new_best(best_start, best_end,
-                                        curr_start, curr_end)
+        best_start, best_end = new_best(best_start, best_end, curr_start, curr_end)
         if -1 in (best_start, best_end):
-            logger.debug('did not find any valid points: %s', pts)
+            logger.debug("did not find any valid points: %s", pts)
         else:
-            logger.debug('found valid points, moving back')
+            logger.debug("found valid points, moving back")
             start = pts[best_start][0]
             end = pts[best_end][0]
             try:
-                yield from abs_set(mover, (end+start)/2, wait=True,
-                                   timeout=timeout)
+                yield from abs_set(mover, (end + start) / 2, wait=True, timeout=timeout)
             except FailedStatus:
                 logger.warning("Timeout on motor %s", mover)
             if condition(signal.get()):
@@ -207,45 +207,51 @@ def match_condition(signal, condition, mover, setpoint, timeout=None,
 
     ok = success.is_set()
     if ok:
-        logger.debug(('condition met in match_condition, '
-                      'mover=%s setpt=%s cond value=%s'),
-                     mover.name, setpoint, signal.get())
+        logger.debug(
+            ("condition met in match_condition, " "mover=%s setpt=%s cond value=%s"),
+            mover.name,
+            setpoint,
+            signal.get(),
+        )
     else:
-        logger.debug(('condition fail in match_condition, '
-                      'mover=%s setpt=%s cond value=%s'),
-                     mover.name, setpoint, signal.get())
+        logger.debug(
+            ("condition fail in match_condition, " "mover=%s setpt=%s cond value=%s"),
+            mover.name,
+            setpoint,
+            signal.get(),
+        )
     return ok
 
 
-def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
+def slit_scan_area_comp(slits, yag, x_width=1.0, y_width=1.0, samples=1):
     """Find the ratio of real space/pixel in the PIM
 
     1. Send slits to specified position
-    2. Measure pixel dimensions of passed light. 
+    2. Measure pixel dimensions of passed light.
         The idea is that the width, height values will be pulled from the
         PIMPulnixDetector instance.
 
     2b. Should diffraction issues (as observed with the test laser) persist
-        when using the x-ray laser, another method will be necessary  instead 
-        of using the gap dimensions for calibration, we could move the gap in 
-        the slits a small distance and observe the position change of the 
-        passed light. If the light is highly collimated (it should be), the 
+        when using the x-ray laser, another method will be necessary  instead
+        of using the gap dimensions for calibration, we could move the gap in
+        the slits a small distance and observe the position change of the
+        passed light. If the light is highly collimated (it should be), the
         motion of the gap should be 1:1 with the motion of the passed light on
-        the PIM detector. Only investigate if issues persisit in x-ray. 
+        the PIM detector. Only investigate if issues persisit in x-ray.
 
     Parameters
     ----------
     slits : pcdsdevices.slits.Slits
-        Ophyd slits object from pcdsdevices.slits.Slits 
-    
+        Ophyd slits object from pcdsdevices.slits.Slits
+
     yag : pcdsdevices.sim.pim.PIM (subject to change?)
-        Ophyd object of some type, this will allow me to read the w, h 
+        Ophyd object of some type, this will allow me to read the w, h
         (w,h don't exist yet but they should shortly)
 
-    x_width : int 
+    x_width : int
         Define the target x width of the gap in the slits. Units: mm
 
-    y_width : int 
+    y_width : int
         Define the target y width of the gap in the slits. Units: mm
 
     samples : int
@@ -260,42 +266,46 @@ def slit_scan_area_comp(slits, yag, x_width=1.0,y_width=1.0,samples=1):
     # place slits then read a value that doesn't exist yet
     # easy
     # measure_average()
-    #data = yield from measure_average([yag],['xwidth','ywidth'])
+    # data = yield from measure_average([yag],['xwidth','ywidth'])
 
     # set slits to specified gap size
     yield from abs_set(slits, x=x_width, y=y_width, wait=True)
 
     # read profile dimensions from image (width plugin pending)
-    yag_measurements = yield from measure_average(
-        [yag],
-        num=samples
-    )
+    yag_measurements = yield from measure_average([yag], num=samples)
 
     # extract measurements of interest from returned dict
-    yag_measured_x_width = yag_measurements[field_prepend('xwidth', yag)]
-    yag_measured_y_width = yag_measurements[field_prepend('ywidth', yag)]
+    yag_measured_x_width = yag_measurements[field_prepend("xwidth", yag)]
+    yag_measured_y_width = yag_measurements[field_prepend("ywidth", yag)]
 
     logger.debug("Measured x width: {}".format(yag_measured_x_width))
     logger.debug("Measured y width: {}".format(yag_measured_y_width))
 
-    # err if image not received or image has 0 width,height 
-    if (yag_measured_x_width <= 0 \
-        or yag_measured_y_width <=0):
-        raise ValueError("A measurement less than or equal to zero has been" 
-                         "measured. Unable to calibrate")
+    # err if image not received or image has 0 width,height
+    if yag_measured_x_width <= 0 or yag_measured_y_width <= 0:
+        raise ValueError(
+            "A measurement less than or equal to zero has been"
+            "measured. Unable to calibrate"
+        )
         x_scaling = nan
         y_scaling = nan
     else:
-        #data format: Real space / pixel
+        # data format: Real space / pixel
         x_scaling = x_width / yag_measured_x_width
         y_scaling = y_width / yag_measured_y_width
 
     return x_scaling, y_scaling
 
 
-def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
-                          samples=10, filters=None,
-                          centroid='detector_stats2_centroid_y'):
+def slit_scan_fiducialize(
+    slits,
+    yag,
+    x_width=0.01,
+    y_width=0.01,
+    samples=10,
+    filters=None,
+    centroid="detector_stats2_centroid_y",
+):
     """
     Assists beam alignment by setting the slits to a w,h and checking,
     returning the centroid position.
@@ -338,19 +348,25 @@ def slit_scan_fiducialize(slits, yag, x_width=0.01, y_width=0.01,
     yield from abs_set(slits, x_width, group=group)
     yield from plan_wait(group=group)
 
-    #Collect data from yags
-    yag_measurements = yield from measure_average([yag], num=samples,
-                                                  filters=filters)
+    # Collect data from yags
+    yag_measurements = yield from measure_average([yag], num=samples, filters=filters)
 
-    #Extract centroid positions from yag_measurments dict
+    # Extract centroid positions from yag_measurments dict
     centroid = yag_measurements[field_prepend(centroid, yag)]
 
     return centroid
 
 
-def fiducialize(slits, yag, start=0.1, step_size=0.5, max_width=5.0,
-                filters=None, centroid='detector_stats2_centroid_y',
-                samples=10):
+def fiducialize(
+    slits,
+    yag,
+    start=0.1,
+    step_size=0.5,
+    max_width=5.0,
+    filters=None,
+    centroid="detector_stats2_centroid_y",
+    samples=10,
+):
     """
     Fiducialize a detector using upstream slits
 
@@ -397,7 +413,7 @@ def fiducialize(slits, yag, start=0.1, step_size=0.5, max_width=5.0,
     ------
     BeamNotFoundError:
         If the requested slit width exceeds `max_width`
-    
+
     Notes
     -----
     This plan makes the following assumptions; the slits are aligned to the
@@ -405,79 +421,91 @@ def fiducialize(slits, yag, start=0.1, step_size=0.5, max_width=5.0,
     areaDetector plugins are configured in such a way to accurately return the
     centroid of the beam
     """
-    #Repeatedly take fiducials
+    # Repeatedly take fiducials
     while start < max_width:
-        logger.debug("Measuring fiducial with slit {} at {}"
-                     "".format(slits.name, start))
-        fiducial = yield from slit_scan_fiducialize(slits, yag, x_width=start,
-                                                    y_width=start,
-                                                    filters=filters,
-                                                    centroid=centroid,
-                                                    samples=samples)
-        #If we got a real fiducial return it
+        logger.debug(
+            "Measuring fiducial with slit {} at {}" "".format(slits.name, start)
+        )
+        fiducial = yield from slit_scan_fiducialize(
+            slits,
+            yag,
+            x_width=start,
+            y_width=start,
+            filters=filters,
+            centroid=centroid,
+            samples=samples,
+        )
+        # If we got a real fiducial return it
         if fiducial > 0.0:
-            logger.info("Found fiducial of {} on {} using {}"
-                        "".format(fiducial, yag.name, slits.name))
+            logger.info(
+                "Found fiducial of {} on {} using {}"
+                "".format(fiducial, yag.name, slits.name)
+            )
             return fiducial
 
-        #Increase slit width if we did not get a centroid
+        # Increase slit width if we did not get a centroid
         logger.debug("No centroid measurement found, expanding slit aperature")
         start += step_size
 
-    #Next step would exceed max_width
+    # Next step would exceed max_width
     raise BeamNotFoundError
 
 
-def homs_fiducialize(slit_set, yag_set, x_width=.01, y_width=.01, samples=10,
-                      filters = None, centroid='detector_stats2_centroid_y'): 
+def homs_fiducialize(
+    slit_set,
+    yag_set,
+    x_width=0.01,
+    y_width=0.01,
+    samples=10,
+    filters=None,
+    centroid="detector_stats2_centroid_y",
+):
     """
     Run slit_scan_fiducialize on a series of yags and their according slits.
     Automatically restore yags to OUT state and slits to initial position
-    after running.    
-    
+    after running.
+
     Paramaters
     ----------
     slit_set : [pcdsdevices.epics.slits.Slits,...]
         List of slits to be used for fiducialization process. yags and slits
         are paired elementwise and each pair is tested independantly. length
         of lists must match.
-    
+
     yag_set : [pcdsdevices.epics.pim.PIM,...]
         List of yags to be used for fiducialization process. yags and slits are
         paired elementwise and each pair is tested independantly. length of
         lists must match.
-    
+
     x_width : float, optional
-        CHANGE SOON - this is the only one actually used 
-    
+        CHANGE SOON - this is the only one actually used
+
     y_width : float, optional
         CHANGE SOON - passed down to ssf method but not used.
-    
+
     samples : int, optional
-        Number of shots to average over for measurments. 
-    
+        Number of shots to average over for measurments.
+
     filters : dict, optional
         Filters to eliminate shots
-    
+
     centroid : string, optional
         Field name of centroid measurement
-        
+
     Returns
     -------
     [float,float,float...]
         This list of floats represents the field measured for each slit/yag
         pairing. The floats are in the same order as the slits and yags
-        prsesented in the arguments. Length matches number of slit/yag pairs. 
+        prsesented in the arguments. Length matches number of slit/yag pairs.
     """
 
     if len(slit_set) != len(yag_set):
-        raise Exception(
-            "Number of slits, yags does not match. Cannot be paired"
-        )
-    
+        raise Exception("Number of slits, yags does not match. Cannot be paired")
+
     results = []
-    for slit, yag in zip(slit_set,yag_set):
-        '''
+    for slit, yag in zip(slit_set, yag_set):
+        """
         fiducial = yield from stage_wrapper(slit_scan_fiducialize,[slit,yag])(
             slit,
             yag,
@@ -485,9 +513,9 @@ def homs_fiducialize(slit_set, yag_set, x_width=.01, y_width=.01, samples=10,
             y_width,
             samples = samples,
             filters = filters,
-            centroid = centroid, 
+            centroid = centroid,
         )
-        '''
+        """
         wrapped = stage_wrapper(
             partial(
                 slit_scan_fiducialize,
@@ -495,13 +523,12 @@ def homs_fiducialize(slit_set, yag_set, x_width=.01, y_width=.01, samples=10,
                 yag,
                 x_width,
                 y_width,
-                samples = samples,
-                filters = filters,
-                centroid = centroid,
+                samples=samples,
+                filters=filters,
+                centroid=centroid,
             )(),
-            [slit,yag]
+            [slit, yag],
         )
         fiducial = yield from wrapped
         results.append(fiducial)
     return results
-
