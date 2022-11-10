@@ -54,7 +54,7 @@ def test_as_list():
 def test_match_condition_fixture(mot_and_sig):
     mot, sig = mot_and_sig
     mot.move(5)
-    assert sig.value == 5
+    assert sig.get() == 5
     mot.move(20, wait=False)
     mot.stop()
     assert mot.position < 20
