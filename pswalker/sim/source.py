@@ -1,21 +1,47 @@
 from ophyd.device import Component
 
-from .sim import SimDevice
 from .signal import FakeSignal
+from .sim import SimDevice
 
 
 class Undulator(SimDevice):
     """
     Simulated undulator ophyd object.
     """
+
     sim_xp = Component(FakeSignal, value=0)
     sim_yp = Component(FakeSignal, value=0)
-    def __init__(self, prefix, *, x=0, xp=0, y=0, yp=0, z=0, velo_x=0, velo_xp=0,
-                 velo_y=0, velo_yp=0, velo_z=0, noise_x=False, noise_xp=False, 
-                 noise_y=False, noise_yp=False, noise_z=False, settle_time_x=0,
-                 settle_time_xp=0, settle_time_y=0, settle_time_yp=0, 
-                 settle_time_z=0, noise_func=None, noise_type="uni", 
-                 noise_args=(), noise_kwargs={}, **kwargs):
+
+    def __init__(
+        self,
+        prefix,
+        *,
+        x=0,
+        xp=0,
+        y=0,
+        yp=0,
+        z=0,
+        velo_x=0,
+        velo_xp=0,
+        velo_y=0,
+        velo_yp=0,
+        velo_z=0,
+        noise_x=False,
+        noise_xp=False,
+        noise_y=False,
+        noise_yp=False,
+        noise_z=False,
+        settle_time_x=0,
+        settle_time_xp=0,
+        settle_time_y=0,
+        settle_time_yp=0,
+        settle_time_z=0,
+        noise_func=None,
+        noise_type="uni",
+        noise_args=(),
+        noise_kwargs={},
+        **kwargs
+    ):
         super().__init__(prefix, **kwargs)
         self.log_pref = "{0} (Undulator) - ".format(self.name)
         # Simulation Attributes
@@ -36,7 +62,7 @@ class Undulator(SimDevice):
         self.sim_xp.noise = noise_xp
         self.sim_y.noise = noise_y
         self.sim_yp.noise = noise_yp
-        self.sim_z.noise = noise_z        
+        self.sim_z.noise = noise_z
         # Settle time for every move
         self.sim_x.put_sleep = settle_time_x
         self.sim_xp.put_sleep = settle_time_xp

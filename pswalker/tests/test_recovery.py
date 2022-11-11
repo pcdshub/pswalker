@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import pytest
 import logging
 
+import pytest
 from bluesky.preprocessors import run_wrapper
 
 from pswalker.recovery import recover_threshold

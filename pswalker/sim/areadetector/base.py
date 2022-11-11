@@ -1,8 +1,9 @@
 """
-Overrides for AreaDetector base and pcdsdevices base to be used in simulated 
+Overrides for AreaDetector base and pcdsdevices base to be used in simulated
 devices.
 """
 from collections import OrderedDict
+
 
 def ad_group(cls, attr_suffix, **kwargs):
     """
@@ -10,5 +11,5 @@ def ad_group(cls, attr_suffix, **kwargs):
     """
     defn = OrderedDict()
     for attr in attr_suffix:
-        defn[attr] = (cls, '', kwargs)
+        defn[attr] = (cls, "", kwargs)
     return defn

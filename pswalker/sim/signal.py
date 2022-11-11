@@ -1,26 +1,38 @@
 """
 Overrides for Epics Signals
 """
-import time
 import logging
+import time
 
 import numpy as np
-
 from ophyd.signal import Signal
 
 
 class FakeSignal(Signal):
     """
     Empty signal class with some extra features to better simulate real devices.
-    
-    The main additions are the ability to noise to the readback, add static 
-    sleep times to the read or set, add sleep time on every set based on a 
+
+    The main additions are the ability to noise to the readback, add static
+    sleep times to the read or set, add sleep time on every set based on a
     velocity parameter, and setting the value of the signal according to an
     outside function/method.
     """
-    def __init__(self, prefix='', value=0, put_sleep=0, get_sleep=0,
-                 noise=False, noise_type="norm", noise_func=None, noise_args=(), 
-                 noise_kwargs={}, velocity=None, use_string=False, **kwargs):
+
+    def __init__(
+        self,
+        prefix="",
+        value=0,
+        put_sleep=0,
+        get_sleep=0,
+        noise=False,
+        noise_type="norm",
+        noise_func=None,
+        noise_args=(),
+        noise_kwargs={},
+        velocity=None,
+        use_string=False,
+        **kwargs
+    ):
         self.put_sleep = put_sleep
         self.get_sleep = get_sleep
         self.noise = bool(noise)
@@ -29,26 +41,30 @@ class FakeSignal(Signal):
         self.noise_kwargs = noise_kwargs
         self.velocity = velocity
         self.use_string = use_string
-        self._supported_noise_types = {"uni" : self.noise_uni, 
-                                       "norm" : self.noise_norm}
-        self._check_noise_args = {"uni" : self._check_args_uni,
-                                  "norm" : self._check_args_norm}
-        
+        self._supported_noise_types = {"uni": self.noise_uni, "norm": self.noise_norm}
+        self._check_noise_args = {
+            "uni": self._check_args_uni,
+            "norm": self._check_args_norm,
+        }
+
         # If a custom noise function is supplied use that
         if noise_func:
             self._check_args_not_none()
-            self._noise_func = lambda : noise_func(*self.noise_args,
-                                                   **self.noise_kwargs)
+            self._noise_func = lambda: noise_func(*self.noise_args, **self.noise_kwargs)
         # Otherwise check the noise type and use a default
         elif self.noise_type.lower() not in self._supported_noise_types.keys():
-            logging.warning("Inputted noise type not supported. Must be one of "
-                            "the following: {0}.\nSetting to 'uni'.".format(
-                                self._supported_noise_types.keys()))
+            logging.warning(
+                "Inputted noise type not supported. Must be one of "
+                "the following: {0}.\nSetting to 'uni'.".format(
+                    self._supported_noise_types.keys()
+                )
+            )
             self.noise_type = "uni"
         if self.noise_type.lower() in self._supported_noise_types.keys():
             self._check_noise_args[self.noise_type]()
-            self._noise_func = lambda : self._supported_noise_types[
-                self.noise_type](*self.noise_args, **self.noise_kwargs)
+            self._noise_func = lambda: self._supported_noise_types[self.noise_type](
+                *self.noise_args, **self.noise_kwargs
+            )
         super().__init__(value=value, **kwargs)
 
     def _check_args_not_none(self, args=(), kwargs={}):
@@ -64,7 +80,7 @@ class FakeSignal(Signal):
 
     def _check_args_uni(self):
         """
-        Sets default values for numpy.random.uniform. See URL below for 
+        Sets default values for numpy.random.uniform. See URL below for
         full documentation:
 
         https://docs.scipy.org/doc/numpy/reference/generated/numpy.random.uniform.html
@@ -73,13 +89,12 @@ class FakeSignal(Signal):
 
     def _check_args_norm(self):
         """
-        Sets default values for numpy.random.normal. See URL below for full 
+        Sets default values for numpy.random.normal. See URL below for full
         documentation:
-        
+
         https://docs.scipy.org/doc/numpy/reference/generated/numpy.random.normal.html
         """
         self._check_args_not_none((0, 0.25), {})
-            
 
     def put(self, value, **kwargs):
         # Wait using the velocity
@@ -88,13 +103,12 @@ class FakeSignal(Signal):
                 time_to_dest = 0
                 if callable(self.velocity):
                     if self.velocity():
-                        time_to_dest = ((value - self._raw_readback) / 
-                                        self.velocity())
+                        time_to_dest = (value - self._raw_readback) / self.velocity()
                 elif self.velocity is not None:
                     time_to_dest = (value - self._raw_readback) / self.velocity
                 time.sleep(time_to_dest)
             except TypeError:
-                if isinstance(value , str):
+                if isinstance(value, str):
                     self.use_string = True
                 else:
                     raise
@@ -138,7 +152,7 @@ class FakeSignal(Signal):
 
     def _put_readback(self, value, **kwargs):
         """
-        Placeholder method that can be overridden to calculate the raw readback 
+        Placeholder method that can be overridden to calculate the raw readback
         value that will be set.
         """
         self._raw_readback = value
@@ -155,7 +169,7 @@ class FakeSignal(Signal):
     def noise_norm(self, *args, **kwargs):
         """
         Wrapper for numpy.random.normal. See URL below for full documentation:
-        
+
         https://docs.scipy.org/doc/numpy/reference/generated/numpy.random.normal.html
         """
         scale = kwargs.pop("scale", self.noise)
@@ -166,6 +180,3 @@ class FakeSignal(Signal):
         A hack to appease bluesky.
         """
         pass
-    
-    
-

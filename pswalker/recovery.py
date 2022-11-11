@@ -9,8 +9,17 @@ from .plan_stubs import match_condition
 logger = logging.getLogger(__name__)
 
 
-def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
-                      try_reverse=True, ceil=True, off_limit=0, has_stop=True):
+def recover_threshold(
+    signal,
+    threshold,
+    motor,
+    dir_initial,
+    timeout=None,
+    try_reverse=True,
+    ceil=True,
+    off_limit=0,
+    has_stop=True,
+):
     """
     Plan to move motor towards each limit switch until the signal is above a
     threshold value.
@@ -62,18 +71,29 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
     success: bool
         True if we had a successful recovery, False otherwise.
     """
-    logger.debug(("Recover threshold with signal=%s, threshold=%s, motor=%s, "
-                  "dir_initial=%s, timeout=%s"), signal, threshold, motor,
-                 dir_initial, timeout)
-    logger.info("Starting recovery on %s=%s because of %s=%s", motor.name,
-                motor.position, signal.name, signal.get())
+    logger.debug(
+        (
+            "Recover threshold with signal=%s, threshold=%s, motor=%s, "
+            "dir_initial=%s, timeout=%s"
+        ),
+        signal,
+        threshold,
+        motor,
+        dir_initial,
+        timeout,
+    )
+    logger.info(
+        "Starting recovery on %s=%s because of %s=%s",
+        motor.name,
+        motor.position,
+        signal.name,
+        signal.get(),
+    )
     if dir_initial > 0:
-        logger.info("Recovering towards the high limit switch %s",
-                    motor.high_limit)
+        logger.info("Recovering towards the high limit switch %s", motor.high_limit)
         setpoint = motor.high_limit - off_limit
     else:
-        logger.info("Recovering towards the low limit switch %s",
-                    motor.low_limit)
+        logger.info("Recovering towards the low limit switch %s", motor.low_limit)
         setpoint = motor.low_limit + off_limit
 
     def condition(x):
@@ -81,33 +101,48 @@ def recover_threshold(signal, threshold, motor, dir_initial, timeout=None,
             return x >= threshold
         else:
             return x <= threshold
-    ok = yield from match_condition(signal, condition, motor, setpoint,
-                                    timeout=timeout, has_stop=has_stop)
+
+    ok = yield from match_condition(
+        signal, condition, motor, setpoint, timeout=timeout, has_stop=has_stop
+    )
     if ok:
-        logger.info(('Recovery was successful! Ended with good values '
-                     '%s=%s, %s=%s'), motor.name, motor.position,
-                    signal.name, signal.get())
+        logger.info(
+            ("Recovery was successful! Ended with good values " "%s=%s, %s=%s"),
+            motor.name,
+            motor.position,
+            signal.name,
+            signal.get(),
+        )
         return True
     else:
         if try_reverse:
-            logger.info(("First direction failed, %s is %s at limit. "
-                         "Trying reverse..."), signal.name, signal.get())
+            logger.info(
+                ("First direction failed, %s is %s at limit. " "Trying reverse..."),
+                signal.name,
+                signal.get(),
+            )
             if timeout is not None:
                 timeout *= 2
-            return (yield from recover_threshold(signal, threshold, motor,
-                                                 -dir_initial,
-                                                 timeout=timeout,
-                                                 try_reverse=False,
-                                                 ceil=ceil,
-                                                 off_limit=off_limit))
+            return (
+                yield from recover_threshold(
+                    signal,
+                    threshold,
+                    motor,
+                    -dir_initial,
+                    timeout=timeout,
+                    try_reverse=False,
+                    ceil=ceil,
+                    off_limit=off_limit,
+                )
+            )
         else:
-            logger.info("Recovery failed, signal is %s at limit.",
-                        signal.get())
+            logger.info("Recovery failed, signal is %s at limit.", signal.get())
             return False
 
 
-def homs_recovery(*, detectors, motors, goals, detector_fields, index,
-                  sim=False, **kwargs):
+def homs_recovery(
+    *, detectors, motors, goals, detector_fields, index, sim=False, **kwargs
+):
     """
     Plan to recover the homs system should something go wrong. Is passed
     arguments as defined in iterwalk.
@@ -149,17 +184,29 @@ def homs_recovery(*, detectors, motors, goals, detector_fields, index,
         dir_initial = -1
 
     # Call the threshold recovery
-    ok = yield from recover_threshold(sig, sig_threshold,
-                                      mirror, dir_initial,
-                                      timeout=60, try_reverse=True,
-                                      off_limit=0.001, has_stop=False)
+    ok = yield from recover_threshold(
+        sig,
+        sig_threshold,
+        mirror,
+        dir_initial,
+        timeout=60,
+        try_reverse=True,
+        off_limit=0.001,
+        has_stop=False,
+    )
     # Pass the return value back out
     return ok
 
 
-def sim_recovery(*, detectors, motors, goals, detector_fields, index,
-                 **kwargs):
-    return (yield from homs_recovery(detectors=detectors, motors=motors,
-                                     goals=goals,
-                                     detector_fields=detector_fields,
-                                     index=index, sim=True, **kwargs))
+def sim_recovery(*, detectors, motors, goals, detector_fields, index, **kwargs):
+    return (
+        yield from homs_recovery(
+            detectors=detectors,
+            motors=motors,
+            goals=goals,
+            detector_fields=detector_fields,
+            index=index,
+            sim=True,
+            **kwargs
+        )
+    )

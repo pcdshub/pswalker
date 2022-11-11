@@ -1,14 +1,14 @@
-import sys
-import time
-import random
 import logging
-import pytest
+import random
+import sys
 import threading
-from functools import wraps
+import time
 import weakref
+from functools import wraps
 
 import numpy as np
 import ophyd.control_layer as cl
+import pytest
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +22,16 @@ class FakeEpicsPV(object):
     _pv_idx = 0
     auto_monitor = True
 
-    def __init__(self, pvname, form=None,
-                 callback=None, connection_callback=None,
-                 auto_monitor=True, enum_strs=None,
-                 **kwargs):
+    def __init__(
+        self,
+        pvname,
+        form=None,
+        callback=None,
+        connection_callback=None,
+        auto_monitor=True,
+        enum_strs=None,
+        **kwargs
+    ):
 
         global _FAKE_PV_LIST
         _FAKE_PV_LIST.append(self)
@@ -77,7 +83,7 @@ class FakeEpicsPV(object):
         return self._connected
 
     def wait_for_connection(self, timeout=None):
-        if self._pvname in ('does_not_connect', ):
+        if self._pvname in ("does_not_connect",):
             return False
 
         while not self._connected:
@@ -90,7 +96,7 @@ class FakeEpicsPV(object):
         if self._connection_callback is not None:
             self._connection_callback(pvname=self._pvname, conn=True, pv=self)
 
-        if self._pvname in ('does_not_connect', ):
+        if self._pvname in ("does_not_connect",):
             return
 
         self._connected = True
@@ -132,26 +138,28 @@ class FakeEpicsPV(object):
             self.remove_callback(index)
             return
 
-        kwd = dict(pvname=self._pvname,
-                   count=1,
-                   nelm=1,
-                   type=None,
-                   typefull=None,
-                   ftype=None,
-                   access='rw',
-                   chid=self._idx,
-                   read_access=True,
-                   write_access=True,
-                   value=self.value,
-                   )
+        kwd = dict(
+            pvname=self._pvname,
+            count=1,
+            nelm=1,
+            type=None,
+            typefull=None,
+            ftype=None,
+            access="rw",
+            chid=self._idx,
+            read_access=True,
+            write_access=True,
+            value=self.value,
+        )
 
-        kwd['cb_info'] = (index, self)
-        if hasattr(fcn, '__call__'):
+        kwd["cb_info"] = (index, self)
+        if hasattr(fcn, "__call__"):
             fcn(**kwd)
 
-    def add_callback(self, callback=None, index=None, run_now=False,
-                     with_ctrlvars=True):
-        if hasattr(callback, '__call__'):
+    def add_callback(
+        self, callback=None, index=None, run_now=False, with_ctrlvars=True
+    ):
+        if hasattr(callback, "__call__"):
             if index is None:
                 index = 1
                 if len(self.callbacks) > 0:
@@ -193,10 +201,9 @@ class FakeEpicsPV(object):
         return self._value
 
     def __repr__(self):
-        return '<FakePV %s value=%s>' % (self._pvname, self.value)
+        return "<FakePV %s value=%s>" % (self._pvname, self.value)
 
-    def get(self, as_string=False, use_numpy=False,
-            use_monitor=False):
+    def get(self, as_string=False, use_numpy=False, use_monitor=False):
         if as_string:
 
             if isinstance(self.value, list):
@@ -214,8 +221,15 @@ class FakeEpicsPV(object):
         else:
             return self.value
 
-    def put(self, value, wait=False, timeout=30.0,
-            use_complete=False, callback=None, callback_data=None):
+    def put(
+        self,
+        value,
+        wait=False,
+        timeout=30.0,
+        use_complete=False,
+        callback=None,
+        callback_data=None,
+    ):
 
         with self._lock:
             self._update = False
@@ -223,11 +237,10 @@ class FakeEpicsPV(object):
 
 
 class FakeEpicsWaveform(FakeEpicsPV):
-    strings = ['abcd', 'efgh', 'ijkl']
-    fake_values = [[ord(c) for c in s] + [0]
-                   for s in strings]
+    strings = ["abcd", "efgh", "ijkl"]
+    fake_values = [[ord(c) for c in s] + [0] for s in strings]
     auto_monitor = False
-    form = 'time'
+    form = "time"
 
 
 def _cleanup_fake_pvs():
@@ -252,9 +265,11 @@ def using_fake_epics_pv(fcn):
     def wrapped(*args, **kwargs):
         get_pv_backup = cl.get_pv
 
-        def _fake_get_pv(pvname, form='time', connect=False,
-                         context=False, timout=5.0, **kw):
+        def _fake_get_pv(
+            pvname, form="time", connect=False, context=False, timout=5.0, **kw
+        ):
             return FakeEpicsPV(pvname, form=form, **kw)
+
         cl.get_pv = _fake_get_pv
         try:
             return fcn(*args, **kwargs)
@@ -270,8 +285,9 @@ def using_fake_epics_waveform(fcn):
     def wrapped(*args, **kwargs):
         get_pv_backup = cl.get_pv
 
-        def _fake_get_pv(pvname, form='time', connect=False,
-                         context=False, timout=5.0, **kw):
+        def _fake_get_pv(
+            pvname, form="time", connect=False, context=False, timout=5.0, **kw
+        ):
             return FakeEpicsWaveform(pvname, form=form, **kw)
 
         cl.get_pv = _fake_get_pv
@@ -287,4 +303,5 @@ def using_fake_epics_waveform(fcn):
 @pytest.fixture()
 def hw():
     from ophyd.sim import hw
+
     return hw()

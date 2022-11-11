@@ -19,7 +19,8 @@
 #
 import os
 import sys
-import sphinx_rtd_theme
+
+import sphinx_rtd_theme  # noqa
 
 module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../../')
 sys.path.insert(0,module_path)
@@ -51,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Skywalker'
-copyright = '2017, SLAC National Accelerator Laboratory'
+copyright = '2022, SLAC National Accelerator Laboratory'
 author = 'SLAC National Accelerator Laboratory'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -60,6 +61,7 @@ author = 'SLAC National Accelerator Laboratory'
 #
 # The short X.Y version.
 import pswalker
+
 version = pswalker.__version__
 # The full version, including alpha/beta/rc tags.
 release = pswalker.__version__
@@ -157,6 +159,3 @@ texinfo_documents = [
      author, 'Skywalker', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-

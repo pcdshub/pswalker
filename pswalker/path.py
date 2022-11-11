@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from ophyd.status import wait as status_wait
-# from lightpath import LightController
-# TODO: When we test with a real lightpath, uncomment this and make sure
-# lightpath is in the environment
 
 _controller = None
 
@@ -22,9 +18,11 @@ def init_controller(controller=_controller):
     -------
     controller: lightpath.LightController
     """
+    global _controller
     if controller is None:
-        controller = LightController()
-        global _controller
+        import happi
+        from lightpath import LightController
+        controller = LightController(client=happi.Client.from_config())
         _controller = controller
     return controller
 
@@ -94,8 +92,15 @@ def prune_path(path, exclude=None):
     return path.__class__(*devices)
 
 
-def clear_lightpath(device, exclude=None, wait=False, timeout=None,
-                    passive=False, path=None, controller=_controller):
+def clear_lightpath(
+    device,
+    exclude=None,
+    wait=False,
+    timeout=None,
+    passive=False,
+    path=None,
+    controller=_controller,
+):
     """
     Clear a path to a device on the beamline.
 

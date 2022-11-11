@@ -1,5 +1,6 @@
+from setuptools import find_packages, setup
+
 import versioneer
-from setuptools import setup, find_packages
 
 setup(name='pswalker',
       version=versioneer.get_version(),

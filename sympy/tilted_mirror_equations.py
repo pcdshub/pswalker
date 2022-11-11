@@ -3,9 +3,7 @@
 # For a full explanation see the jupyter notebook named "Ray Tracing for Tilted
 # Flat Mirrors" in the "ipynbs" directory
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import sympy as sp
 
@@ -13,16 +11,16 @@ import sympy as sp
 #                              Symbol Definitions                              #
 ################################################################################
 
-x0, xp0 = sp.symbols("x0 xp0")                    #Source beam x pointing
-p1hx, p1hz, p1hxp = sp.symbols("p1hx p2hz p1hxp")   #P1H beam x,z, pointing
-m1hx, m1hz, a1 = sp.symbols("m1hx m1hz a1")       #M1H beam x,z, mirror angle
-p2hx, p2hz, p2hxp = sp.symbols("p2hx p2hz p2hxp")   #P2H beam x,z, pointing
-m2hx, m2hz, a2 = sp.symbols("m2hx m2hz a2")       #M2H beam x,z, mirror angle
-p3hx, p3hz, p3hxp = sp.symbols("p3hx p3hz p3hxp")   #P3H beam x,z, pointing
-dg3x, dg3z, dg3xp = sp.symbols("dg3x dg3z dg3xp")   #DG3 beam x,z, pointing
-m1hxp, m2hxp = sp.symbols("m1hxp m2hxp")            #Pointing after mirror
-m1hdx, m2hdx = sp.symbols("m1hdx m2hdx")                   #X position of mirror
-d1, d2, d3, d4, d5, d6 = sp.symbols("d1 d2 d3 d4 d5 d6")   #Z positions
+x0, xp0 = sp.symbols("x0 xp0")                    # Source beam x pointing
+p1hx, p1hz, p1hxp = sp.symbols("p1hx p2hz p1hxp")   # P1H beam x,z, pointing
+m1hx, m1hz, a1 = sp.symbols("m1hx m1hz a1")       # M1H beam x,z, mirror angle
+p2hx, p2hz, p2hxp = sp.symbols("p2hx p2hz p2hxp")   # P2H beam x,z, pointing
+m2hx, m2hz, a2 = sp.symbols("m2hx m2hz a2")       # M2H beam x,z, mirror angle
+p3hx, p3hz, p3hxp = sp.symbols("p3hx p3hz p3hxp")   # P3H beam x,z, pointing
+dg3x, dg3z, dg3xp = sp.symbols("dg3x dg3z dg3xp")   # DG3 beam x,z, pointing
+m1hxp, m2hxp = sp.symbols("m1hxp m2hxp")            # Pointing after mirror
+m1hdx, m2hdx = sp.symbols("m1hdx m2hdx")                   # X position of mirror
+d1, d2, d3, d4, d5, d6 = sp.symbols("d1 d2 d3 d4 d5 d6")   # Z positions
 
 ################################################################################
 #                                     P1H                                      #
@@ -92,7 +90,7 @@ m2h_ln = a2 * (z - d4) + m2hdx - x
 # Solve for x
 m2h_ln_x = sp.solve(m2h_ln, x)[0]
 # Get the line eq for the beam using beam parameters from m1h in point slope
-beam_ln =  m1hxp*(z - m1hz) + m1hx - x
+beam_ln = m1hxp*(z - m1hz) + m1hx - x
 # Solve for x
 beam_ln_x = sp.solve(beam_ln, x)[0]
 # Setting them equal to each other and subtracting, then solving for z
@@ -185,4 +183,3 @@ print("\nAlpha1: {0}".format(alpha_1))
 
 # Outputs:
 # Alpha1: (-d4*d5*xp0 + d4*d6*xp0 - d4*xdg3 + d4*xp3h + 2*d5*m1hdx - 2*d5*m2hdx - d5*x0 + d5*xdg3 - 2*d6*m1hdx + 2*d6*m2hdx + d6*x0 - d6*xp3h)/(2*(d2*d5 - d2*d6 - d4*d5 + d4*d6))
-

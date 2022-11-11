@@ -2,17 +2,16 @@
 # -*- coding: utf-8 -*-
 import logging
 import random
-import time
 import threading
+import time
 
+from bluesky.plan_stubs import checkpoint, sleep
 from ophyd import Signal
-from ophyd.ophydobj import OphydObject
-from ophyd.positioner import SoftPositioner, PositionerBase
-from bluesky.plan_stubs import sleep, checkpoint
+from ophyd.positioner import PositionerBase, SoftPositioner
 
-from pswalker.sim import pim, mirror
+from pswalker.sim import mirror
 
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def collector(field, output):
@@ -20,11 +19,11 @@ def collector(field, output):
     Reimplement bluesky.callbacks.collector to not raise exception when field
     is missing. Instead, log a warning.
     """
+
     def f(name, event):
         try:
-            output.append(event['data'][field])
-            logger.debug("%s collector has collected, all output: %s",
-                         field, output)
+            output.append(event["data"][field])
+            logger.debug("%s collector has collected, all output: %s", field, output)
         except KeyError:
             logger.warning("did not find %s in event doc, skipping", field)
 
@@ -36,10 +35,11 @@ def plan_stash(plan, stash_queue, *args, **kwargs):
     stash_queue.put(val)
 
 
-def make_store_doc(dest, filter_doc_type='all'):
+def make_store_doc(dest, filter_doc_type="all"):
     def store_doc(doc_type, doc):
-        if filter_doc_type == 'all' or doc_type == filter_doc_type:
+        if filter_doc_type == "all" or doc_type == filter_doc_type:
             dest.append(doc)
+
     return store_doc
 
 
@@ -47,6 +47,7 @@ class SlowSoftPositioner(SoftPositioner):
     """
     Soft positioner that moves to the destination slowly, like a real motor
     """
+
     def __init__(self, *, n_steps, delay, position, **kwargs):
         super().__init__(**kwargs)
         self.n_steps = n_steps
@@ -61,12 +62,11 @@ class SlowSoftPositioner(SoftPositioner):
         self._moving = True
         self._stopped = False
 
-        delta = (position - self.position)/self.n_steps
+        delta = (position - self.position) / self.n_steps
         pos_list = [self.position + n * delta for n in range(1, self.n_steps)]
         pos_list.append(position)
 
-        thread = threading.Thread(target=self._move_thread,
-                                  args=(pos_list, status))
+        thread = threading.Thread(target=self._move_thread, args=(pos_list, status))
         logger.debug("test motor start moving")
         thread.start()
 
@@ -104,10 +104,8 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
     def get_slow_pitch_pos(self):
         return self._position
 
-    def move(self, position, wait=True, timeout=None, moved_cb=None,
-             **kwargs):
-        status = PositionerBase.move(self, position, moved_cb=moved_cb,
-                                     timeout=timeout)
+    def move(self, position, wait=True, timeout=None, moved_cb=None, **kwargs):
+        status = PositionerBase.move(self, position, moved_cb=moved_cb, timeout=timeout)
 
         self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
 
@@ -115,8 +113,7 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
         self._moving = True
         self._stopped = False
 
-        thread = threading.Thread(target=self._move_thread,
-                                  args=(position,))
+        thread = threading.Thread(target=self._move_thread, args=(position,))
         logger.debug("test slow offset mirror start moving")
         thread.start()
 
@@ -140,8 +137,7 @@ class SlowOffsetMirror(mirror.OffsetMirror, PositionerBase):
                     self._position = self.position - self.step_size
                 else:
                     self._position = position
-                self._run_subs(sub_type=self.SUB_READBACK,
-                               timestamp=time.time())
+                self._run_subs(sub_type=self.SUB_READBACK, timestamp=time.time())
         self._done_moving(success=ok)
         logger.debug("test slow offset mirror done moving")
 
@@ -150,6 +146,7 @@ class MotorSignal(Signal):
     """
     Signal that reports its value to be that of a given positioner object
     """
+
     def __init__(self, motor, name=None, parent=None):
         super().__init__(name=name, parent=parent)
         motor.subscribe(self.put_cb)
@@ -159,10 +156,9 @@ class MotorSignal(Signal):
 
 
 def ruin_my_path(path):
-    #Select a non-passive device
-    choices = [d for d in path.devices
-               if d.transmission < path.minimum_transmission]
-    #Insert it into the beam
+    # Select a non-passive device
+    choices = [d for d in path.devices if d.transmission < path.minimum_transmission]
+    # Insert it into the beam
     device = random.choice(choices)
     logger.debug("Inserting device {}".format(device))
     device.insert()
