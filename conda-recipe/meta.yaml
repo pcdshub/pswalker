@@ -18,7 +18,7 @@ requirements:
   run:
     - python >=3.6
     - ophyd >=1.5.0
-    - bluesky >=1.5.0
+    - bluesky-base >=1.5.0
     - pcdsdevices >=2.6.0
     - simplejson
     - lmfit
