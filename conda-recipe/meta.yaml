@@ -24,7 +24,7 @@ requirements:
     - lmfit
     - numpy
     - pandas
-    - matplotlib
+    - matplotlib-base
     - jinja2
 
 test:
